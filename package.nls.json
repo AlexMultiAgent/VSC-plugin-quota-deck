@@ -1,0 +1,15 @@
+{
+  "command.openDashboard.title": "Open Dashboard",
+  "command.refresh.title": "Refresh",
+  "command.switchProvider.title": "Switch Provider",
+  "command.configureMiniMax.title": "Configure MiniMax",
+  "command.configureDeepSeek.title": "Configure DeepSeek",
+  "command.showHelp.title": "Show Help",
+  "config.language.description": "Interface language. `auto` follows the VS Code display language.",
+  "config.refreshIntervalMinutes.description": "Minutes between automatic quota refreshes.",
+  "config.pauseWhenUnfocused.description": "Pause background refresh while the window is unfocused.",
+  "config.statusBarMode.description": "Show every provider in the status bar, or only the primary provider.",
+  "config.primaryProvider.description": "Provider shown in focused status bar mode.",
+  "config.providerOrder.description": "Order of provider segments in the status bar.",
+  "config.timeZone.description": "IANA time zone used for reset countdowns and absolute dates."
+}

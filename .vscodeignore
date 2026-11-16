@@ -1,4 +1,5 @@
 .vscode/**
+.remember/**
 .gitignore
 node_modules/**
 src/**
@@ -8,3 +9,8 @@ out/**
 scripts/**
 docs/**
 .vscode-test/**
+esbuild.mjs
+tsconfig.json
+vitest.config.ts
+package-lock.json
+*.vsix
