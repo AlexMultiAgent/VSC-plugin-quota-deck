@@ -77,7 +77,10 @@ export class DashboardPanel {
   private html(): string {
     const scriptNonce = nonce();
     const styleNonce = nonce();
-    const scriptUri = vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview.js').toString();
+    const localScript = vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview.js');
+    const scriptUri = this.panel === undefined
+      ? localScript.toString()
+      : this.panel.webview.asWebviewUri(localScript).toString();
     return (
       '<!DOCTYPE html>' +
       '<html lang="en">' +

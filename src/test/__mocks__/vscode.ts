@@ -70,6 +70,7 @@ export const Uri = {
 export interface Webview {
   html: string;
   options: { enableScripts?: boolean; localResourceRoots?: unknown[] };
+  asWebviewUri(localResource: Uri): Uri;
   onDidReceiveMessage: (listener: (message: unknown) => void) => Disposable;
   postMessage(message: unknown): Promise<boolean>;
   postedMessages: unknown[];
@@ -195,6 +196,10 @@ export const window = {
       html: '',
       options: {},
       postedMessages: [],
+      asWebviewUri: (localResource: Uri): Uri => ({
+        ...localResource,
+        toString: () => `vscode-resource:${localResource.path}`,
+      }),
       onDidReceiveMessage: (listener: (message: unknown) => void) => {
         listeners.push(listener);
         return {

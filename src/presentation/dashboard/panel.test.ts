@@ -15,6 +15,7 @@ describe('DashboardPanel', () => {
     const html = state.webviewPanels[0]!.webview.html;
     expect(html).toContain("default-src 'none'");
     expect(html).toMatch(/nonce-[A-Za-z0-9+/=]+/);
+    expect(html).toContain('vscode-resource:');
   });
 
   it('uses the localized title', () => {
