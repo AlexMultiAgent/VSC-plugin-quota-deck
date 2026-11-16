@@ -142,4 +142,29 @@ describe('renderTooltip', () => {
     };
     expect(renderTooltip(snapshots, ['deepseek'], t)).not.toContain('cookie');
   });
+
+  it('shows MiniMax media quota, points, and expiry', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [{ window: 'fiveHour', remainingPercent: 40, resetAt: null, unlimited: false }],
+            models: [{ model: 'video', remaining: 3, total: 3 }],
+          },
+        },
+        'minimax.points': { kind: 'ok', fetchedAt: 'x', data: { balance: 6850, expiresAt: null } },
+        'minimax.subscription': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: { expiresAt: Date.parse('2027-06-30T00:00:00Z'), planName: null },
+        },
+      }),
+    };
+    const html = renderTooltip(snapshots, ['minimax-cn'], t);
+    expect(html).toContain('video');
+    expect(html).toContain('6,850');
+    expect(html).toContain('2027-06-30');
+  });
 });

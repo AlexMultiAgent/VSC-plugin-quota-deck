@@ -48,6 +48,12 @@ interface BalanceEntry {
   readonly total: number;
 }
 
+interface MiniMaxModelRow {
+  readonly model: string;
+  readonly remaining: number | null;
+  readonly total: number | null;
+}
+
 interface UsagePoint {
   readonly date: string;
   readonly requests: number;
@@ -167,7 +173,7 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator): st
 
   const plan = snapshot.capabilities['minimax.plan'];
   if (plan !== undefined && plan.kind === 'ok') {
-    const data = plan.data as { windows?: WindowView[] } | undefined;
+    const data = plan.data as { windows?: WindowView[]; models?: MiniMaxModelRow[] } | undefined;
     const rows = (data?.windows ?? [])
       .filter((window) => window.remainingPercent !== null)
       .map(
@@ -177,6 +183,25 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator): st
           `<td class="t-muted">${window.resetAt === null ? '' : new Date(window.resetAt).toISOString().slice(11, 16)}</td>` +
           '<td></td></tr>',
       );
+    for (const model of data?.models ?? []) {
+      if (model.model === 'general' || model.total === null || model.total <= 0 || model.remaining === null) continue;
+      const percent = Math.round((model.remaining / model.total) * 100);
+      rows.push(`<tr><td>${escapeHtml(model.model)}</td><td>${bar(percent)} ${percent}%</td><td class="t-muted">${model.remaining}/${model.total}</td><td></td></tr>`);
+    }
+    const pointsState = snapshot.capabilities['minimax.points'];
+    if (pointsState?.kind === 'ok') {
+      const pointData = pointsState.data as { balance?: number | null } | undefined;
+      if (typeof pointData?.balance === 'number') {
+        rows.push(`<tr><td>${escapeHtml(t('capability.minimax.points'))}</td><td>${pointData.balance.toLocaleString('en-US')}</td><td></td><td></td></tr>`);
+      }
+    }
+    const subscriptionState = snapshot.capabilities['minimax.subscription'];
+    if (subscriptionState?.kind === 'ok') {
+      const subscription = subscriptionState.data as { expiresAt?: number | null } | undefined;
+      if (typeof subscription?.expiresAt === 'number') {
+        rows.push(`<tr><td>Expires</td><td>${new Date(subscription.expiresAt).toISOString().slice(0, 10)}</td><td></td><td></td></tr>`);
+      }
+    }
     if (rows.length > 0) return rows.join('');
   }
 

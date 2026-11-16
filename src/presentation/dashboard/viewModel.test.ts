@@ -194,4 +194,27 @@ describe('buildDashboardModel', () => {
     expect(buildDashboardModel(options({ pricing: 'offPeak' })).pricingLabel).toBe('Off-peak pricing right now');
     expect(buildDashboardModel(options({ pricing: 'unavailable' })).pricingLabel).toBe('Pricing calendar unavailable');
   });
+
+  it('shows MiniMax media meters and points when the account returns them', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['minimax-cn'],
+        snapshots: {
+          'minimax-cn': makeSnapshot('minimax-cn', {
+            'minimax.plan': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: {
+                windows: [{ window: 'fiveHour', remainingPercent: 40, resetAt: null, unlimited: false }],
+                models: [{ model: 'video', remaining: 3, total: 3 }],
+              },
+            },
+            'minimax.points': { kind: 'ok', fetchedAt: 'x', data: { balance: 6850, expiresAt: null } },
+          }),
+        },
+      }),
+    );
+    expect(model.providers[0]!.meters.find((meter) => meter.key === 'model:video')?.percent).toBe(100);
+    expect(model.tiles.find((tile) => tile.key === 'points')?.value).toBe('6,850');
+  });
 });

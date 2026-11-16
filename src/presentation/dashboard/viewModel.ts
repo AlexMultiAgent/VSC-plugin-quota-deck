@@ -182,6 +182,37 @@ function windows(snapshot: ProviderSnapshot | undefined): WindowView[] {
   return data?.windows ?? [];
 }
 
+function mediaMeters(snapshot: ProviderSnapshot | undefined): QuotaMeter[] {
+  const state = snapshot?.capabilities['minimax.plan'];
+  if (state === undefined || state.kind !== 'ok') return [];
+  const data = state.data as {
+    models?: { model: string; remaining: number | null; total: number | null }[];
+  } | undefined;
+  return (data?.models ?? []).flatMap((model) => {
+    if (model.total === null || model.total <= 0 || model.remaining === null) return [];
+    if (model.model === 'general' || model.model.includes('MiniMax-M')) return [];
+    const percent = Math.max(0, Math.min(100, (model.remaining / model.total) * 100));
+    return [{
+      key: `model:${model.model}`,
+      label: model.model,
+      percent,
+      resetLabel: null,
+      tone: tone(percent) as QuotaMeter['tone'],
+    }];
+  });
+}
+
+function pointsBalance(snapshots: Partial<Record<ProviderId, ProviderSnapshot>>): number | null {
+  for (const id of ['minimax-cn', 'minimax-global'] as const) {
+    const state = snapshots[id]?.capabilities['minimax.points'];
+    if (state?.kind === 'ok') {
+      const data = state.data as { balance?: number | null } | undefined;
+      if (typeof data?.balance === 'number') return data.balance;
+    }
+  }
+  return null;
+}
+
 function usageData(snapshot: ProviderSnapshot | undefined): {
   points: UsagePoint[];
   byModel: ModelUsageRow[];
@@ -222,9 +253,9 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
         label: window.window === 'weekly' ? 'Weekly' : '5-hour',
         percent,
         resetLabel: window.resetAt === null ? null : new Date(window.resetAt).toISOString(),
-        tone: percent === null ? 'muted' : tone(percent),
+        tone: percent === null ? 'muted' : tone(percent) as QuotaMeter['tone'],
       };
-    });
+    }).concat(mediaMeters(snapshot));
     const failed = snapshot === undefined
       ? undefined
       : Object.values(snapshot.capabilities).find((entry) => entry.kind === 'failed');
@@ -280,6 +311,15 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
     { key: 'tokens', label: t('dashboard.tokens'), value: String(totalTokens), tone: 'neutral' },
     { key: 'cost', label: t('dashboard.cost'), value: currency === null ? '—' : formatMoney(totalCost, currency), tone: 'neutral' },
   ];
+  const pointsTileValue = pointsBalance(snapshots);
+  if (pointsTileValue !== null) {
+    tiles.push({
+      key: 'points',
+      label: t('capability.minimax.points'),
+      value: pointsTileValue.toLocaleString('en-US'),
+      tone: 'neutral',
+    });
+  }
 
   const labels: DashboardLabels = {
     cost: t('dashboard.chart.cost'),
