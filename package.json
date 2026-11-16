@@ -131,8 +131,9 @@
     "test:watch": "vitest",
     "check:locales": "node scripts/check-locales.mjs",
     "guard:package": "node scripts/guard-package.mjs",
+    "guard:fixtures": "node scripts/guard-fixtures.mjs",
     "vscode:prepublish": "npm run build",
-    "package": "npm run build && vsce package --no-dependencies && npm run guard:package"
+    "package": "npm run build && npm run guard:fixtures && vsce package --no-dependencies && npm run guard:package"
   },
   "devDependencies": {
     "@types/node": "^20.16.0",
