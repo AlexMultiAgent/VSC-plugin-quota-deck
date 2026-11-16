@@ -32,6 +32,16 @@
     "onStartupFinished"
   ],
   "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1baf7a",
+    "theme": "dark"
+  },
+  "bugs": {
+    "url": "https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/issues"
+  },
+  "homepage": "https://github.com/AlexMultiAgent/VSC-plugin-quota-deck#readme",
+  "pricing": "Free",
+  "telemetry": null,
   "contributes": {
     "commands": [
       {
@@ -133,7 +143,7 @@
     "guard:package": "node scripts/guard-package.mjs",
     "guard:fixtures": "node scripts/guard-fixtures.mjs",
     "vscode:prepublish": "npm run build",
-    "package": "npm run build && npm run guard:fixtures && vsce package --no-dependencies && npm run guard:package"
+    "package": "npm run build && npm run guard:fixtures && node scripts/release-gate.mjs && vsce package --no-dependencies && npm run guard:package"
   },
   "devDependencies": {
     "@types/node": "^20.16.0",
