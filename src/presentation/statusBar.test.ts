@@ -56,10 +56,13 @@ describe('renderStatusBarText', () => {
     expect(text).toContain('42%');
   });
 
-  it('drops the trailing segments and appends a count', () => {
+  it('collapses the two MiniMax regions so all three families remain visible', () => {
     const text = renderStatusBarText({}, ['minimax-cn', 'minimax-global', 'deepseek', 'qwen'], t);
-    expect(text).toMatch(/\+\d/);
-    expect(text).not.toContain('QW');
+    expect(text).not.toMatch(/\+\d/);
+    expect(text).toContain('MM');
+    expect(text).toContain('DS');
+    expect(text).toContain('QW');
+    expect(text).not.toContain('MG');
   });
 
   it('carries a status icon on every segment', () => {

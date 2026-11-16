@@ -82,7 +82,19 @@ export function renderStatusBarText(
   mode: 'all' | 'focused' = 'all',
   primary: ProviderId = 'minimax-cn',
 ): string {
-  const visible = mode === 'focused' ? [primary] : order;
+  const minimaxPrimary = primary === 'minimax-global' ? 'minimax-global' : 'minimax-cn';
+  const visible = mode === 'focused'
+    ? [primary]
+    : order.reduce<ProviderId[]>((result, id) => {
+        if (id === 'minimax-cn' || id === 'minimax-global') {
+          if (!result.includes('minimax-cn') && !result.includes('minimax-global')) {
+            result.push(minimaxPrimary);
+          }
+          return result;
+        }
+        if (!result.includes(id)) result.push(id);
+        return result;
+      }, []);
   if (visible.length === 0) return t('statusBar.noData');
 
   const segments = visible.map((id) => {
