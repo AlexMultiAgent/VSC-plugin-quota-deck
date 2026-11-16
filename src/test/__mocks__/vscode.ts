@@ -82,6 +82,7 @@ export interface WebviewPanel {
   visible: boolean;
   reveal(): void;
   dispose(): void;
+  onDidDispose(listener: () => void): Disposable;
 }
 
 export const state = {
@@ -189,6 +190,7 @@ export const window = {
   },
   createWebviewPanel(_viewType: string, _title: string, _column: number, _options: unknown): WebviewPanel {
     const listeners: Array<(message: unknown) => void> = [];
+    const disposeListeners: Array<() => void> = [];
     const webview: Webview = {
       html: '',
       options: {},
@@ -215,7 +217,19 @@ export const window = {
       title: _title,
       visible: false,
       reveal() { panel.visible = true; },
-      dispose() { panel.visible = false; },
+      dispose() {
+        panel.visible = false;
+        for (const listener of [...disposeListeners]) listener();
+      },
+      onDidDispose(listener: () => void): Disposable {
+        disposeListeners.push(listener);
+        return {
+          dispose: () => {
+            const index = disposeListeners.indexOf(listener);
+            if (index >= 0) disposeListeners.splice(index, 1);
+          },
+        };
+      },
     };
     state.webviewPanels.push(panel);
     return panel;
