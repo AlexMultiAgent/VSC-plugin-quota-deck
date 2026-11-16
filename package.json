@@ -1,0 +1,156 @@
+{
+  "name": "quota-deck",
+  "displayName": "QuotaDeck CN — MiniMax DeepSeek Qwen",
+  "description": "国产大模型额度监控 · MiniMax、DeepSeek、Qwen 余额、用量与重置倒计时",
+  "version": "0.1.0",
+  "publisher": "alexmultiagent",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AlexMultiAgent/VSC-plugin-quota-deck.git"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "minimax",
+    "deepseek",
+    "qwen",
+    "quota",
+    "usage",
+    "balance",
+    "token usage",
+    "额度监控",
+    "国产大模型"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1baf7a",
+    "theme": "dark"
+  },
+  "bugs": {
+    "url": "https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/issues"
+  },
+  "homepage": "https://github.com/AlexMultiAgent/VSC-plugin-quota-deck#readme",
+  "pricing": "Free",
+  "telemetry": null,
+  "contributes": {
+    "commands": [
+      {
+        "command": "quotaDeck.openDashboard",
+        "title": "%command.openDashboard.title%",
+        "category": "QuotaDeck CN"
+      },
+      {
+        "command": "quotaDeck.refresh",
+        "title": "%command.refresh.title%",
+        "category": "QuotaDeck CN"
+      },
+      {
+        "command": "quotaDeck.switchProvider",
+        "title": "%command.switchProvider.title%",
+        "category": "QuotaDeck CN"
+      },
+      {
+        "command": "quotaDeck.configureMiniMax",
+        "title": "%command.configureMiniMax.title%",
+        "category": "QuotaDeck CN"
+      },
+      {
+        "command": "quotaDeck.configureDeepSeek",
+        "title": "%command.configureDeepSeek.title%",
+        "category": "QuotaDeck CN"
+      },
+      {
+        "command": "quotaDeck.showHelp",
+        "title": "%command.showHelp.title%",
+        "category": "QuotaDeck CN"
+      }
+    ],
+    "configuration": {
+      "title": "QuotaDeck CN",
+      "properties": {
+        "quotaDeck.language": {
+          "type": "string",
+          "enum": ["auto", "zh-CN", "en-US"],
+          "default": "auto",
+          "description": "%config.language.description%"
+        },
+        "quotaDeck.refreshIntervalMinutes": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 60,
+          "default": 5,
+          "description": "%config.refreshIntervalMinutes.description%"
+        },
+        "quotaDeck.pauseWhenUnfocused": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.pauseWhenUnfocused.description%"
+        },
+        "quotaDeck.statusBar.mode": {
+          "type": "string",
+          "enum": ["all", "focused"],
+          "default": "all",
+          "description": "%config.statusBarMode.description%"
+        },
+        "quotaDeck.statusBar.primaryProvider": {
+          "type": "string",
+          "enum": ["minimax-cn", "minimax-global", "deepseek", "qwen"],
+          "default": "minimax-cn",
+          "description": "%config.primaryProvider.description%"
+        },
+        "quotaDeck.statusBar.providerOrder": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["minimax-cn", "minimax-global", "deepseek", "qwen"]
+          },
+          "default": ["minimax-cn", "minimax-global", "deepseek", "qwen"],
+          "description": "%config.providerOrder.description%"
+        },
+        "quotaDeck.timeZone": {
+          "type": "string",
+          "default": "Asia/Shanghai",
+          "description": "%config.timeZone.description%"
+        }
+      }
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "quotaDeck.openDashboard",
+          "when": "true"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check:locales": "node scripts/check-locales.mjs",
+    "guard:package": "node scripts/guard-package.mjs",
+    "guard:fixtures": "node scripts/guard-fixtures.mjs",
+    "vscode:prepublish": "npm run build",
+    "package": "npm run build && npm run guard:fixtures && node scripts/release-gate.mjs && vsce package --no-dependencies && npm run guard:package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.0",
+    "@types/vscode": "^1.95.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}
