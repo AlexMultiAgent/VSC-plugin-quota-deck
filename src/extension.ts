@@ -5,15 +5,20 @@ import { HttpClient } from './core/http';
 import { Scheduler } from './core/scheduler';
 import { SecretStore } from './core/secrets';
 import { readSettings } from './core/settings';
+import type { RangeId } from './core/time';
 import { resolveLanguage, translatorFor } from './localization';
+import { pricingState } from './providers/deepseek/pricing';
 import { buildProviders } from './providers/registry';
 import { registerCommands } from './presentation/commands';
+import { DashboardPanel } from './presentation/dashboard/panel';
+import { buildDashboardModel, type DashboardModel } from './presentation/dashboard/viewModel';
+import { buildFallbackItems } from './presentation/quickPickFallback';
 import { StatusBarPresenter } from './presentation/statusBar';
+import { renderTooltip } from './presentation/tooltip';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const settings = readSettings();
   const t = translatorFor(resolveLanguage(settings.language, vscode.env.language));
-
   const cache = new SnapshotCache({
     get: (key) => context.globalState.get(key),
     set: (key, value) => void context.globalState.update(key, value),
@@ -34,20 +39,65 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const secrets = new SecretStore(context.secrets);
   for (const provider of providers) await provider.connect(secrets);
 
-  const refreshAll = async (): Promise<void> => {
-    const snapshots = await coordinator.refreshAll();
+  let range: RangeId = 'last7';
+  let lastRefreshIso: string | undefined;
+
+  const dashboard = new DashboardPanel(context.extensionUri, t('dashboard.title'), (next) => {
+    void selectRange(next);
+  });
+
+  function currentModel(snapshots = coordinator.getLast()): DashboardModel {
+    const current = readSettings();
+    return buildDashboardModel({
+      snapshots,
+      order: current.providerOrder,
+      t,
+      range,
+      pricing: pricingState(Date.now()),
+    });
+  }
+
+  function refreshTooltip(): void {
+    const current = readSettings();
+    const markdown = new vscode.MarkdownString(
+      renderTooltip(coordinator.getLast(), current.providerOrder, t, lastRefreshIso),
+    );
+    markdown.supportHtml = true;
+    markdown.isTrusted = false;
+    statusBar.setTooltip(markdown);
+  }
+
+  async function refreshAll(): Promise<void> {
+    const snapshots = await coordinator.refreshAll(range);
+    lastRefreshIso = new Date().toISOString();
     const current = readSettings();
     statusBar.update(snapshots, current.providerOrder, current.statusBarMode, current.primaryProvider);
-  };
+    dashboard.update(currentModel(snapshots));
+    refreshTooltip();
+  }
+
+  async function selectRange(next: RangeId): Promise<void> {
+    range = next;
+    await refreshAll();
+  }
 
   context.subscriptions.push(
     statusBar,
+    dashboard,
     { dispose: () => scheduler.stop() },
     { dispose: () => coordinator.dispose() },
     ...registerCommands({
       refresh: () => scheduler.refreshNow(),
       openDashboard: async () => {
-        await vscode.window.showInformationMessage('仪表盘将在后续版本提供。');
+        try {
+          dashboard.show();
+          dashboard.update(currentModel());
+          refreshTooltip();
+        } catch {
+          const current = readSettings();
+          const items = buildFallbackItems(coordinator.getLast(), current.providerOrder);
+          await vscode.window.showQuickPick(items, { title: 'QuotaDeck CN' });
+        }
       },
       switchProvider: async () => {
         await vscode.window.showInformationMessage('切换服务商将在后续版本提供。');
@@ -70,7 +120,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   scheduler.start(refreshAll);
   const cached = await coordinator.loadCached();
-  statusBar.update(cached, settings.providerOrder, settings.statusBarMode, settings.primaryProvider);
+  const current = readSettings();
+  statusBar.update(cached, current.providerOrder, current.statusBarMode, current.primaryProvider);
+  dashboard.update(currentModel(cached));
+  refreshTooltip();
   void refreshAll();
 }
 
