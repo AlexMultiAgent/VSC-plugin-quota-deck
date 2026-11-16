@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
-import { SECRET_PATTERNS } from './sanitize.mjs';
+import { FINANCIAL_KEY_PATTERN, SECRET_PATTERNS } from './sanitize.mjs';
 
 export function findSecretLikeValues(value, path = '') {
   if (typeof value === 'string') {
@@ -11,7 +11,11 @@ export function findSecretLikeValues(value, path = '') {
   }
   if (value !== null && typeof value === 'object') {
     return Object.entries(value).flatMap(([key, entry]) =>
-      findSecretLikeValues(entry, path === '' ? key : `${path}.${key}`),
+      (typeof entry === 'number' || typeof entry === 'string') &&
+      FINANCIAL_KEY_PATTERN.test(key) &&
+      Number(entry) !== 0
+        ? [{ path: path === '' ? key : `${path}.${key}`, value: entry }]
+        : findSecretLikeValues(entry, path === '' ? key : `${path}.${key}`),
     );
   }
   return [];

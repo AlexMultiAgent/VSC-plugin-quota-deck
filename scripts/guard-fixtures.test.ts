@@ -24,4 +24,10 @@ describe('findSecretLikeValues', () => {
     const found = findSecretLikeValues({ list: [{ id: 'a'.repeat(40) }] });
     expect(found[0]!.path).toBe('list[0].id');
   });
+
+  it('rejects non-zero financial values in a fixture', () => {
+    const found = findSecretLikeValues({ balance_infos: [{ total_balance: '28.53' }] });
+    expect(found).toHaveLength(1);
+    expect(found[0]!.path).toBe('balance_infos[0].total_balance');
+  });
 });

@@ -7,6 +7,7 @@ export const SECRET_PATTERNS = [
 ];
 
 export const SECRET_KEY_PATTERN = /token|secret|password|cookie|authorization|api_?key/i;
+export const FINANCIAL_KEY_PATTERN = /balance|cost|amount/i;
 export const REDACTED = '<redacted>';
 
 function isSecretLike(key, value) {
@@ -24,6 +25,10 @@ export function sanitizeValue(value, sensitiveKeys = []) {
     for (const [key, entry] of Object.entries(value)) {
       if (typeof entry === 'string' && (sensitiveKeys.includes(key) || isSecretLike(key, entry))) {
         result[key] = REDACTED;
+        continue;
+      }
+      if ((typeof entry === 'number' || typeof entry === 'string') && FINANCIAL_KEY_PATTERN.test(key)) {
+        result[key] = typeof entry === 'number' ? 0 : '0.00';
         continue;
       }
       result[key] = sanitizeValue(entry, sensitiveKeys);

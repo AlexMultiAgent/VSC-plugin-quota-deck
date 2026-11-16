@@ -26,4 +26,15 @@ describe('sanitizeValue', () => {
     const result = sanitizeValue({ list: [{ token: 'abc' }, { ok: 1 }] }, ['token']);
     expect(result).toEqual({ list: [{ token: '<redacted>' }, { ok: 1 }] });
   });
+
+  it('anonymizes financial values while preserving their JSON type', () => {
+    const result = sanitizeValue({
+      balance_infos: [{ total_balance: '28.53', topped_up_balance: 28.53 }],
+      cost: 3.42,
+    });
+    expect(result).toEqual({
+      balance_infos: [{ total_balance: '0.00', topped_up_balance: 0 }],
+      cost: 0,
+    });
+  });
 });

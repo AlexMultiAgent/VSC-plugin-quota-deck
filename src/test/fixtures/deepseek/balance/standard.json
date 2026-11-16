@@ -1,0 +1,21 @@
+{
+  "capturedAt": "2026-11-16T18:05:51.955Z",
+  "provider": "deepseek",
+  "capability": "deepseek.balance",
+  "case": "standard",
+  "sourceHost": "api.deepseek.com",
+  "sourceUrls": [
+    "https://api.deepseek.com/user/balance"
+  ],
+  "response": {
+    "is_available": true,
+    "balance_infos": [
+      {
+        "currency": "CNY",
+        "total_balance": "0.00",
+        "granted_balance": "0.00",
+        "topped_up_balance": "0.00"
+      }
+    ]
+  }
+}
