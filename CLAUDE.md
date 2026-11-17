@@ -8,7 +8,7 @@ dashboard. It never proxies model requests and never provides chat completion.
 
 ```bash
 npm run typecheck        # tsc --noEmit
-npm test                 # vitest run — 39 files, 263 tests
+npm test                 # vitest run — 40 files, 317 tests
 npm run build            # esbuild → dist/extension.js + dist/webview.js
 npm run watch            # rebuild both bundles on change
 npm run icon             # regenerate media/icon.png from scripts/make-icon.mjs
@@ -35,17 +35,39 @@ The webview script is loaded via `webview.asWebviewUri()` — never a raw `file:
 
 ```text
 src/
-  core/          provider-agnostic: types, coordinator, http, cache, secrets, settings, time, errors
+  core/          provider-agnostic: types, coordinator, http, cache, secrets, settings, time, errors,
+                 capability (typed reader for capability data)
   providers/     one adapter per vendor; each owns its endpoints, cookie allow-list and parsers
-  presentation/  statusBar, tooltip, onboarding, commands, credentials, switcher, labels, dashboard/
+                 endpoints.json is the single source for every endpoint and credential env var
+                 shape.ts = vendor-neutral primitives; <vendor>/shape.ts = raw payload shapes
+  presentation/  statusBar, tooltip, onboarding, commands, credentials, switcher, labels, display,
+                 dashboard/
   localization/  messages.ts (key registry) + en-us.ts / zh-cn.ts bundles
   test/          __mocks__/vscode.ts, fixtures/, helpers/
 ```
 
 Layering rules: `core` knows nothing about any vendor. Within an adapter, `shape.ts` is the only
-place that knows a raw payload shape, `parse.ts` builds higher-level values, and `provider.ts`
-assembles capabilities over the endpoints. `presentation` consumes normalized snapshots and never
-touches endpoints, secrets, or raw payloads.
+place that knows a raw payload shape, `usage.ts` / `aggregate.ts` build higher-level values, and
+`provider.ts` assembles capabilities over the endpoints. `presentation` consumes normalized
+snapshots and never touches endpoints, secrets, or raw payloads.
+
+`src/providers/shape.ts` holds the vendor-neutral parsing primitives. Use `requireNumber` when the
+provider must have supplied a number (a missing one is contract drift and throws) and
+`numberOrNull` when the provider may legitimately omit it. Never substitute `0` for a missing
+number.
+
+`src/presentation/display.ts` holds the shared display helpers: `formatMoney`,
+`selectPrimaryCurrency`, `providerDisplayName`, `pickTightestWindow`, `remainingBar`. Use them
+instead of writing another copy.
+
+`src/core/capability.ts` reads capability data in a typed way. Presentation code imports the
+provider's exported types and reads through `capabilityValue`, never a hand-written `as` cast.
+
+`src/providers/endpoints.json` is the single source for every endpoint URL and credential
+environment variable. The extension and `scripts/capture-fixture.mjs` both read it, so a changed
+endpoint can never leave the capture script pointing at a URL the extension does not call.
+It is JSON rather than a `.ts` module because `scripts/capture-fixture.mjs` must read it without
+importing anything from `src/`.
 
 `src/presentation/dashboard/protocol.ts` validates every host↔webview message against an
 exact-key schema. Extend that validator whenever a message shape changes.
@@ -61,13 +83,18 @@ These are product and security rules, not implementation details — do not trad
   forwarded (e.g. `POINTS_COOKIE_NAMES` in `src/providers/minimax/provider.ts`).
 - **A failed fetch is a state, not a number.** Capability states are `ok | stale | unconfigured |
   unsupported | failed`. Never substitute `0` or `0.00` for missing data — the UI must say why.
+  A refresh that fails while a previous value survives becomes `stale`, which keeps the value
+  visible and says it is out of date.
+- **Currencies are never added together.** Token counts are currency-independent and may be
+  summed; monetary amounts may not. Keep one row per currency and label the currency.
 - **Provenance is explicit.** Every displayed value is labelled account / local / estimated, and the
   session badge (API Key vs Web Session) is a separate axis. Never present an estimate as account
   quota.
 - **Qwen is a deliberate V1 placeholder.** It performs no network request and shows only a
   capability matrix. Do not implement a Qwen adapter.
 - **Never combine DeepSeek account-summary totals with summed per-key totals.** They are
-  alternative sources; `canAggregate()` in `src/providers/deepseek/aggregate.ts` gates which is used.
+  alternative sources; `selectAccountTotals()` in `src/providers/deepseek/aggregate.ts` picks
+  exactly one of them and reports which.
 
 ## Gotchas
 
@@ -83,7 +110,7 @@ These are product and security rules, not implementation details — do not trad
   `coverageEnd` and `holidays` before it lapses.
 - **The design spec's file tree is aspirational, not the layout.**
   `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md` §6 lists `providers/minimax/cn.ts`,
-  `global.ts`, `cookies.ts`; the implementation uses one `provider.ts` + `shape.ts` + `parse.ts` with
+  `global.ts`, `cookies.ts`; the implementation uses one `provider.ts` + `shape.ts` per vendor with
   a shared `providers/cookies.ts`. Read the code, not the spec tree.
 - **Provider endpoints are undocumented web APIs.** Only the DeepSeek balance endpoint has been
   verified against a live account. MiniMax and DeepSeek detailed usage are unverified — spec §11
@@ -92,6 +119,20 @@ These are product and security rules, not implementation details — do not trad
 - **The marketplace icon is generated.** `media/icon.png` comes from `npm run icon`; never
   hand-edit the PNG. The generator is deterministic, so a regeneration that shows a diff means the
   geometry changed. The release gate rejects an icon that is not 128 × 128.
+- **User-supplied time zones must be validated.** `Intl.DateTimeFormat` throws `RangeError` for
+  an unknown IANA zone, and `quotaDeck.timeZone` is user-editable — route it through
+  `validTimeZone()` in `src/core/time.ts` before it reaches `Intl`.
+- **Use `hourCycle: 'h23'`, not `hour12: false`.** `hour12: false` can render midnight as hour
+  `24`, which in `shanghaiMinutes()` (`src/providers/deepseek/pricing.ts`) would mean 1440 minutes.
+- **Assemble dates with `formatToParts()`, not `format()`.** `.format()` output depends on the
+  ICU data the runtime ships; `formatToParts()` gives named fields to compose from.
+- **`scripts/` is outside `tsconfig.json`'s `include`.** `npm run typecheck` only checks `src/**`,
+  so a type error in a script passes both typecheck and vitest.
+- **The `vscode` mock does no schema validation.** `workspace.getConfiguration().get()` returns
+  the raw configured value, so a wrong-typed setting (e.g. `refreshIntervalMinutes: "5"`) passes
+  silently in tests — `readSettings()` must coerce and clamp every value itself.
+- **An already-aborted `AbortSignal` never fires its `abort` listener.** In `src/core/http.ts` the
+  `signal.aborted` check must come before `addEventListener('abort', …)`, or the request hangs.
 
 ## Fixtures
 

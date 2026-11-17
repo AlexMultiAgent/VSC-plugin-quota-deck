@@ -33,3 +33,38 @@ The usage series shape, time-range encoding, API-key enumeration behavior, and
 session-expiry response remain unverified in this environment. Re-run the
 capture script with `DEEPSEEK_SESSION_TOKEN` and `DEEPSEEK_COOKIE` before
 treating detailed usage as live-verified.
+
+## Endpoints
+
+Every endpoint lives in `src/providers/endpoints.json`, which both the
+extension and `scripts/capture-fixture.mjs` read. A capture therefore always
+targets the URL the extension actually calls.
+
+| Capability | Endpoint |
+| --- | --- |
+| `deepseek.balance` | `GET https://api.deepseek.com/user/balance` |
+| `deepseek.usageAmount` | `GET https://platform.deepseek.com/api/v0/usage/by_api_key/amount` |
+| `deepseek.usageCost` | `GET https://platform.deepseek.com/api/v0/usage/by_api_key/cost` |
+| `deepseek.accountSummary` | `GET https://platform.deepseek.com/api/v0/users/get_user_summary` |
+
+## Parsing rules
+
+These hold regardless of whether the live shape is confirmed yet.
+
+- A missing or non-numeric amount is contract drift. The parser throws, the
+  capability becomes `failed` with a `malformed` error, and the last good value
+  stays visible as `stale`. A malformed amount never becomes `0`.
+- Token counts are currency-independent and may be summed over the range.
+  Monetary amounts are never summed across currencies: each currency keeps its
+  own row and its own total.
+- The account summary and the summed per-key rows are alternative sources.
+  `selectAccountTotals()` returns exactly one of them and reports which, so a
+  summary total is never added to a per-key total.
+
+## Open questions
+
+- Whether the account's API key list can be enumerated. Until it can,
+  `canAggregate()` refuses to sum per-key rows and the account totals come
+  solely from `get_user_summary`.
+- The `tz` parameter is sent as the IANA name of the configured time zone.
+  Whether the platform accepts a zone other than `Asia/Shanghai` is unverified.
