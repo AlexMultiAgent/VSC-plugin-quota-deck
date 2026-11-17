@@ -12,11 +12,13 @@ describe('registerCommands', () => {
       switchProvider: async () => undefined,
       configureMiniMax: async () => undefined,
       configureDeepSeek: async () => undefined,
+      configureProviders: async () => undefined,
       showHelp: async () => undefined,
     });
     expect([...state.registeredCommands.keys()].sort()).toEqual([
       'quotaDeck.configureDeepSeek',
       'quotaDeck.configureMiniMax',
+      'quotaDeck.configureProviders',
       'quotaDeck.openDashboard',
       'quotaDeck.refresh',
       'quotaDeck.showHelp',

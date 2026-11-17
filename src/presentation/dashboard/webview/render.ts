@@ -4,6 +4,7 @@ import { lineChartSvg, stackedBarSvg } from '../charts';
 
 export interface WebviewRenderOptions {
   readonly onRangeChange: (range: RangeId) => void;
+  readonly onConfigure: () => void;
 }
 
 function element<K extends keyof HTMLElementTagNameMap>(
@@ -93,6 +94,13 @@ export function renderDashboard(
   options: WebviewRenderOptions,
 ): void {
   container.replaceChildren();
+  const actions = element('div', 'action-row');
+  const configure = element('button', 'action-button', model.labels.configureProviders);
+  configure.type = 'button';
+  configure.addEventListener('click', () => options.onConfigure());
+  actions.appendChild(configure);
+  container.appendChild(actions);
+
   const hero = element('section', 'hero-section');
   hero.appendChild(element('div', 'hero-label', model.hero.label));
   hero.appendChild(element('div', 'hero', model.hero.value));
@@ -184,6 +192,7 @@ export function renderDashboard(
   }
   if (model.qwen.length > 0) {
     const matrix = section(model.labels.qwenTitle, 'qwen-matrix');
+    matrix.appendChild(element('p', 'qwen-note', model.labels.qwenUnavailableReason));
     for (const row of model.qwen) {
       const line = element('div', 'qwen-row');
       line.appendChild(element('span', undefined, row.label));

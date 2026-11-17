@@ -43,6 +43,7 @@ export const MESSAGES = {
   'session.webSession': 'Web Session',
 
   'dashboard.title': 'QuotaDeck CN — 用量与洞察',
+  'dashboard.configureProviders': '配置服务商',
   'dashboard.lowestRemaining': '最低剩余额度',
   'dashboard.accountBalance': '账户余额',
   'dashboard.requests': '请求数',
@@ -77,6 +78,7 @@ export const MESSAGES = {
   'dashboard.sessionExpired': '登录会话已过期，请重新配置。',
   'dashboard.qwenTitle': 'Qwen 能力矩阵',
   'dashboard.qwenUnsupported': '不支持',
+  'dashboard.qwenUnavailableReason': 'V1 暂不提供 Qwen 凭据配置，仅展示能力矩阵。',
 
   'tooltip.updated': '更新于',
   'tooltip.sourceBadge': '来源',

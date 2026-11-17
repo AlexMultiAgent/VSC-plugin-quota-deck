@@ -5,6 +5,8 @@
 ## Features
 
 - 状态栏显示各服务商的剩余额度、余额与重置倒计时。
+- 状态栏只显示已配置的服务商，避免未配置项占据空间。
+- MiniMax 剩余额度低于可配置阈值（默认 20%）时使用警告色。
 - 悬停提示展示完整摘要，并区分账户数据与 Web Session。
 - 可选仪表盘：时间范围切换、图表、模型明细、Qwen 能力矩阵与表格视图。
 - MiniMax 国内版与国际版账号独立配置。
@@ -26,14 +28,19 @@
 从 VS Code Marketplace 安装 `QuotaDeck CN — MiniMax DeepSeek Qwen`，或下载 `.vsix` 后执行：
 
 ```bash
-code --install-extension quota-deck-0.1.0.vsix
+code --install-extension quota-deck-0.1.2.vsix
 ```
 
 ## Configure
 
 1. 点击状态栏的 QuotaDeck 图标。没有配置任何凭据时会进入配置流程；已经配置过时直接打开仪表盘。
-2. 选择服务商，输入对应凭据。
-3. 再次点击状态栏图标查看额度；右键可刷新、切换主服务商或打开帮助。
+2. 在仪表盘点击“配置服务商”，或在命令面板搜索 `QuotaDeck CN: 配置服务商` / `Configure Providers`。
+3. 选择 MiniMax CN、MiniMax Global 或 DeepSeek，输入对应凭据。
+4. 再次点击状态栏图标查看额度。
+
+警告阈值可在 VS Code 设置中搜索 `QuotaDeck warning threshold`，或直接设置
+`quotaDeck.statusBar.warningThresholdPercent`。默认值为 `20`，支持 `11` 到 `99`；
+剩余额度严格低于该值时显示警告，低于或等于 `10%` 时显示严重警告。
 
 | 服务商 | 必需凭据 | 可选凭据 |
 |---|---|---|
@@ -41,6 +48,7 @@ code --install-extension quota-deck-0.1.0.vsix
 | DeepSeek | API Key | Platform Session Token、Platform Cookie（用于用量明细） |
 
 凭据通过密码输入框填写，不会回显，也不会写入 settings、全局状态或日志。
+Qwen 在 V1 中没有接入适配器，因此不提供凭据配置；仪表盘仅展示其能力矩阵。
 
 ## Privacy
 
@@ -64,6 +72,7 @@ Cookie 只发送到对应厂商域名，并按各适配器声明的最小 Cookie
 | `QuotaDeck CN: Switch Provider` | 切换主服务商 |
 | `QuotaDeck CN: Configure MiniMax` | 配置 MiniMax 国内版或国际版 |
 | `QuotaDeck CN: Configure DeepSeek` | 配置 DeepSeek |
+| `QuotaDeck CN: Configure Providers` | 从仪表盘之外统一打开配置流程 |
 | `QuotaDeck CN: Show Help` | 查看帮助 |
 
 ## Known limitations

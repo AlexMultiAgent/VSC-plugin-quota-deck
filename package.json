@@ -2,7 +2,7 @@
   "name": "quota-deck",
   "displayName": "QuotaDeck CN — MiniMax DeepSeek Qwen",
   "description": "国产大模型额度监控 · MiniMax、DeepSeek、Qwen 余额、用量与重置倒计时",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "alexmultiagent",
   "license": "MIT",
   "repository": {
@@ -70,6 +70,11 @@
         "category": "QuotaDeck CN"
       },
       {
+        "command": "quotaDeck.configureProviders",
+        "title": "%command.configureProviders.title%",
+        "category": "QuotaDeck CN"
+      },
+      {
         "command": "quotaDeck.showHelp",
         "title": "%command.showHelp.title%",
         "category": "QuotaDeck CN"
@@ -117,6 +122,13 @@
           "default": ["minimax-cn", "minimax-global", "deepseek", "qwen"],
           "description": "%config.providerOrder.description%"
         },
+        "quotaDeck.statusBar.warningThresholdPercent": {
+          "type": "number",
+          "minimum": 11,
+          "maximum": 99,
+          "default": 20,
+          "description": "%config.warningThresholdPercent.description%"
+        },
         "quotaDeck.timeZone": {
           "type": "string",
           "default": "Asia/Shanghai",
@@ -128,6 +140,18 @@
       "commandPalette": [
         {
           "command": "quotaDeck.openDashboard",
+          "when": "true"
+        },
+        {
+          "command": "quotaDeck.configureProviders",
+          "when": "true"
+        },
+        {
+          "command": "quotaDeck.configureMiniMax",
+          "when": "true"
+        },
+        {
+          "command": "quotaDeck.configureDeepSeek",
           "when": "true"
         }
       ]

@@ -19,6 +19,7 @@ export class DashboardPanel {
     private readonly extensionUri: vscode.Uri,
     private readonly title: string,
     private readonly onRangeChange: (range: RangeId) => void,
+    private readonly onConfigure: () => void = () => undefined,
   ) {}
 
   show(): void {
@@ -49,6 +50,10 @@ export class DashboardPanel {
       if (message.kind === 'setRange') {
         this.range = message.range;
         this.onRangeChange(message.range);
+        return;
+      }
+      if (message.kind === 'configure') {
+        this.onConfigure();
       }
     });
     this.panel.onDidDispose(() => {
@@ -105,6 +110,10 @@ body[data-loading="true"] #app { opacity: 0.55; transition: opacity 120ms ease-o
 .hero { font-size: 48px; font-weight: 600; line-height: 1.1; }
 .hero-label { color: var(--vscode-descriptionForeground); font-size: 13px; }
 .hero-section { margin-bottom: 16px; }
+.action-row { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.action-button { background: var(--vscode-button-background); border: 1px solid var(--vscode-button-border, transparent); border-radius: 4px; color: var(--vscode-button-foreground); cursor: pointer; font: inherit; padding: 5px 12px; }
+.action-button:hover { background: var(--vscode-button-hoverBackground); }
+.action-button:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 2px; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
 .tile { border: 1px solid var(--vscode-panel-border); border-radius: 6px; padding: 12px; }
 .tile-label { color: var(--vscode-descriptionForeground); font-size: 12px; }
@@ -138,4 +147,5 @@ body[data-loading="true"] #app { opacity: 0.55; transition: opacity 120ms ease-o
 .qwen-title { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
 .qwen-row { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
 .qwen-state { color: var(--vscode-descriptionForeground); }
+.qwen-note { color: var(--vscode-descriptionForeground); font-size: 12px; margin: 0 0 8px; }
 `;

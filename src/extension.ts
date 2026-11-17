@@ -47,6 +47,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   let lastRefreshIso: string | undefined;
   const dashboard = new DashboardPanel(context.extensionUri, t('dashboard.title'), (next) => {
     void selectRange(next);
+  }, () => {
+    void configureProviders();
   });
 
   function configuredProviders(): Partial<Record<ProviderId, boolean>> {
@@ -69,6 +71,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       t,
       range,
       pricing: pricingState(Date.now()),
+      warningThresholdPercent: current.warningThresholdPercent,
     });
   }
 
@@ -86,7 +89,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const snapshots = await coordinator.refreshAll(range);
     lastRefreshIso = new Date().toISOString();
     const current = readSettings();
-    statusBar.update(snapshots, current.providerOrder, current.statusBarMode, current.primaryProvider);
+    statusBar.update(
+      snapshots,
+      current.providerOrder,
+      current.statusBarMode,
+      current.primaryProvider,
+      current.warningThresholdPercent,
+      configuredProviders(),
+    );
     dashboard.update(currentModel(snapshots));
     refreshTooltip();
   }
@@ -115,6 +125,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await refreshAll();
     },
   };
+
+  async function configureProviders(): Promise<void> {
+    await runOnboarding(writer, t, configuredProviders());
+  }
 
   context.subscriptions.push(
     statusBar,
@@ -147,15 +161,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           .getConfiguration('quotaDeck')
           .update('statusBar.primaryProvider', picked.id);
         const after = readSettings();
-        statusBar.update(coordinator.getLast(), after.providerOrder, after.statusBarMode, after.primaryProvider);
+        statusBar.update(
+          coordinator.getLast(),
+          after.providerOrder,
+          after.statusBarMode,
+          after.primaryProvider,
+          after.warningThresholdPercent,
+          configuredProviders(),
+        );
         refreshTooltip();
       },
       configureMiniMax: async () => {
-        await runOnboarding(writer, t, configuredProviders());
+        await configureProviders();
       },
       configureDeepSeek: async () => {
         await writer.configureDeepSeek();
       },
+      configureProviders,
       showHelp: async () => {
         await vscode.window.showInformationMessage(t('command.showHelp.message'));
       },
@@ -183,7 +205,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   scheduler.start(refreshAll);
   const cached = await coordinator.loadCached();
   const current = readSettings();
-  statusBar.update(cached, current.providerOrder, current.statusBarMode, current.primaryProvider);
+  statusBar.update(
+    cached,
+    current.providerOrder,
+    current.statusBarMode,
+    current.primaryProvider,
+    current.warningThresholdPercent,
+    configuredProviders(),
+  );
   dashboard.update(currentModel(cached));
   refreshTooltip();
   void refreshAll();

@@ -15,8 +15,10 @@ function emptyModel(): DashboardModel {
     ranges: [{ id: 'last7', label: 'Last 7 days' }],
     pricingLabel: 'Peak pricing right now',
     labels: {
+      configureProviders: 'Configure providers',
       cost: 'Cost', requests: 'Requests', tokens: 'Tokens', cache: 'Cache', usageTable: 'Usage',
       modelTable: 'Models', balanceTable: 'Balances', qwenTitle: 'Qwen', qwenUnsupported: 'Not supported',
+      qwenUnavailableReason: 'Qwen credentials are not available in V1.',
       columnDate: 'Date', columnModel: 'Model', columnRequests: 'Requests', columnTokens: 'Tokens',
       columnCost: 'Cost', columnCurrency: 'Currency', columnTotal: 'Total',
     },
@@ -48,6 +50,10 @@ describe('webview messages', () => {
 
   it('accepts a range change', () => {
     expect(isWebviewMessage({ kind: 'setRange', range: 'last7' })).toBe(true);
+  });
+
+  it('accepts a request to configure providers', () => {
+    expect(isWebviewMessage({ kind: 'configure' })).toBe(true);
   });
 
   it('rejects an unknown range', () => {

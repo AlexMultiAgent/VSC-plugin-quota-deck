@@ -56,6 +56,76 @@ describe('renderStatusBarText', () => {
     expect(text).toContain('42%');
   });
 
+  it('uses the configured warning threshold strictly', () => {
+    const windowAt = (remainingPercent: number) => ({
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok' as const,
+          fetchedAt: 'x',
+          data: { windows: [{ window: 'fiveHour', remainingPercent, resetAt: null, unlimited: false }] },
+        },
+      }),
+    });
+
+    expect(renderStatusBarText(windowAt(20), ['minimax-cn'], t, 'all', 'minimax-cn', 20))
+      .toContain('MM $(check) 20%');
+    expect(renderStatusBarText(windowAt(19), ['minimax-cn'], t, 'all', 'minimax-cn', 20))
+      .toContain('MM $(warning) 19%');
+  });
+
+  it('hides providers that are not configured', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok' as const,
+          fetchedAt: 'x',
+          data: { windows: [{ window: 'fiveHour', remainingPercent: 42, resetAt: null, unlimited: false }] },
+        },
+      }),
+    };
+    const configured = {
+      'minimax-cn': true,
+      deepseek: false,
+      qwen: false,
+    };
+    const text = renderStatusBarText(
+      snapshots,
+      ['minimax-cn', 'deepseek', 'qwen'],
+      t,
+      'all',
+      'minimax-cn',
+      20,
+      configured,
+    );
+    expect(text).toContain('MM');
+    expect(text).not.toContain('DS');
+    expect(text).not.toContain('QW');
+  });
+
+  it('shows a configured MiniMax Global account when MiniMax CN is the primary', () => {
+    const snapshots = {
+      'minimax-global': makeSnapshot('minimax-global', {
+        'minimax.plan': {
+          kind: 'ok' as const,
+          fetchedAt: 'x',
+          data: { windows: [{ window: 'fiveHour', remainingPercent: 42, resetAt: null, unlimited: false }] },
+        },
+      }),
+    };
+    const text = renderStatusBarText(
+      snapshots,
+      ['minimax-cn', 'minimax-global', 'deepseek', 'qwen'],
+      t,
+      'all',
+      'minimax-cn',
+      20,
+      { 'minimax-cn': false, 'minimax-global': true, deepseek: false, qwen: false },
+    );
+    expect(text).toContain('MG');
+    expect(text).toContain('42%');
+    expect(text).not.toContain('未配置');
+  });
+
   it('collapses the two MiniMax regions so all three families remain visible', () => {
     const text = renderStatusBarText({}, ['minimax-cn', 'minimax-global', 'deepseek', 'qwen'], t);
     expect(text).not.toMatch(/\+\d/);
@@ -104,6 +174,58 @@ describe('StatusBarPresenter', () => {
     const presenter = new StatusBarPresenter(t);
     presenter.setCommand('quotaDeck.configureMiniMax');
     expect(state.statusBarItems[0]!.command).toBe('quotaDeck.configureMiniMax');
+    presenter.dispose();
+  });
+
+  it('uses a warning background below the configured threshold', () => {
+    const presenter = new StatusBarPresenter(t);
+    presenter.update(
+      {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.plan': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: { windows: [{ window: 'fiveHour', remainingPercent: 19, resetAt: null, unlimited: false }] },
+          },
+        }),
+      },
+      ['minimax-cn'],
+      'all',
+      'minimax-cn',
+      20,
+      { 'minimax-cn': true },
+    );
+    expect((state.statusBarItems[0]!.backgroundColor as { id: string }).id)
+      .toBe('statusBarItem.warningBackground');
+    presenter.dispose();
+  });
+
+  it('does not warn for providers hidden by focused mode', () => {
+    const presenter = new StatusBarPresenter(t);
+    presenter.update(
+      {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.plan': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: { windows: [{ window: 'fiveHour', remainingPercent: 19, resetAt: null, unlimited: false }] },
+          },
+        }),
+        deepseek: makeSnapshot('deepseek', {
+          'deepseek.balance': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: { entries: [{ currency: 'CNY', total: 10 }] },
+          },
+        }),
+      },
+      ['minimax-cn', 'deepseek'],
+      'focused',
+      'deepseek',
+      20,
+      { 'minimax-cn': true, deepseek: true },
+    );
+    expect(state.statusBarItems[0]!.backgroundColor).toBeUndefined();
     presenter.dispose();
   });
 });

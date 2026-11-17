@@ -3,6 +3,7 @@ import type { Translator } from '../localization';
 import type { ProviderId, ProviderSnapshot } from '../core/types';
 import type { MessageKey } from '../localization/messages';
 import { formatCountdown } from '../core/time';
+import { quotaTone, type QuotaTone } from './quotaTone';
 
 export interface BalanceView {
   readonly currency: string;
@@ -69,10 +70,56 @@ const STATUS_ICON = {
 
 type StatusTone = keyof typeof STATUS_ICON;
 
-function toneFor(percent: number): StatusTone {
-  if (percent <= 10) return 'critical';
-  if (percent <= 30) return 'warning';
+function stateForUnavailable(snapshot: ProviderSnapshot): 'unconfigured' | 'unsupported' | undefined {
+  const states = Object.values(snapshot.capabilities);
+  if (states.length > 0 && states.every((state) => state.kind === 'unsupported')) return 'unsupported';
+  return 'unconfigured';
+}
+
+function visibleTone(
+  snapshots: Partial<Record<ProviderId, ProviderSnapshot>>,
+  visible: readonly ProviderId[],
+  warningThresholdPercent: number,
+): QuotaTone {
+  const tones = visible.flatMap((id) => {
+    const window = tightestWindow(snapshots[id]);
+    return window === undefined
+      ? []
+      : [quotaTone(window.remainingPercent!, warningThresholdPercent)];
+  });
+  if (tones.includes('critical')) return 'critical';
+  if (tones.includes('warning')) return 'warning';
   return 'positive';
+}
+
+function visibleProviderIds(
+  order: ProviderId[],
+  mode: 'all' | 'focused',
+  primary: ProviderId,
+  configured?: Partial<Record<ProviderId, boolean>>,
+): ProviderId[] {
+  const minimaxPrimary = primary === 'minimax-global' ? 'minimax-global' : 'minimax-cn';
+  const minimaxFallback = minimaxPrimary === 'minimax-cn' ? 'minimax-global' : 'minimax-cn';
+  const minimaxDisplay = configured?.[minimaxPrimary] === true
+    ? minimaxPrimary
+    : configured?.[minimaxFallback] === true
+      ? minimaxFallback
+      : minimaxPrimary;
+  const candidates = mode === 'focused'
+    ? [primary]
+    : order.reduce<ProviderId[]>((result, id) => {
+        if (id === 'minimax-cn' || id === 'minimax-global') {
+          if (!result.includes('minimax-cn') && !result.includes('minimax-global')) {
+            result.push(minimaxDisplay);
+          }
+          return result;
+        }
+        if (!result.includes(id)) result.push(id);
+        return result;
+      }, []);
+  return configured === undefined
+    ? candidates
+    : candidates.filter((id) => configured[id] === true);
 }
 
 export function renderStatusBarText(
@@ -81,20 +128,10 @@ export function renderStatusBarText(
   t: Translator,
   mode: 'all' | 'focused' = 'all',
   primary: ProviderId = 'minimax-cn',
+  warningThresholdPercent = 20,
+  configured?: Partial<Record<ProviderId, boolean>>,
 ): string {
-  const minimaxPrimary = primary === 'minimax-global' ? 'minimax-global' : 'minimax-cn';
-  const visible = mode === 'focused'
-    ? [primary]
-    : order.reduce<ProviderId[]>((result, id) => {
-        if (id === 'minimax-cn' || id === 'minimax-global') {
-          if (!result.includes('minimax-cn') && !result.includes('minimax-global')) {
-            result.push(minimaxPrimary);
-          }
-          return result;
-        }
-        if (!result.includes(id)) result.push(id);
-        return result;
-      }, []);
+  const visible = visibleProviderIds(order, mode, primary, configured);
   if (visible.length === 0) return t('statusBar.noData');
 
   const segments = visible.map((id) => {
@@ -105,16 +142,24 @@ export function renderStatusBarText(
     }
 
     if (id === 'deepseek') {
+      const balanceState = snapshot.capabilities['deepseek.balance'];
+      if (balanceState?.kind === 'unconfigured') {
+        return `${label} ${STATUS_ICON.muted} ${t('state.unconfigured')}`;
+      }
+      if (balanceState?.kind === 'failed') {
+        return `${label} ${STATUS_ICON.critical} ${t(balanceState.error.message)}`;
+      }
       return `${label} ${STATUS_ICON.neutral} ${formatBalance(deepSeekBalance(snapshot))}`;
     }
 
     const window = tightestWindow(snapshot);
     if (window === undefined) {
-      return `${label} ${STATUS_ICON.muted} ${t('state.unconfigured')}`;
+      const state = stateForUnavailable(snapshot);
+      return `${label} ${STATUS_ICON.muted} ${t(state === 'unsupported' ? 'state.unsupported' : 'state.unconfigured')}`;
     }
     const percent = window.remainingPercent!;
     const countdown = window.resetAt === null ? '' : ` · ${formatCountdown(window.resetAt - Date.now())}`;
-    return `${label} ${STATUS_ICON[toneFor(percent)]} ${Math.round(percent)}%${countdown}`;
+    return `${label} ${STATUS_ICON[quotaTone(percent, warningThresholdPercent)]} ${Math.round(percent)}%${countdown}`;
   });
 
   const title = `$(pulse) ${t('statusBar.title')}  `;
@@ -138,8 +183,26 @@ export class StatusBarPresenter {
     order: ProviderId[],
     mode: 'all' | 'focused' = 'all',
     primary: ProviderId = 'minimax-cn',
+    warningThresholdPercent = 20,
+    configured?: Partial<Record<ProviderId, boolean>>,
   ): void {
-    this.item.text = renderStatusBarText(snapshots, order, this.t, mode, primary);
+    this.item.text = renderStatusBarText(
+      snapshots,
+      order,
+      this.t,
+      mode,
+      primary,
+      warningThresholdPercent,
+      configured,
+    );
+    const visible = visibleProviderIds(order, mode, primary, configured);
+    const tone = visibleTone(snapshots, visible, warningThresholdPercent);
+    this.item.backgroundColor =
+      tone === 'critical'
+        ? new vscode.ThemeColor('statusBarItem.errorBackground')
+        : tone === 'warning'
+          ? new vscode.ThemeColor('statusBarItem.warningBackground')
+          : undefined;
     this.item.tooltip = this.t('statusBar.tooltip.header');
     this.item.show();
   }

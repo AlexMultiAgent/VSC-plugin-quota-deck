@@ -23,6 +23,10 @@ export class MarkdownString {
   appendText(value: string): MarkdownString { this.value += value; return this; }
 }
 
+export class ThemeColor {
+  constructor(readonly id: string) {}
+}
+
 export interface StatusBarItem {
   text: string;
   tooltip: string | MarkdownString | { value: string };

@@ -11,13 +11,15 @@ export interface Settings {
   readonly statusBarMode: StatusBarMode;
   readonly primaryProvider: ProviderId;
   readonly providerOrder: ProviderId[];
+  readonly warningThresholdPercent: number;
   readonly timeZone: string;
 }
 
 const DEFAULT_ORDER: ProviderId[] = ['minimax-cn', 'minimax-global', 'deepseek', 'qwen'];
+const DEFAULT_WARNING_THRESHOLD_PERCENT = 20;
 
 function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
+  return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
 }
 
 export function readSettings(): Settings {
@@ -27,6 +29,10 @@ export function readSettings(): Settings {
   const mode = config.get<StatusBarMode>('statusBar.mode', 'all');
   const primary = config.get<string>('statusBar.primaryProvider', 'minimax-cn');
   const order = config.get<unknown[]>('statusBar.providerOrder', DEFAULT_ORDER);
+  const warningThreshold = config.get<number>(
+    'statusBar.warningThresholdPercent',
+    DEFAULT_WARNING_THRESHOLD_PERCENT,
+  );
   const timeZone = config.get<string>('timeZone', 'Asia/Shanghai');
 
   const validOrder = Array.isArray(order)
@@ -40,6 +46,7 @@ export function readSettings(): Settings {
     statusBarMode: mode,
     primaryProvider: isProviderId(primary) ? primary : 'minimax-cn',
     providerOrder: validOrder.length > 0 ? [...new Set(validOrder)] : [...DEFAULT_ORDER],
+    warningThresholdPercent: clamp(warningThreshold, 11, 99),
     timeZone,
   };
 }

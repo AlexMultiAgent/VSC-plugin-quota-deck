@@ -6,6 +6,7 @@ export interface CommandHandlers {
   switchProvider(): Promise<void>;
   configureMiniMax(): Promise<void>;
   configureDeepSeek(): Promise<void>;
+  configureProviders(): Promise<void>;
   showHelp(): Promise<void>;
 }
 
@@ -23,7 +24,18 @@ export function registerCommands(handlers: CommandHandlers): vscode.Disposable[]
   const configureDeepSeek = vscode.commands.registerCommand('quotaDeck.configureDeepSeek', () =>
     handlers.configureDeepSeek(),
   );
+  const configureProviders = vscode.commands.registerCommand('quotaDeck.configureProviders', () =>
+    handlers.configureProviders(),
+  );
   const showHelp = vscode.commands.registerCommand('quotaDeck.showHelp', () => handlers.showHelp());
 
-  return [refresh, openDashboard, switchProvider, configureMiniMax, configureDeepSeek, showHelp];
+  return [
+    refresh,
+    openDashboard,
+    switchProvider,
+    configureMiniMax,
+    configureDeepSeek,
+    configureProviders,
+    showHelp,
+  ];
 }

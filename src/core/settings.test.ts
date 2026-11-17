@@ -14,19 +14,35 @@ describe('readSettings', () => {
     expect(settings.statusBarMode).toBe('all');
     expect(settings.primaryProvider).toBe('minimax-cn');
     expect(settings.providerOrder).toEqual(['minimax-cn', 'minimax-global', 'deepseek', 'qwen']);
+    expect(settings.warningThresholdPercent).toBe(20);
     expect(settings.timeZone).toBe('Asia/Shanghai');
   });
 
   it('reads configured values', () => {
-    seedConfiguration({ refreshIntervalMinutes: 15, 'statusBar.primaryProvider': 'minimax-global' });
+    seedConfiguration({
+      refreshIntervalMinutes: 15,
+      'statusBar.primaryProvider': 'minimax-global',
+      'statusBar.warningThresholdPercent': 25,
+    });
     const settings = readSettings();
     expect(settings.refreshIntervalMinutes).toBe(15);
     expect(settings.primaryProvider).toBe('minimax-global');
+    expect(settings.warningThresholdPercent).toBe(25);
   });
 
   it('clamps the refresh interval into 1..60', () => {
     seedConfiguration({ refreshIntervalMinutes: 999 });
     expect(readSettings().refreshIntervalMinutes).toBe(60);
+  });
+
+  it('clamps the warning threshold above the critical threshold', () => {
+    seedConfiguration({ 'statusBar.warningThresholdPercent': 1 });
+    expect(readSettings().warningThresholdPercent).toBe(11);
+  });
+
+  it('clamps an excessive warning threshold to 99', () => {
+    seedConfiguration({ 'statusBar.warningThresholdPercent': 120 });
+    expect(readSettings().warningThresholdPercent).toBe(99);
   });
 
   it('drops unknown ids and duplicates from the provider order', () => {

@@ -73,6 +73,30 @@ describe('buildDashboardModel', () => {
     expect(model.hero.label).toBe('Lowest remaining quota');
   });
 
+  it('uses the configured warning threshold for quota meters', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['minimax-cn'],
+        warningThresholdPercent: 20,
+        snapshots: {
+          'minimax-cn': makeSnapshot('minimax-cn', {
+            'minimax.plan': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: {
+                windows: [
+                  { window: 'fiveHour', remainingPercent: 20, resetAt: null, unlimited: false },
+                  { window: 'weekly', remainingPercent: 19, resetAt: null, unlimited: false },
+                ],
+              },
+            },
+          }),
+        },
+      }),
+    );
+    expect(model.providers[0]!.meters.map((meter) => meter.tone)).toEqual(['positive', 'warning']);
+  });
+
   it('shows no hero value when nothing has a percentage', () => {
     expect(buildDashboardModel(options({ order: ['qwen'] })).hero.value).toBe('—');
   });

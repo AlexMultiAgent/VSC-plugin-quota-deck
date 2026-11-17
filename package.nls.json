@@ -4,6 +4,7 @@
   "command.switchProvider.title": "Switch Provider",
   "command.configureMiniMax.title": "Configure MiniMax",
   "command.configureDeepSeek.title": "Configure DeepSeek",
+  "command.configureProviders.title": "Configure Providers",
   "command.showHelp.title": "Show Help",
   "config.language.description": "Interface language. `auto` follows the VS Code display language.",
   "config.refreshIntervalMinutes.description": "Minutes between automatic quota refreshes.",
@@ -11,5 +12,6 @@
   "config.statusBarMode.description": "Show every provider in the status bar, or only the primary provider.",
   "config.primaryProvider.description": "Provider shown in focused status bar mode.",
   "config.providerOrder.description": "Order of provider segments in the status bar.",
+  "config.warningThresholdPercent.description": "Show a warning when remaining quota falls below this percentage. Values from 11 to 99 are supported.",
   "config.timeZone.description": "IANA time zone used for reset countdowns and absolute dates."
 }

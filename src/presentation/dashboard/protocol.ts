@@ -7,6 +7,7 @@ export type HostMessage =
 
 export type WebviewMessage =
   | { readonly kind: 'ready' }
+  | { readonly kind: 'configure' }
   | { readonly kind: 'setRange'; readonly range: RangeId };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -147,6 +148,7 @@ export function isHostMessage(value: unknown): value is HostMessage {
 export function isWebviewMessage(value: unknown): value is WebviewMessage {
   if (!isRecord(value)) return false;
   if (value.kind === 'ready') return hasExactKeys(value, ['kind']);
+  if (value.kind === 'configure') return hasExactKeys(value, ['kind']);
   if (value.kind === 'setRange') {
     return hasExactKeys(value, ['kind', 'range']) && isRangeId(value.range);
   }

@@ -20,6 +20,9 @@ function draw(): void {
       document.body.dataset.loading = 'true';
       vscode.postMessage({ kind: 'setRange', range });
     },
+    onConfigure: () => {
+      vscode.postMessage({ kind: 'configure' });
+    },
   });
 }
 

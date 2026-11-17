@@ -4,6 +4,7 @@ import type { RangeId } from '../../core/time';
 import type { PricingState } from '../../providers/deepseek/pricing';
 import type { Point, Series } from './charts';
 import { capabilityLabel, rangeLabel } from '../labels';
+import { quotaTone } from '../quotaTone';
 
 export type ProviderHealth = 'ok' | 'partial' | 'failed' | 'not-configured' | 'unsupported';
 
@@ -78,6 +79,7 @@ export interface RangeOption {
 }
 
 export interface DashboardLabels {
+  readonly configureProviders: string;
   readonly cost: string;
   readonly requests: string;
   readonly tokens: string;
@@ -87,6 +89,7 @@ export interface DashboardLabels {
   readonly balanceTable: string;
   readonly qwenTitle: string;
   readonly qwenUnsupported: string;
+  readonly qwenUnavailableReason: string;
   readonly columnDate: string;
   readonly columnModel: string;
   readonly columnRequests: string;
@@ -116,6 +119,7 @@ export interface DashboardOptions {
   readonly t: Translator;
   readonly range: RangeId;
   readonly pricing: PricingState;
+  readonly warningThresholdPercent?: number;
 }
 
 const ACCENT: Record<ProviderId, ProviderAccent> = {
@@ -165,12 +169,6 @@ interface UsagePoint {
   readonly currency: string;
 }
 
-function tone(percent: number): 'positive' | 'warning' | 'critical' {
-  if (percent <= 10) return 'critical';
-  if (percent <= 30) return 'warning';
-  return 'positive';
-}
-
 function formatMoney(amount: number, currency: string): string {
   return currency === 'CNY' ? `¥${amount.toFixed(2)}` : `${currency} ${amount.toFixed(2)}`;
 }
@@ -182,7 +180,7 @@ function windows(snapshot: ProviderSnapshot | undefined): WindowView[] {
   return data?.windows ?? [];
 }
 
-function mediaMeters(snapshot: ProviderSnapshot | undefined): QuotaMeter[] {
+function mediaMeters(snapshot: ProviderSnapshot | undefined, warningThresholdPercent: number): QuotaMeter[] {
   const state = snapshot?.capabilities['minimax.plan'];
   if (state === undefined || state.kind !== 'ok') return [];
   const data = state.data as {
@@ -197,7 +195,7 @@ function mediaMeters(snapshot: ProviderSnapshot | undefined): QuotaMeter[] {
       label: model.model,
       percent,
       resetLabel: null,
-      tone: tone(percent) as QuotaMeter['tone'],
+      tone: quotaTone(percent, warningThresholdPercent),
     }];
   });
 }
@@ -243,19 +241,22 @@ function health(snapshot: ProviderSnapshot | undefined): ProviderHealth {
 
 export function buildDashboardModel(options: DashboardOptions): DashboardModel {
   const { snapshots, order, t, range, pricing } = options;
+  const warningThresholdPercent = options.warningThresholdPercent ?? 20;
   const providers: DashboardProvider[] = order.map((id) => {
     const snapshot = snapshots[id];
     const state = health(snapshot);
     const meters: QuotaMeter[] = windows(snapshot).map((window) => {
       const percent = window.remainingPercent;
+      const meterTone: QuotaMeter['tone'] =
+        percent === null ? 'muted' : quotaTone(percent, warningThresholdPercent);
       return {
         key: window.window,
         label: window.window === 'weekly' ? 'Weekly' : '5-hour',
         percent,
         resetLabel: window.resetAt === null ? null : new Date(window.resetAt).toISOString(),
-        tone: percent === null ? 'muted' : tone(percent) as QuotaMeter['tone'],
+        tone: meterTone,
       };
-    }).concat(mediaMeters(snapshot));
+    }).concat(mediaMeters(snapshot, warningThresholdPercent));
     const failed = snapshot === undefined
       ? undefined
       : Object.values(snapshot.capabilities).find((entry) => entry.kind === 'failed');
@@ -322,6 +323,7 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
   }
 
   const labels: DashboardLabels = {
+    configureProviders: t('dashboard.configureProviders'),
     cost: t('dashboard.chart.cost'),
     requests: t('dashboard.chart.requests'),
     tokens: t('dashboard.chart.tokens'),
@@ -331,6 +333,7 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
     balanceTable: t('dashboard.table.balances'),
     qwenTitle: t('dashboard.qwenTitle'),
     qwenUnsupported: t('dashboard.qwenUnsupported'),
+    qwenUnavailableReason: t('dashboard.qwenUnavailableReason'),
     columnDate: t('dashboard.column.date'),
     columnModel: t('dashboard.column.model'),
     columnRequests: t('dashboard.column.requests'),

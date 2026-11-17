@@ -4,6 +4,7 @@
   "command.switchProvider.title": "切换服务商",
   "command.configureMiniMax.title": "配置 MiniMax",
   "command.configureDeepSeek.title": "配置 DeepSeek",
+  "command.configureProviders.title": "配置服务商",
   "command.showHelp.title": "查看帮助",
   "config.language.description": "界面语言。`auto` 跟随 VS Code 显示语言。",
   "config.refreshIntervalMinutes.description": "自动刷新额度的间隔分钟数。",
@@ -11,5 +12,6 @@
   "config.statusBarMode.description": "在状态栏显示全部服务商，或仅显示主服务商。",
   "config.primaryProvider.description": "聚焦模式下显示的服务商。",
   "config.providerOrder.description": "状态栏中各服务商片段的排列顺序。",
+  "config.warningThresholdPercent.description": "剩余额度低于该百分比时显示警告。支持 11 到 99。",
   "config.timeZone.description": "用于重置倒计时与绝对时间的 IANA 时区。"
 }
