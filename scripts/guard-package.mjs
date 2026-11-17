@@ -51,6 +51,7 @@ const FORBIDDEN = [
   /^docs\//,
   /^scripts\//,
   /^\.remember\//,
+  /^\.superpowers\//,
   /\.map$/,
   /^node_modules\//,
   /^out\//,
