@@ -11,9 +11,10 @@
 - 可选仪表盘：时间范围切换、图表、模型明细、Qwen 能力矩阵与表格视图。
 - MiniMax 国内版与国际版账号独立配置。
 - DeepSeek 官方余额与平台用量统计。
+- 取数失败时保留上一次的数据并标注“数据已过期”，而不是显示为未配置。
 - 凭据只保存在 VS Code Secret Storage。
 - 简体中文与英文界面。
-- 时间默认按 `Asia/Shanghai` 显示，金额默认使用人民币格式。
+- 时间默认按 `Asia/Shanghai` 显示，可在 `quotaDeck.timeZone` 改为任意 IANA 时区；金额默认使用人民币格式。
 
 ## What it does not do
 
@@ -28,7 +29,7 @@
 从 VS Code Marketplace 安装 `QuotaDeck CN — MiniMax DeepSeek Qwen`，或下载 `.vsix` 后执行：
 
 ```bash
-code --install-extension quota-deck-0.1.2.vsix
+code --install-extension quota-deck-0.1.3.vsix
 ```
 
 ## Configure
@@ -41,6 +42,9 @@ code --install-extension quota-deck-0.1.2.vsix
 警告阈值可在 VS Code 设置中搜索 `QuotaDeck warning threshold`，或直接设置
 `quotaDeck.statusBar.warningThresholdPercent`。默认值为 `20`，支持 `11` 到 `99`；
 剩余额度严格低于该值时显示警告，低于或等于 `10%` 时显示严重警告。
+
+额度窗口、重置倒计时与用量区间按 `quotaDeck.timeZone` 指定的 IANA 时区计算，
+默认 `Asia/Shanghai`。修改设置后立即生效，无需重启窗口。
 
 | 服务商 | 必需凭据 | 可选凭据 |
 |---|---|---|
