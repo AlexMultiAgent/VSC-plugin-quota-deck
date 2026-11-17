@@ -1,13 +1,14 @@
+import type { RangeId } from './time';
 import type { ProviderId, ProviderSnapshot } from './types';
 
 export interface StorageBackend {
   get(key: string): unknown;
-  set(key: string, value: unknown): void;
+  set(key: string, value: unknown): unknown;
 }
 
 const KEY_PREFIX = 'quotaDeck.snapshot';
 const SENSITIVE_KEY =
-  /^(?:authorization|cookie|set-cookie|api-?key|access-?token|session-?token|token-?plan-?key|password|secret)$/i;
+  /^(?:authorization|cookie|set-cookie|api[-_]?key|access[-_]?token|refresh[-_]?token|session[-_]?token|token[-_]?plan[-_]?key|web[-_]?cookie|password|secret|csrf[-_]?token)$/i;
 
 function isSnapshot(value: unknown): value is ProviderSnapshot {
   if (typeof value !== 'object' || value === null) return false;
@@ -33,13 +34,18 @@ function stripSensitive(value: unknown): unknown {
 export class SnapshotCache {
   constructor(private readonly storage: StorageBackend) {}
 
-  async load(providerId: ProviderId): Promise<ProviderSnapshot | undefined> {
-    const raw = this.storage.get(`${KEY_PREFIX}.${providerId}`);
+  async load(providerId: ProviderId, range: RangeId): Promise<ProviderSnapshot | undefined> {
+    const raw = this.storage.get(this.key(providerId, range));
     return isSnapshot(raw) ? raw : undefined;
   }
 
-  async save(snapshot: ProviderSnapshot): Promise<void> {
+  async save(snapshot: ProviderSnapshot, range: RangeId): Promise<void> {
     const sanitized = stripSensitive(snapshot) as ProviderSnapshot;
-    this.storage.set(`${KEY_PREFIX}.${snapshot.providerId}`, sanitized);
+    await this.storage.set(this.key(snapshot.providerId, range), sanitized);
+  }
+
+
+  private key(providerId: ProviderId, range: RangeId): string {
+    return `${KEY_PREFIX}.${providerId}.${range}`;
   }
 }

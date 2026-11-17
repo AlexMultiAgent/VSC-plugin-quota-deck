@@ -80,4 +80,14 @@ describe('Scheduler', () => {
     expect(refresh).toHaveBeenCalledTimes(1);
     scheduler.stop();
   });
+
+  it('uses the new interval after a reconfiguration', async () => {
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    const scheduler = new Scheduler({ refreshIntervalMinutes: 5, pauseWhenUnfocused: false });
+    scheduler.start(refresh);
+    scheduler.reconfigure({ refreshIntervalMinutes: 1, pauseWhenUnfocused: false });
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    scheduler.stop();
+  });
 });

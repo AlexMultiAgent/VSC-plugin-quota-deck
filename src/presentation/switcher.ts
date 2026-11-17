@@ -1,5 +1,7 @@
 import type { Translator } from '../localization';
 import type { ProviderId } from '../core/types';
+import { PROVIDER_IDS } from '../core/types';
+import { providerDisplayName } from './display';
 
 export interface SwitcherItem {
   readonly id: ProviderId;
@@ -9,21 +11,14 @@ export interface SwitcherItem {
   readonly picked: boolean;
 }
 
-const LABELS: Record<ProviderId, string> = {
-  'minimax-cn': 'MiniMax CN',
-  'minimax-global': 'MiniMax Global',
-  deepseek: 'DeepSeek',
-  qwen: 'Qwen',
-};
-
 export function buildSwitcherItems(
   configured: Partial<Record<ProviderId, boolean>>,
   t: Translator,
   primary: ProviderId = 'minimax-cn',
 ): SwitcherItem[] {
-  return (Object.keys(LABELS) as ProviderId[]).map((id) => ({
+  return PROVIDER_IDS.map((id) => ({
     id,
-    label: LABELS[id],
+    label: providerDisplayName(id),
     detail: configured[id] === true ? t('switcher.configured') : t('switcher.notConfigured'),
     configured: configured[id] === true,
     picked: id === primary,

@@ -38,7 +38,7 @@ function shanghaiMinutes(instant: number): number {
     timeZone: 'Asia/Shanghai',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
+    hourCycle: 'h23',
   }).formatToParts(new Date(instant));
   const get = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
   return get('hour') * 60 + get('minute');

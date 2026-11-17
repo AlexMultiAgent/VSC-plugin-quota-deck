@@ -35,6 +35,16 @@ describe('readSettings', () => {
     expect(readSettings().refreshIntervalMinutes).toBe(60);
   });
 
+  it('falls back to the default interval when the setting is not a number', () => {
+    seedConfiguration({ refreshIntervalMinutes: '5' });
+    expect(readSettings().refreshIntervalMinutes).toBe(5);
+  });
+
+  it('falls back to the default threshold when the setting is not a number', () => {
+    seedConfiguration({ 'statusBar.warningThresholdPercent': '20' });
+    expect(readSettings().warningThresholdPercent).toBe(20);
+  });
+
   it('clamps the warning threshold above the critical threshold', () => {
     seedConfiguration({ 'statusBar.warningThresholdPercent': 1 });
     expect(readSettings().warningThresholdPercent).toBe(11);
@@ -53,5 +63,15 @@ describe('readSettings', () => {
   it('falls back to the default order when every id is invalid', () => {
     seedConfiguration({ 'statusBar.providerOrder': ['kimi', 'moonshot'] });
     expect(readSettings().providerOrder).toEqual(['minimax-cn', 'minimax-global', 'deepseek', 'qwen']);
+  });
+
+  it('keeps a valid time zone', () => {
+    seedConfiguration({ timeZone: 'America/New_York' });
+    expect(readSettings().timeZone).toBe('America/New_York');
+  });
+
+  it('falls back to the default time zone for an unknown zone', () => {
+    seedConfiguration({ timeZone: 'Not/AZone' });
+    expect(readSettings().timeZone).toBe('Asia/Shanghai');
   });
 });

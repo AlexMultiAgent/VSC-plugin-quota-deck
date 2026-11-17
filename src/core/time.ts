@@ -14,25 +14,75 @@ export interface DateRange {
 const DAY = 86_400_000;
 const HOUR = 3_600_000;
 
+const offsetFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function offsetFormatter(timeZone: string): Intl.DateTimeFormat {
+  const cached = offsetFormatters.get(timeZone);
+  if (cached !== undefined) return cached;
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  offsetFormatters.set(timeZone, formatter);
+  return formatter;
+}
+
+/** The wall-clock fields of an instant in the given time zone. */
+export function zonedParts(instant: number, timeZone: string): {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+} {
+  const parts = offsetFormatter(timeZone).formatToParts(new Date(instant));
+  const read = (type: string): number => {
+    const part = parts.find((candidate) => candidate.type === type);
+    return part === undefined ? 0 : Number(part.value);
+  };
+  return {
+    year: read('year'),
+    month: read('month'),
+    day: read('day'),
+    hour: read('hour'),
+    minute: read('minute'),
+    second: read('second'),
+  };
+}
+
+/** Midnight of the calendar day that contains the instant, in the given time zone. */
+export function toDayStart(instant: number, timeZone: string): number {
+  const { year, month, day } = zonedParts(instant, timeZone);
+  const localMidnight = Date.UTC(year, month - 1, day);
+  return localMidnight - offsetAt(localMidnight, timeZone);
+}
+
+/** The UTC offset of the time zone at the given instant, in milliseconds. */
+function offsetAt(instant: number, timeZone: string): number {
+  const { year, month, day, hour, minute, second } = zonedParts(instant, timeZone);
+  const asUtc = Date.UTC(year, month - 1, day, hour, minute, second);
+  return asUtc - Math.floor(instant / 1000) * 1000;
+}
+
 export function toShanghaiDayStart(instant: number): number {
-  const shanghai = new Date(instant + 8 * HOUR);
-  const midnightUtc = Date.UTC(
-    shanghai.getUTCFullYear(),
-    shanghai.getUTCMonth(),
-    shanghai.getUTCDate(),
-  );
-  return midnightUtc - 8 * HOUR;
+  return toDayStart(instant, SHANGHAI);
 }
 
-function startOfShanghaiMonth(instant: number, monthOffset: number): number {
-  const shanghai = new Date(instant + 8 * HOUR);
-  const year = shanghai.getUTCFullYear();
-  const month = shanghai.getUTCMonth() + monthOffset;
-  return Date.UTC(year, month, 1) - 8 * HOUR;
+function startOfMonth(instant: number, monthOffset: number, timeZone: string): number {
+  const { year, month } = zonedParts(instant, timeZone);
+  const localFirst = Date.UTC(year, month - 1 + monthOffset, 1);
+  return localFirst - offsetAt(localFirst, timeZone);
 }
 
-export function rangeFor(id: RangeId, now: number): DateRange {
-  const dayStart = toShanghaiDayStart(now);
+export function rangeFor(id: RangeId, now: number, timeZone: string = SHANGHAI): DateRange {
+  const dayStart = toDayStart(now, timeZone);
   switch (id) {
     case 'today':
       return { id, start: dayStart, end: now, bucket: 'hour' };
@@ -43,14 +93,29 @@ export function rangeFor(id: RangeId, now: number): DateRange {
     case 'last30':
       return { id, start: dayStart - 29 * DAY, end: now, bucket: 'day' };
     case 'thisMonth':
-      return { id, start: startOfShanghaiMonth(now, 0), end: now, bucket: 'day' };
+      return { id, start: startOfMonth(now, 0, timeZone), end: now, bucket: 'day' };
     case 'lastMonth':
       return {
         id,
-        start: startOfShanghaiMonth(now, -1),
-        end: startOfShanghaiMonth(now, 0),
+        start: startOfMonth(now, -1, timeZone),
+        end: startOfMonth(now, 0, timeZone),
         bucket: 'day',
       };
+  }
+}
+
+/**
+ * Guards a user-supplied IANA time zone. `Intl.DateTimeFormat` throws a
+ * `RangeError` for an unknown zone, so an unvalidated setting would crash the
+ * extension on the next refresh.
+ */
+export function validTimeZone(zone: string | undefined): string {
+  if (zone === undefined || zone.trim() === '') return SHANGHAI;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: zone });
+    return zone;
+  } catch {
+    return SHANGHAI;
   }
 }
 

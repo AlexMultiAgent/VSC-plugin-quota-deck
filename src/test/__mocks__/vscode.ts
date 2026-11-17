@@ -101,6 +101,7 @@ export const state = {
   webviewPanels: [] as WebviewPanel[],
   hoverProviders: [] as Array<{ provideHover(): unknown }>,
   output: [] as string[],
+  configurationListeners: [] as Array<(event: { affectsConfiguration(section: string): boolean }) => void>,
 };
 
 export function __reset(): void {
@@ -114,6 +115,13 @@ export function __reset(): void {
   state.webviewPanels = [];
   state.hoverProviders = [];
   state.output = [];
+  state.configurationListeners = [];
+}
+
+export function fireConfigurationChange(section = 'quotaDeck'): void {
+  for (const listener of [...state.configurationListeners]) {
+    listener({ affectsConfiguration: (candidate: string) => candidate === section });
+  }
 }
 
 function configKey(section: string, key: string): string {
@@ -133,7 +141,10 @@ export const workspace = {
       },
     };
   },
-  onDidChangeConfiguration: new EventEmitter<unknown>().event,
+  onDidChangeConfiguration(listener: (event: { affectsConfiguration(section: string): boolean }) => void) {
+    state.configurationListeners.push(listener);
+    return { dispose: () => { state.configurationListeners = state.configurationListeners.filter((l) => l !== listener); } };
+  },
 };
 
 export const commands = {

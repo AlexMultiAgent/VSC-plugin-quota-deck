@@ -1,3 +1,5 @@
+import { asRecord, requireNumber, ShapeError } from '../shape';
+
 export interface UsagePoint {
   readonly date: string;
   readonly requests: number;
@@ -5,6 +7,10 @@ export interface UsagePoint {
   readonly cacheHitTokens: number;
   readonly cacheMissTokens: number;
   readonly outputTokens: number;
+}
+
+export interface UsageCost {
+  readonly date: string;
   readonly cost: number;
   readonly currency: string;
 }
@@ -13,43 +19,38 @@ export interface ModelUsage {
   readonly model: string;
   readonly requests: number;
   readonly totalTokens: number;
+}
+
+export interface ModelCost {
+  readonly model: string;
   readonly cost: number;
   readonly currency: string;
 }
 
-export interface DeepSeekUsage {
+export interface AmountUsage {
   readonly points: UsagePoint[];
   readonly byModel: ModelUsage[];
 }
 
-export interface AmountUsage {
-  readonly points: Omit<UsagePoint, 'cost' | 'currency'>[];
-  readonly byModel: Omit<ModelUsage, 'cost' | 'currency'>[];
+export interface CostUsage {
+  readonly points: UsageCost[];
+  readonly byModel: ModelCost[];
+  readonly currencies: string[];
 }
 
-export interface CostUsage {
-  readonly points: { date: string; cost: number; currency: string }[];
-  readonly byModel: { model: string; cost: number; currency: string }[];
+export interface DeepSeekUsage {
+  /** Token and request counts per day. Independent of currency. */
+  readonly points: UsagePoint[];
+  /** Costs per day and currency. Never summed across currencies. */
+  readonly costs: UsageCost[];
+  readonly byModel: ModelUsage[];
+  readonly modelCosts: ModelCost[];
   readonly currencies: string[];
 }
 
 interface SeriesGroup {
   readonly currency: string;
   readonly series: Record<string, unknown>[];
-}
-
-function asRecord(value: unknown, path: string): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null) throw new Error(`unknown response shape: ${path}`);
-  return value as Record<string, unknown>;
-}
-
-function asNumber(value: unknown): number {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string' && value.trim() !== '') {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return 0;
 }
 
 function canonicalTime(value: unknown): string | null {
@@ -79,7 +80,7 @@ function seriesGroups(response: unknown): SeriesGroup[] {
   });
 }
 
-function amountParts(usage: unknown): {
+function amountParts(usage: unknown, path: string): {
   requests: number;
   cacheHitTokens: number;
   cacheMissTokens: number;
@@ -87,9 +88,9 @@ function amountParts(usage: unknown): {
 } {
   const result = { requests: 0, cacheHitTokens: 0, cacheMissTokens: 0, outputTokens: 0 };
   if (Array.isArray(usage)) {
-    for (const item of usage) {
-      const value = asRecord(item, 'usage[]');
-      const amount = asNumber(value.amount);
+    for (const [index, item] of usage.entries()) {
+      const value = asRecord(item, `${path}[${index}]`);
+      const amount = requireNumber(value.amount, `${path}[${index}].amount`);
       if (value.type === 'REQUEST') result.requests += amount;
       if (value.type === 'PROMPT_CACHE_HIT_TOKEN') result.cacheHitTokens += amount;
       if (value.type === 'PROMPT_CACHE_MISS_TOKEN') result.cacheMissTokens += amount;
@@ -97,37 +98,42 @@ function amountParts(usage: unknown): {
     }
   } else if (typeof usage === 'object' && usage !== null) {
     const value = usage as Record<string, unknown>;
-    result.requests = asNumber(value.REQUEST);
-    result.cacheHitTokens = asNumber(value.PROMPT_CACHE_HIT_TOKEN);
-    result.cacheMissTokens = asNumber(value.PROMPT_CACHE_MISS_TOKEN);
-    result.outputTokens = asNumber(value.RESPONSE_TOKEN);
+    result.requests = requireNumber(value.REQUEST, `${path}.REQUEST`);
+    result.cacheHitTokens = requireNumber(value.PROMPT_CACHE_HIT_TOKEN, `${path}.PROMPT_CACHE_HIT_TOKEN`);
+    result.cacheMissTokens = requireNumber(value.PROMPT_CACHE_MISS_TOKEN, `${path}.PROMPT_CACHE_MISS_TOKEN`);
+    result.outputTokens = requireNumber(value.RESPONSE_TOKEN, `${path}.RESPONSE_TOKEN`);
   }
   return result;
 }
 
-function bucketCost(usage: unknown, bucket: Record<string, unknown>): number {
-  if (Array.isArray(usage)) return usage.reduce((sum, item) => sum + asNumber((item as Record<string, unknown>).amount), 0);
-  if (typeof usage === 'number' || typeof usage === 'string') return asNumber(usage);
+function bucketCost(usage: unknown, bucket: Record<string, unknown>, path: string): number {
+  if (Array.isArray(usage)) {
+    return usage.reduce(
+      (sum, item, index) => sum + requireNumber(asRecord(item, `${path}[${index}]`).amount, `${path}[${index}].amount`),
+      0,
+    );
+  }
+  if (typeof usage === 'number' || typeof usage === 'string') return requireNumber(usage, path);
   if (typeof usage === 'object' && usage !== null) {
     const value = usage as Record<string, unknown>;
-    return asNumber(value.amount ?? value.cost);
+    return requireNumber(value.amount ?? value.cost, path);
   }
-  return asNumber(bucket.amount ?? bucket.cost);
+  return requireNumber(bucket.amount ?? bucket.cost, path);
 }
 
 export function readDeepSeekAmount(response: unknown): AmountUsage {
-  const pointMap = new Map<string, Omit<UsagePoint, 'cost' | 'currency'>>();
-  const modelMap = new Map<string, Omit<ModelUsage, 'cost' | 'currency'>>();
+  const pointMap = new Map<string, UsagePoint>();
+  const modelMap = new Map<string, ModelUsage>();
 
   for (const group of seriesGroups(response)) {
     for (const series of group.series) {
       const model = typeof series.model === 'string' && series.model.length > 0 ? series.model : 'unknown';
       if (!Array.isArray(series.buckets)) continue;
-      for (const rawBucket of series.buckets) {
-        const bucket = asRecord(rawBucket, 'bucket');
+      for (const [bucketIndex, rawBucket] of series.buckets.entries()) {
+        const bucket = asRecord(rawBucket, `bucket[${bucketIndex}]`);
         const date = canonicalTime(bucket.time);
         if (date === null) continue;
-        const parts = amountParts(bucket.usage);
+        const parts = amountParts(bucket.usage, `bucket[${bucketIndex}].usage`);
         const tokens = parts.cacheHitTokens + parts.cacheMissTokens + parts.outputTokens;
         const point = pointMap.get(date) ?? {
           date,
@@ -162,8 +168,8 @@ export function readDeepSeekAmount(response: unknown): AmountUsage {
 }
 
 export function readDeepSeekCost(response: unknown): CostUsage {
-  const pointMap = new Map<string, { date: string; cost: number; currency: string }>();
-  const modelMap = new Map<string, { model: string; cost: number; currency: string }>();
+  const pointMap = new Map<string, UsageCost>();
+  const modelMap = new Map<string, ModelCost>();
   const currencies = new Set<string>();
 
   for (const group of seriesGroups(response)) {
@@ -172,11 +178,11 @@ export function readDeepSeekCost(response: unknown): CostUsage {
     for (const series of group.series) {
       const model = typeof series.model === 'string' && series.model.length > 0 ? series.model : 'unknown';
       if (!Array.isArray(series.buckets)) continue;
-      for (const rawBucket of series.buckets) {
-        const bucket = asRecord(rawBucket, 'bucket');
+      for (const [bucketIndex, rawBucket] of series.buckets.entries()) {
+        const bucket = asRecord(rawBucket, `bucket[${bucketIndex}]`);
         const date = canonicalTime(bucket.time);
         if (date === null) continue;
-        const cost = bucketCost(bucket.usage, bucket);
+        const cost = bucketCost(bucket.usage, bucket, `bucket[${bucketIndex}].usage`);
         const key = `${date}\u0000${currency}`;
         const point = pointMap.get(key) ?? { date, cost: 0, currency };
         pointMap.set(key, { ...point, cost: point.cost + cost });
@@ -189,40 +195,31 @@ export function readDeepSeekCost(response: unknown): CostUsage {
 
   return {
     points: [...pointMap.values()].sort((a, b) => a.date.localeCompare(b.date) || a.currency.localeCompare(b.currency)),
-    byModel: [...modelMap.values()].sort((a, b) => a.model.localeCompare(b.model)),
+    byModel: [...modelMap.values()].sort((a, b) => a.model.localeCompare(b.model) || a.currency.localeCompare(b.currency)),
     currencies: [...currencies].filter(Boolean).sort(),
   };
 }
 
 export function mergeDeepSeekUsage(amount: AmountUsage, cost: CostUsage): DeepSeekUsage {
-  const points: UsagePoint[] = [];
-  const costsByDate = new Map<string, CostUsage['points']>();
-  for (const point of cost.points) {
-    const list = costsByDate.get(point.date) ?? [];
-    list.push(point);
-    costsByDate.set(point.date, list);
-  }
-  for (const point of amount.points) {
-    const costs = costsByDate.get(point.date) ?? [{ date: point.date, cost: 0, currency: '' }];
-    for (const value of costs) points.push({ ...point, cost: value.cost, currency: value.currency });
-  }
-
-  const byModel: ModelUsage[] = amount.byModel.flatMap((model) => {
-    const costs = cost.byModel.filter((entry) => entry.model === model.model);
-    if (costs.length === 0) return [{ ...model, cost: 0, currency: '' }];
-    return costs.map((entry) => ({ ...model, cost: entry.cost, currency: entry.currency }));
-  });
-
-  return { points, byModel };
+  return {
+    points: amount.points,
+    costs: cost.points,
+    byModel: amount.byModel,
+    modelCosts: cost.byModel,
+    currencies: cost.currencies,
+  };
 }
 
 export function readDeepSeekSummary(response: unknown): { currency: string; amount: number }[] {
   const root = asRecord(response, 'root');
   const data = asRecord(root.data, 'root.data');
   const biz = asRecord(data.biz_data, 'root.data.biz_data');
-  if (!Array.isArray(biz.total_costs)) throw new Error('unknown response shape: total_costs');
+  if (!Array.isArray(biz.total_costs)) throw new ShapeError('total_costs');
   return biz.total_costs.map((item, index) => {
     const entry = asRecord(item, `total_costs[${index}]`);
-    return { currency: String(entry.currency ?? ''), amount: asNumber(entry.amount) };
+    return {
+      currency: String(entry.currency ?? ''),
+      amount: requireNumber(entry.amount, `total_costs[${index}].amount`),
+    };
   });
 }

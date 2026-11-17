@@ -1,3 +1,5 @@
+import { asRecord, requireNumber } from '../shape';
+
 export interface DeepSeekBalanceEntry {
   readonly currency: string;
   readonly total: number;
@@ -8,20 +10,6 @@ export interface DeepSeekBalanceEntry {
 export interface DeepSeekBalance {
   readonly available: boolean;
   readonly entries: DeepSeekBalanceEntry[];
-}
-
-function asRecord(value: unknown, path: string): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null) throw new Error(`unknown response shape: ${path}`);
-  return value as Record<string, unknown>;
-}
-
-function asNumber(value: unknown): number {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string' && value.trim() !== '') {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  throw new Error('unknown response shape: not a number');
 }
 
 export function readDeepSeekBalance(response: unknown): DeepSeekBalance {
@@ -35,9 +23,9 @@ export function readDeepSeekBalance(response: unknown): DeepSeekBalance {
     }
     return {
       currency: entry.currency.toUpperCase(),
-      total: asNumber(entry.total_balance),
-      granted: asNumber(entry.granted_balance),
-      toppedUp: asNumber(entry.topped_up_balance),
+      total: requireNumber(entry.total_balance, `root.balance_infos[${index}].total_balance`),
+      granted: requireNumber(entry.granted_balance, `root.balance_infos[${index}].granted_balance`),
+      toppedUp: requireNumber(entry.topped_up_balance, `root.balance_infos[${index}].topped_up_balance`),
     };
   });
   return { available: root.is_available === true, entries };

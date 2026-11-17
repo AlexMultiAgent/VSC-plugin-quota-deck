@@ -42,6 +42,69 @@ describe('renderStatusBarText', () => {
     expect(text).toContain('Not configured');
   });
 
+  it('shows the failure reason for a MiniMax network error', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': { kind: 'failed', error: { kind: 'network', message: 'error.network' } },
+      }),
+    };
+    const text = renderStatusBarText(snapshots, ['minimax-cn'], t);
+    expect(text).not.toContain('Not configured');
+    expect(text).toContain(t('error.network'));
+  });
+
+  it('shows the failure reason for a MiniMax authentication error', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': { kind: 'failed', error: { kind: 'auth', message: 'error.auth' } },
+      }),
+    };
+    const text = renderStatusBarText(snapshots, ['minimax-cn'], t);
+    expect(text).not.toContain('Not configured');
+    expect(text).toContain('$(error)');
+  });
+
+  it('shows the failure reason for a DeepSeek usage error', () => {
+    const snapshots = {
+      deepseek: makeSnapshot('deepseek', {
+        'deepseek.balance': { kind: 'failed', error: { kind: 'timeout', message: 'error.timeout' } },
+      }),
+    };
+    const text = renderStatusBarText(snapshots, ['deepseek'], t);
+    expect(text).toContain(t('error.timeout'));
+  });
+
+  it('shows a stale value with a stale marker', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'stale',
+          fetchedAt: 'x',
+          data: { windows: [{ window: 'fiveHour', remainingPercent: 42, resetAt: null, unlimited: false }] },
+          reason: 'error.network',
+        },
+      }),
+    };
+    const text = renderStatusBarText(snapshots, ['minimax-cn'], t);
+    expect(text).toContain('42%');
+    expect(text).toContain(t('state.stale'));
+  });
+
+  it('does not show a stale value as fresh', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'stale',
+          fetchedAt: 'x',
+          data: { windows: [{ window: 'fiveHour', remainingPercent: 42, resetAt: null, unlimited: false }] },
+          reason: 'error.network',
+        },
+      }),
+    };
+    const text = renderStatusBarText(snapshots, ['minimax-cn'], t);
+    expect(text).toContain(t('state.stale'));
+  });
+
   it('renders the remaining percentage', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {

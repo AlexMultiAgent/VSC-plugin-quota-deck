@@ -1,4 +1,5 @@
 import type { HttpClient } from '../../core/http';
+import { SHANGHAI, type RangeId } from '../../core/time';
 import type {
   CapabilityDescriptor,
   CapabilityState,
@@ -10,6 +11,7 @@ import type {
   SecretReader,
 } from '../../core/types';
 import { parseCookieHeader, selectAllowedCookies } from '../cookies';
+import { ENDPOINTS } from '../endpoints';
 import {
   readMiniMaxPlan,
   readMiniMaxPoints,
@@ -72,24 +74,28 @@ export class MiniMaxProvider implements QuotaProvider {
     return { kind: 'ready', capabilities: CAPABILITIES.map((capability) => capability.id) };
   }
 
-  async fetchSnapshot(signal: AbortSignal): Promise<ProviderSnapshot> {
+  async fetchSnapshot(
+    signal: AbortSignal,
+    range: RangeId = 'last7',
+    timeZone: string = SHANGHAI,
+  ): Promise<ProviderSnapshot> {
     const fetchedAt = new Date().toISOString();
     const capabilities: Record<string, CapabilityState> = {};
 
     capabilities['minimax.plan'] = await this.fetchPlan(fetchedAt, signal);
     capabilities['minimax.subscription'] = await this.fetchSimple(
       'minimax.subscription',
-      '/v1/api/openplatform/charge/combo/cycle_audio_resource_package?biz_line=2&cycle_type=1&resource_package_type=7',
+      ENDPOINTS['minimax.subscription'],
       fetchedAt,
       signal,
       readMiniMaxSubscription,
     );
     capabilities['minimax.tokenUsage'] = await this.fetchSimple(
       'minimax.tokenUsage',
-      '/account/amount?page=1&limit=100&aggregate=false',
+      ENDPOINTS['minimax.tokenUsage'],
       fetchedAt,
       signal,
-      readMiniMaxTokenUsage,
+      (body) => readMiniMaxTokenUsage(body, range, Date.now(), timeZone),
     );
     capabilities['minimax.points'] = await this.fetchPoints(fetchedAt, signal);
 
@@ -103,7 +109,7 @@ export class MiniMaxProvider implements QuotaProvider {
 
   private async fetchPlan(fetchedAt: string, signal: AbortSignal): Promise<CapabilityState> {
     if (this.tokenPlanKey === undefined) return { kind: 'unconfigured', reason: 'missing token plan key' };
-    const result = await this.http.getJson(`${this.origin}/v1/api/openplatform/coding_plan/remains`, {
+    const result = await this.http.getJson(`${this.origin}${ENDPOINTS['minimax.plan']}`, {
       bearer: this.tokenPlanKey,
       signal,
     });
@@ -141,7 +147,7 @@ export class MiniMaxProvider implements QuotaProvider {
     if (selection.missing.length === POINTS_COOKIE_NAMES.length) {
       return { kind: 'unconfigured', reason: 'no allow-listed session cookie' };
     }
-    const result = await this.http.getJson(`${this.origin}/backend/account/token_plan_credit`, {
+    const result = await this.http.getJson(`${this.origin}${ENDPOINTS['minimax.points']}`, {
       headers: { Cookie: selection.header },
       signal,
     });

@@ -88,6 +88,17 @@ function isDarkTheme(): boolean {
   return classes.contains('vscode-dark') || classes.contains('vscode-high-contrast');
 }
 
+function accountTotalLabel(model: DashboardModel): string {
+  switch (model.accountTotalSource) {
+    case 'summary':
+      return model.labels.accountTotalSummary;
+    case 'aggregated':
+      return model.labels.accountTotalAggregated;
+    case 'unavailable':
+      return model.labels.accountTotalUnavailable;
+  }
+}
+
 export function renderDashboard(
   container: HTMLElement,
   model: DashboardModel,
@@ -138,7 +149,7 @@ export function renderDashboard(
     title.appendChild(dot);
     title.appendChild(document.createTextNode(provider.name));
     card.appendChild(title);
-    card.appendChild(element('div', 'provider-state', provider.state));
+    card.appendChild(element('div', 'provider-state', provider.stateLabel));
     for (const meter of provider.meters) {
       const row = element('div', 'meter');
       row.appendChild(element('div', 'meter-label', meter.label));
@@ -183,11 +194,28 @@ export function renderDashboard(
       ));
       container.appendChild(card);
     }
+    if (model.usage.costTotals.length > 0) {
+      const card = section(model.labels.costTable, 'table-card');
+      card.appendChild(table(
+        [model.labels.columnCurrency, model.labels.columnCost],
+        model.usage.costTotals.map((row) => [row.currency, row.amount.toFixed(2)]),
+      ));
+      container.appendChild(card);
+    }
   }
 
   if (model.balances.length > 0) {
     const card = section(model.labels.balanceTable, 'table-card');
     card.appendChild(table([model.labels.columnCurrency, model.labels.columnTotal], model.balances.map((row) => [row.currency, row.total.toFixed(2)])));
+    container.appendChild(card);
+  }
+  if (model.accountTotals.length > 0) {
+    const card = section(model.labels.accountTotalTable, 'table-card');
+    card.appendChild(element('p', 'qwen-note', accountTotalLabel(model)));
+    card.appendChild(table(
+      [model.labels.columnCurrency, model.labels.columnTotal],
+      model.accountTotals.map((row) => [row.currency, row.amount.toFixed(2)]),
+    ));
     container.appendChild(card);
   }
   if (model.qwen.length > 0) {

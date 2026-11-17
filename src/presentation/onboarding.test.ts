@@ -66,4 +66,16 @@ describe('runOnboarding', () => {
     const summary = state.quickPickOffered[1] as string[];
     expect(summary.some((entry) => entry.startsWith('MiniMax CN'))).toBe(false);
   });
+
+  it('reads the configuration state again after writing a credential', async () => {
+    let configured = false;
+    const target: CredentialWriter = {
+      configureMiniMax: vi.fn(async () => { configured = true; }),
+      configureDeepSeek: vi.fn(async () => { configured = true; }),
+    };
+    state.quickPickResults = ['MiniMax CN', 'Finish'];
+    await runOnboarding(target, t, () => ({ 'minimax-cn': configured, deepseek: false }));
+    const summary = state.quickPickOffered[1] as string[];
+    expect(summary).not.toContain('MiniMax CN — Not configured');
+  });
 });

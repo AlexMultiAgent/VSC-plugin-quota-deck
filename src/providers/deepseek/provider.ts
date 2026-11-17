@@ -8,8 +8,10 @@ import type {
   QuotaProvider,
   SecretReader,
 } from '../../core/types';
-import { rangeFor, type RangeId } from '../../core/time';
+import { rangeFor, SHANGHAI, type RangeId } from '../../core/time';
+import { selectAccountTotals } from './aggregate';
 import { parseCookieHeader, selectAllowedCookies } from '../cookies';
+import { ENDPOINTS, ORIGINS } from '../endpoints';
 import { readDeepSeekBalance } from './shape';
 import {
   mergeDeepSeekUsage,
@@ -38,10 +40,21 @@ const PLATFORM_COOKIE_NAMES: readonly string[] = [
 ];
 
 const USAGE_ENDPOINTS = {
-  'deepseek.usageAmount': '/api/v0/usage/by_api_key/amount',
-  'deepseek.usageCost': '/api/v0/usage/by_api_key/cost',
-  'deepseek.accountSummary': '/api/v0/users/get_user_summary',
+  'deepseek.usageAmount': ENDPOINTS['deepseek.usageAmount'],
+  'deepseek.usageCost': ENDPOINTS['deepseek.usageCost'],
+  'deepseek.accountSummary': ENDPOINTS['deepseek.accountSummary'],
 } as const;
+
+function parseCapability(
+  fetchedAt: string,
+  read: () => unknown,
+): CapabilityState {
+  try {
+    return { kind: 'ok', fetchedAt, data: read() };
+  } catch {
+    return { kind: 'failed', error: { kind: 'malformed', message: 'error.malformed' } };
+  }
+}
 
 export class DeepSeekProvider implements QuotaProvider {
   readonly id = 'deepseek' as const;
@@ -76,31 +89,48 @@ export class DeepSeekProvider implements QuotaProvider {
     return { kind: 'ready', capabilities: CAPABILITIES.map((capability) => capability.id) };
   }
 
-  async fetchSnapshot(signal: AbortSignal, range: RangeId = 'last7'): Promise<ProviderSnapshot> {
+  async fetchSnapshot(
+    signal: AbortSignal,
+    range: RangeId = 'last7',
+    timeZone: string = SHANGHAI,
+  ): Promise<ProviderSnapshot> {
     const fetchedAt = new Date().toISOString();
     const capabilities: Record<string, CapabilityState> = {};
     capabilities['deepseek.balance'] = await this.fetchBalance(fetchedAt, signal);
 
-    const platform = await this.fetchPlatformRange(range, signal);
+    const platform = await this.fetchPlatformRange(range, timeZone, signal);
     if (platform.kind !== 'ok') {
       capabilities['deepseek.usageAmount'] = platform;
       capabilities['deepseek.usageCost'] = platform;
       capabilities['deepseek.accountSummary'] = platform;
     } else {
       const { usageAmount, usageCost, accountSummary } = platform.data;
-      const combinedError = !usageAmount.ok
-        ? usageAmount.error
-        : !usageCost.ok
-          ? usageCost.error
-          : undefined;
-      capabilities['deepseek.usageAmount'] = usageAmount.ok && usageCost.ok
-        ? { kind: 'ok', fetchedAt, data: { ...mergeDeepSeekUsage(readDeepSeekAmount(usageAmount.body), readDeepSeekCost(usageCost.body)), rangeId: range } }
-        : { kind: 'failed', error: combinedError! };
+      if (!usageAmount.ok) {
+        capabilities['deepseek.usageAmount'] = { kind: 'failed', error: usageAmount.error };
+      } else if (!usageCost.ok) {
+        capabilities['deepseek.usageAmount'] = { kind: 'failed', error: usageCost.error };
+      } else {
+        capabilities['deepseek.usageAmount'] = parseCapability(fetchedAt, () => ({
+          ...mergeDeepSeekUsage(readDeepSeekAmount(usageAmount.body), readDeepSeekCost(usageCost.body)),
+          rangeId: range,
+        }));
+      }
       capabilities['deepseek.usageCost'] = usageCost.ok
-        ? { kind: 'ok', fetchedAt, data: { ...readDeepSeekCost(usageCost.body), rangeId: range } }
+        ? parseCapability(fetchedAt, () => ({ ...readDeepSeekCost(usageCost.body), rangeId: range }))
         : { kind: 'failed', error: usageCost.error };
       capabilities['deepseek.accountSummary'] = accountSummary.ok
-        ? { kind: 'ok', fetchedAt, data: { totalCosts: readDeepSeekSummary(accountSummary.body), rangeId: range } }
+        ? parseCapability(fetchedAt, () => {
+            const summaryTotals = readDeepSeekSummary(accountSummary.body);
+            const selection = selectAccountTotals({
+              summaryTotals: summaryTotals.map((entry) => ({
+                currency: entry.currency,
+                amount: entry.amount,
+              })),
+              perKeyRows: [],
+              knownKeyIds: undefined,
+            });
+            return { totals: selection.totals, source: selection.source, keyCount: selection.keyCount, rangeId: range };
+          })
         : { kind: 'failed', error: accountSummary.error };
     }
 
@@ -115,7 +145,7 @@ export class DeepSeekProvider implements QuotaProvider {
 
   private async fetchBalance(fetchedAt: string, signal: AbortSignal): Promise<CapabilityState> {
     if (this.apiKey === undefined) return { kind: 'unconfigured', reason: 'missing api key' };
-    const result = await this.http.getJson('https://api.deepseek.com/user/balance', {
+    const result = await this.http.getJson(`${ORIGINS['deepseek-api']}${ENDPOINTS['deepseek.balance']}`, {
       bearer: this.apiKey,
       signal,
     });
@@ -129,6 +159,7 @@ export class DeepSeekProvider implements QuotaProvider {
 
   private async fetchPlatformRange(
     rangeId: RangeId,
+    timeZone: string,
     signal: AbortSignal,
   ): Promise<
     | { kind: 'ok'; data: { usageAmount: JsonResult; usageCost: JsonResult; accountSummary: JsonResult } }
@@ -142,13 +173,13 @@ export class DeepSeekProvider implements QuotaProvider {
       return { kind: 'unconfigured', reason: 'no allow-listed session cookie' };
     }
     const sessionToken = this.sessionToken;
-    const range = rangeFor(rangeId, Date.now());
+    const range = rangeFor(rangeId, Date.now(), timeZone);
     const request = (capability: keyof typeof USAGE_ENDPOINTS): Promise<JsonResult> => {
-      const url = new URL(`https://platform.deepseek.com${USAGE_ENDPOINTS[capability]}`);
+      const url = new URL(`${ORIGINS['deepseek-platform']}${USAGE_ENDPOINTS[capability]}`);
       if (capability !== 'deepseek.accountSummary') {
         url.searchParams.set('start', String(Math.floor(range.start / 1000)));
         url.searchParams.set('end', String(Math.floor(range.end / 1000)));
-        url.searchParams.set('tz', 'Asia/Shanghai');
+        url.searchParams.set('tz', timeZone);
       }
       return this.http.getJson(url.toString(), {
         bearer: sessionToken,

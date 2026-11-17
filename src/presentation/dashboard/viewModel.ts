@@ -1,12 +1,18 @@
 import type { Translator } from '../../localization';
 import type { ProviderId, ProviderSnapshot } from '../../core/types';
 import type { RangeId } from '../../core/time';
+import { capabilityValue } from '../../core/capability';
 import type { PricingState } from '../../providers/deepseek/pricing';
+import type { AccountTotalSource } from '../../providers/deepseek/aggregate';
+import type { DeepSeekBalance } from '../../providers/deepseek/shape';
+import type { DeepSeekUsage, UsageCost, UsagePoint } from '../../providers/deepseek/usage';
+import type { MiniMaxPlan, MiniMaxPoints, MiniMaxTokenUsage } from '../../providers/minimax/shape';
 import type { Point, Series } from './charts';
+import { formatMoney, providerDisplayName, selectPrimaryCurrency } from '../display';
 import { capabilityLabel, rangeLabel } from '../labels';
 import { quotaTone } from '../quotaTone';
 
-export type ProviderHealth = 'ok' | 'partial' | 'failed' | 'not-configured' | 'unsupported';
+export type ProviderHealth = 'ok' | 'partial' | 'failed' | 'stale' | 'not-configured' | 'unsupported';
 
 export interface StatTile {
   readonly key: string;
@@ -37,6 +43,7 @@ export interface DashboardProvider {
   readonly id: ProviderId;
   readonly name: string;
   readonly state: ProviderHealth;
+  readonly stateLabel: string;
   readonly accent: ProviderAccent;
   readonly meters: QuotaMeter[];
   readonly message: string | null;
@@ -56,6 +63,11 @@ export interface BalanceRow {
   readonly total: number;
 }
 
+export interface CurrencyTotalRow {
+  readonly currency: string;
+  readonly amount: number;
+}
+
 export interface UsageModel {
   readonly available: boolean;
   readonly currency: string | null;
@@ -65,6 +77,7 @@ export interface UsageModel {
   readonly tokens: Point[];
   readonly tokenSeries: Series[];
   readonly byModel: ModelUsageRow[];
+  readonly costTotals: CurrencyTotalRow[];
 }
 
 export interface QwenMatrixRow {
@@ -87,6 +100,11 @@ export interface DashboardLabels {
   readonly usageTable: string;
   readonly modelTable: string;
   readonly balanceTable: string;
+  readonly costTable: string;
+  readonly accountTotalTable: string;
+  readonly accountTotalSummary: string;
+  readonly accountTotalAggregated: string;
+  readonly accountTotalUnavailable: string;
   readonly qwenTitle: string;
   readonly qwenUnsupported: string;
   readonly qwenUnavailableReason: string;
@@ -106,6 +124,8 @@ export interface DashboardModel {
   readonly usage: UsageModel;
   readonly qwen: QwenMatrixRow[];
   readonly balances: BalanceRow[];
+  readonly accountTotals: CurrencyTotalRow[];
+  readonly accountTotalSource: AccountTotalSource;
   readonly range: RangeId;
   readonly rangeLabel: string;
   readonly ranges: RangeOption[];
@@ -129,13 +149,6 @@ const ACCENT: Record<ProviderId, ProviderAccent> = {
   qwen: { light: '#eb6834', dark: '#d95926' },
 };
 
-const NAME: Record<ProviderId, string> = {
-  'minimax-cn': 'MiniMax CN',
-  'minimax-global': 'MiniMax Global',
-  deepseek: 'DeepSeek',
-  qwen: 'Qwen',
-};
-
 const TOKEN_SERIES_COLORS = {
   cacheHit: { light: '#2a78d6', dark: '#3987e5' },
   cacheMiss: { light: '#eb6834', dark: '#d95926' },
@@ -149,44 +162,14 @@ const QWEN_CAPABILITIES = [
   'qwen.accessKeyValidation',
 ] as const;
 
-const BALANCE_PRIORITY = ['CNY', 'USD', 'EUR'];
-
-interface WindowView {
-  readonly window: string;
-  readonly remainingPercent: number | null;
-  readonly resetAt: number | null;
-  readonly unlimited: boolean;
-}
-
-interface UsagePoint {
-  readonly date: string;
-  readonly requests: number;
-  readonly totalTokens: number;
-  readonly cacheHitTokens: number;
-  readonly cacheMissTokens: number;
-  readonly outputTokens: number;
-  readonly cost: number;
-  readonly currency: string;
-}
-
-function formatMoney(amount: number, currency: string): string {
-  return currency === 'CNY' ? `¥${amount.toFixed(2)}` : `${currency} ${amount.toFixed(2)}`;
-}
+type WindowView = MiniMaxPlan['windows'][number];
 
 function windows(snapshot: ProviderSnapshot | undefined): WindowView[] {
-  const state = snapshot?.capabilities['minimax.plan'];
-  if (state === undefined || state.kind !== 'ok') return [];
-  const data = state.data as { windows?: WindowView[] } | undefined;
-  return data?.windows ?? [];
+  return capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan')?.windows ?? [];
 }
 
 function mediaMeters(snapshot: ProviderSnapshot | undefined, warningThresholdPercent: number): QuotaMeter[] {
-  const state = snapshot?.capabilities['minimax.plan'];
-  if (state === undefined || state.kind !== 'ok') return [];
-  const data = state.data as {
-    models?: { model: string; remaining: number | null; total: number | null }[];
-  } | undefined;
-  return (data?.models ?? []).flatMap((model) => {
+  return (capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan')?.models ?? []).flatMap((model) => {
     if (model.total === null || model.total <= 0 || model.remaining === null) return [];
     if (model.model === 'general' || model.model.includes('MiniMax-M')) return [];
     const percent = Math.max(0, Math.min(100, (model.remaining / model.total) * 100));
@@ -202,30 +185,80 @@ function mediaMeters(snapshot: ProviderSnapshot | undefined, warningThresholdPer
 
 function pointsBalance(snapshots: Partial<Record<ProviderId, ProviderSnapshot>>): number | null {
   for (const id of ['minimax-cn', 'minimax-global'] as const) {
-    const state = snapshots[id]?.capabilities['minimax.points'];
-    if (state?.kind === 'ok') {
-      const data = state.data as { balance?: number | null } | undefined;
-      if (typeof data?.balance === 'number') return data.balance;
-    }
+    const balance = capabilityValue<MiniMaxPoints>(snapshots[id], 'minimax.points')?.balance;
+    if (typeof balance === 'number') return balance;
+  }
+  return null;
+}
+
+function tokenUsage(snapshots: Partial<Record<ProviderId, ProviderSnapshot>>): number | null {
+  for (const id of ['minimax-cn', 'minimax-global'] as const) {
+    const tokens = capabilityValue<MiniMaxTokenUsage>(snapshots[id], 'minimax.tokenUsage')?.tokens;
+    if (typeof tokens === 'number') return tokens;
   }
   return null;
 }
 
 function usageData(snapshot: ProviderSnapshot | undefined): {
   points: UsagePoint[];
+  costs: UsageCost[];
   byModel: ModelUsageRow[];
 } {
-  const state = snapshot?.capabilities['deepseek.usageAmount'];
-  if (state === undefined || state.kind !== 'ok') return { points: [], byModel: [] };
-  const data = state.data as { points?: UsagePoint[]; byModel?: ModelUsageRow[] } | undefined;
-  return { points: data?.points ?? [], byModel: data?.byModel ?? [] };
+  const usage = capabilityValue<DeepSeekUsage>(snapshot, 'deepseek.usageAmount');
+  if (usage === undefined) return { points: [], costs: [], byModel: [] };
+  const byModel: ModelUsageRow[] = [];
+  for (const model of usage.byModel) {
+    const modelCosts = usage.modelCosts.filter((entry) => entry.model === model.model);
+    if (modelCosts.length === 0) {
+      byModel.push({ model: model.model, requests: model.requests, totalTokens: model.totalTokens, cost: 0, currency: '' });
+      continue;
+    }
+    for (const entry of modelCosts) {
+      byModel.push({
+        model: model.model,
+        requests: model.requests,
+        totalTokens: model.totalTokens,
+        cost: entry.cost,
+        currency: entry.currency,
+      });
+    }
+  }
+  return { points: usage.points, costs: usage.costs, byModel };
 }
 
 function balanceRows(snapshot: ProviderSnapshot | undefined): BalanceRow[] {
-  const state = snapshot?.capabilities['deepseek.balance'];
-  if (state === undefined || state.kind !== 'ok') return [];
-  const data = state.data as { entries?: BalanceRow[] } | undefined;
-  return data?.entries ?? [];
+  return capabilityValue<DeepSeekBalance>(snapshot, 'deepseek.balance')?.entries ?? [];
+}
+
+function currencyTotals(costs: readonly UsageCost[]): CurrencyTotalRow[] {
+  const totals = new Map<string, number>();
+  for (const row of costs) {
+    totals.set(row.currency, (totals.get(row.currency) ?? 0) + row.cost);
+  }
+  return [...totals.entries()]
+    .map(([currency, amount]) => ({ currency, amount }))
+    .sort((a, b) => a.currency.localeCompare(b.currency));
+}
+
+function accountTotals(snapshot: ProviderSnapshot | undefined): {
+  totals: CurrencyTotalRow[];
+  source: AccountTotalSource;
+} {
+  const state = snapshot?.capabilities['deepseek.accountSummary'];
+  if (state === undefined || (state.kind !== 'ok' && state.kind !== 'stale')) {
+    return { totals: [], source: 'unavailable' };
+  }
+  const data = state.data as
+    | { totals?: CurrencyTotalRow[]; source?: AccountTotalSource }
+    | undefined;
+  return {
+    totals: data?.totals ?? [],
+    source: data?.source ?? 'unavailable',
+  };
+}
+
+function costOnDate(costs: readonly UsageCost[], date: string): number {
+  return costs.find((row) => row.date === date)?.cost ?? 0;
 }
 
 function health(snapshot: ProviderSnapshot | undefined): ProviderHealth {
@@ -234,9 +267,27 @@ function health(snapshot: ProviderSnapshot | undefined): ProviderHealth {
   if (states.length === 0) return 'not-configured';
   if (states.every((state) => state.kind === 'unsupported')) return 'unsupported';
   if (states.every((state) => state.kind === 'unconfigured')) return 'not-configured';
-  if (states.some((state) => state.kind === 'ok')) return 'ok';
   if (states.some((state) => state.kind === 'failed')) return 'failed';
+  if (states.every((state) => state.kind === 'stale')) return 'stale';
+  if (states.some((state) => state.kind === 'ok')) return 'ok';
   return 'partial';
+}
+
+function healthLabel(state: ProviderHealth, t: Translator): string {
+  switch (state) {
+    case 'ok':
+      return t('state.ok');
+    case 'partial':
+      return t('state.partial');
+    case 'failed':
+      return t('state.failed');
+    case 'stale':
+      return t('state.stale');
+    case 'unsupported':
+      return t('state.unsupported');
+    case 'not-configured':
+      return t('state.unconfigured');
+  }
 }
 
 export function buildDashboardModel(options: DashboardOptions): DashboardModel {
@@ -250,7 +301,7 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       const meterTone: QuotaMeter['tone'] =
         percent === null ? 'muted' : quotaTone(percent, warningThresholdPercent);
       return {
-        key: window.window,
+        key: String(window.window),
         label: window.window === 'weekly' ? 'Weekly' : '5-hour',
         percent,
         resetLabel: window.resetAt === null ? null : new Date(window.resetAt).toISOString(),
@@ -260,13 +311,22 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
     const failed = snapshot === undefined
       ? undefined
       : Object.values(snapshot.capabilities).find((entry) => entry.kind === 'failed');
+    const stale = snapshot === undefined
+      ? undefined
+      : Object.values(snapshot.capabilities).find((entry) => entry.kind === 'stale');
     return {
       id,
-      name: NAME[id],
+      name: providerDisplayName(id),
       state,
+      stateLabel: healthLabel(state, t),
       accent: ACCENT[id],
       meters,
-      message: failed !== undefined && failed.kind === 'failed' ? t(failed.error.message) : null,
+      message:
+        failed !== undefined && failed.kind === 'failed'
+          ? t(failed.error.message)
+          : stale !== undefined && stale.kind === 'stale'
+            ? t('state.stale')
+            : null,
       fetchedAt: snapshot?.fetchedAt ?? null,
     };
   });
@@ -276,14 +336,14 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
     .map((meter) => meter.percent)
     .filter((percent): percent is number => percent !== null);
   const lowest = percents.length > 0 ? Math.min(...percents) : null;
-  const { points, byModel } = usageData(snapshots['deepseek']);
-  const currency = points[0]?.currency ?? null;
+  const { points, costs, byModel } = usageData(snapshots['deepseek']);
+  const costTotals = currencyTotals(costs);
 
   const usage: UsageModel = {
     available: points.length > 0,
-    currency,
+    currency: costTotals[0]?.currency ?? null,
     categories: points.map((point) => point.date),
-    cost: points.map((point) => ({ x: point.date, y: point.cost })),
+    cost: points.map((point) => ({ x: point.date, y: costOnDate(costs, point.date) })),
     requests: points.map((point) => ({ x: point.date, y: point.requests })),
     tokens: points.map((point) => ({ x: point.date, y: point.totalTokens })),
     tokenSeries: [
@@ -292,15 +352,18 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       { label: t('dashboard.output'), color: TOKEN_SERIES_COLORS.output.light, darkColor: TOKEN_SERIES_COLORS.output.dark, values: points.map((p) => p.outputTokens) },
     ],
     byModel,
+    costTotals,
   };
 
   const balances = balanceRows(snapshots['deepseek']);
+  const account = accountTotals(snapshots['deepseek']);
+  const balanceCurrency = selectPrimaryCurrency(balances.map((entry) => entry.currency));
   const primaryBalance =
-    BALANCE_PRIORITY.map((code) => balances.find((entry) => entry.currency === code)).find(
-      (entry) => entry !== undefined,
-    ) ?? balances[0];
+    balanceCurrency === undefined
+      ? balances[0]
+      : balances.find((entry) => entry.currency === balanceCurrency);
   const totalTokens = points.reduce((sum, point) => sum + point.totalTokens, 0);
-  const totalCost = points.reduce((sum, point) => sum + point.cost, 0);
+  const headlineCost = account.totals[0] ?? costTotals[0];
 
   const tiles: StatTile[] = [
     {
@@ -310,7 +373,12 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       tone: 'neutral',
     },
     { key: 'tokens', label: t('dashboard.tokens'), value: String(totalTokens), tone: 'neutral' },
-    { key: 'cost', label: t('dashboard.cost'), value: currency === null ? '—' : formatMoney(totalCost, currency), tone: 'neutral' },
+    {
+      key: 'cost',
+      label: t('dashboard.cost'),
+      value: headlineCost === undefined ? '—' : formatMoney(headlineCost.amount, headlineCost.currency),
+      tone: 'neutral',
+    },
   ];
   const pointsTileValue = pointsBalance(snapshots);
   if (pointsTileValue !== null) {
@@ -318,6 +386,15 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       key: 'points',
       label: t('capability.minimax.points'),
       value: pointsTileValue.toLocaleString('en-US'),
+      tone: 'neutral',
+    });
+  }
+  const tokenUsageValue = tokenUsage(snapshots);
+  if (tokenUsageValue !== null) {
+    tiles.push({
+      key: 'minimaxTokens',
+      label: t('capability.minimax.tokenUsage'),
+      value: tokenUsageValue.toLocaleString('en-US'),
       tone: 'neutral',
     });
   }
@@ -331,6 +408,11 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
     usageTable: t('dashboard.table.usage'),
     modelTable: t('dashboard.table.models'),
     balanceTable: t('dashboard.table.balances'),
+    costTable: t('dashboard.table.costs'),
+    accountTotalTable: t('dashboard.table.accountTotals'),
+    accountTotalSummary: t('dashboard.accountTotal.summary'),
+    accountTotalAggregated: t('dashboard.accountTotal.aggregated'),
+    accountTotalUnavailable: t('dashboard.accountTotal.unavailable'),
     qwenTitle: t('dashboard.qwenTitle'),
     qwenUnsupported: t('dashboard.qwenUnsupported'),
     qwenUnavailableReason: t('dashboard.qwenUnavailableReason'),
@@ -361,6 +443,8 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       state: 'unsupported' as const,
     })),
     balances,
+    accountTotals: account.totals,
+    accountTotalSource: account.source,
     range,
     rangeLabel: rangeLabel(range, t),
     ranges: (['today', 'yesterday', 'last7', 'last30', 'thisMonth', 'lastMonth'] as RangeId[]).map((id) => ({

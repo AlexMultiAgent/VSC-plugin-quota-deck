@@ -3,9 +3,10 @@ import type { QuotaProvider } from '../core/types';
 import { DeepSeekProvider } from './deepseek/provider';
 import { MiniMaxProvider } from './minimax/provider';
 import { QwenProvider } from './qwen/provider';
+import { ORIGINS } from './endpoints';
 
-export const MINIMAX_CN_ORIGIN = 'https://www.minimaxi.com';
-export const MINIMAX_GLOBAL_ORIGIN = 'https://www.minimax.io';
+export const MINIMAX_CN_ORIGIN = ORIGINS['minimax-cn'];
+export const MINIMAX_GLOBAL_ORIGIN = ORIGINS['minimax-global'];
 
 export function buildProviders(http: HttpClient): QuotaProvider[] {
   return [

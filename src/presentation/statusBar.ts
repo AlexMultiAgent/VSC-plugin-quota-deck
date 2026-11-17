@@ -3,6 +3,10 @@ import type { Translator } from '../localization';
 import type { ProviderId, ProviderSnapshot } from '../core/types';
 import type { MessageKey } from '../localization/messages';
 import { formatCountdown } from '../core/time';
+import { capabilityValue } from '../core/capability';
+import type { MiniMaxPlan } from '../providers/minimax/shape';
+import type { DeepSeekBalance } from '../providers/deepseek/shape';
+import { formatMoney, pickTightestWindow, selectPrimaryCurrency } from './display';
 import { quotaTone, type QuotaTone } from './quotaTone';
 
 export interface BalanceView {
@@ -17,46 +21,32 @@ const SEGMENT_LABEL: Record<ProviderId, MessageKey> = {
   qwen: 'statusBar.segment.qwen',
 };
 
-const BALANCE_PRIORITY = ['CNY', 'USD', 'EUR'];
-
 export function formatBalance(balance: BalanceView | undefined): string {
   if (balance === undefined) return '—';
-  if (balance.currency === 'CNY') return `¥${balance.amount.toFixed(2)}`;
-  return `${balance.currency} ${balance.amount.toFixed(2)}`;
+  return formatMoney(balance.amount, balance.currency);
 }
 
-interface MiniMaxWindowView {
-  readonly window: string;
-  readonly remainingPercent: number | null;
-  readonly resetAt: number | null;
-  readonly unlimited: boolean;
-}
+type MiniMaxWindowView = MiniMaxPlan['windows'][number];
 
 function miniMaxWindows(snapshot: ProviderSnapshot | undefined): MiniMaxWindowView[] {
-  const state = snapshot?.capabilities['minimax.plan'];
-  if (state === undefined || state.kind !== 'ok') return [];
-  const data = state.data as { windows?: MiniMaxWindowView[] } | undefined;
-  return data?.windows ?? [];
+  return capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan')?.windows ?? [];
+}
+
+function isStale(snapshot: ProviderSnapshot | undefined, capability: string): boolean {
+  return snapshot?.capabilities[capability]?.kind === 'stale';
 }
 
 function tightestWindow(snapshot: ProviderSnapshot | undefined): MiniMaxWindowView | undefined {
-  return miniMaxWindows(snapshot)
-    .filter((window) => window.unlimited !== true && window.remainingPercent !== null)
-    .sort((a, b) => (a.remainingPercent ?? 0) - (b.remainingPercent ?? 0))[0];
+  return pickTightestWindow(miniMaxWindows(snapshot));
 }
 
 function deepSeekBalance(snapshot: ProviderSnapshot | undefined): BalanceView | undefined {
-  const state = snapshot?.capabilities['deepseek.balance'];
-  if (state === undefined || state.kind !== 'ok') return undefined;
-  const data = state.data as { entries?: { currency: string; total: number }[] } | undefined;
-  const entries = data?.entries ?? [];
+  const entries = capabilityValue<DeepSeekBalance>(snapshot, 'deepseek.balance')?.entries ?? [];
   if (entries.length === 0) return undefined;
-  for (const code of BALANCE_PRIORITY) {
-    const entry = entries.find((candidate) => candidate.currency === code);
-    if (entry !== undefined) return { currency: entry.currency, amount: entry.total };
-  }
-  const sorted = [...entries].sort((a, b) => a.currency.localeCompare(b.currency));
-  return { currency: sorted[0]!.currency, amount: sorted[0]!.total };
+  const currency = selectPrimaryCurrency(entries.map((entry) => entry.currency));
+  if (currency === undefined) return undefined;
+  const entry = entries.find((candidate) => candidate.currency === currency);
+  return entry === undefined ? undefined : { currency: entry.currency, amount: entry.total };
 }
 
 const MAX_STATUS_BAR_SEGMENTS = 3;
@@ -70,10 +60,19 @@ const STATUS_ICON = {
 
 type StatusTone = keyof typeof STATUS_ICON;
 
-function stateForUnavailable(snapshot: ProviderSnapshot): 'unconfigured' | 'unsupported' | undefined {
+function unavailableState(
+  snapshot: ProviderSnapshot,
+  t: Translator,
+): { readonly icon: string; readonly label: string } {
   const states = Object.values(snapshot.capabilities);
-  if (states.length > 0 && states.every((state) => state.kind === 'unsupported')) return 'unsupported';
-  return 'unconfigured';
+  if (states.length > 0 && states.every((state) => state.kind === 'unsupported')) {
+    return { icon: STATUS_ICON.muted, label: t('state.unsupported') };
+  }
+  const failed = states.find((state) => state.kind === 'failed');
+  if (failed !== undefined && failed.kind === 'failed') {
+    return { icon: STATUS_ICON.critical, label: t(failed.error.message) };
+  }
+  return { icon: STATUS_ICON.muted, label: t('state.unconfigured') };
 }
 
 function visibleTone(
@@ -143,23 +142,23 @@ export function renderStatusBarText(
 
     if (id === 'deepseek') {
       const balanceState = snapshot.capabilities['deepseek.balance'];
-      if (balanceState?.kind === 'unconfigured') {
-        return `${label} ${STATUS_ICON.muted} ${t('state.unconfigured')}`;
+      if (balanceState?.kind === 'ok' || balanceState?.kind === 'stale') {
+        const stale = balanceState.kind === 'stale' ? ` ${t('state.stale')}` : '';
+        return `${label} ${STATUS_ICON.neutral} ${formatBalance(deepSeekBalance(snapshot))}${stale}`;
       }
-      if (balanceState?.kind === 'failed') {
-        return `${label} ${STATUS_ICON.critical} ${t(balanceState.error.message)}`;
-      }
-      return `${label} ${STATUS_ICON.neutral} ${formatBalance(deepSeekBalance(snapshot))}`;
+      const state = unavailableState(snapshot, t);
+      return `${label} ${state.icon} ${state.label}`;
     }
 
     const window = tightestWindow(snapshot);
     if (window === undefined) {
-      const state = stateForUnavailable(snapshot);
-      return `${label} ${STATUS_ICON.muted} ${t(state === 'unsupported' ? 'state.unsupported' : 'state.unconfigured')}`;
+      const state = unavailableState(snapshot, t);
+      return `${label} ${state.icon} ${state.label}`;
     }
     const percent = window.remainingPercent!;
     const countdown = window.resetAt === null ? '' : ` · ${formatCountdown(window.resetAt - Date.now())}`;
-    return `${label} ${STATUS_ICON[quotaTone(percent, warningThresholdPercent)]} ${Math.round(percent)}%${countdown}`;
+    const stale = isStale(snapshot, 'minimax.plan') ? ` ${t('state.stale')}` : '';
+    return `${label} ${STATUS_ICON[quotaTone(percent, warningThresholdPercent)]} ${Math.round(percent)}%${countdown}${stale}`;
   });
 
   const title = `$(pulse) ${t('statusBar.title')}  `;
@@ -170,12 +169,16 @@ export function renderStatusBarText(
 
 export class StatusBarPresenter {
   private readonly item: vscode.StatusBarItem;
-  private readonly t: Translator;
+  private t: Translator;
 
   constructor(t: Translator) {
     this.t = t;
     this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     this.item.command = 'quotaDeck.openDashboard';
+  }
+
+  setTranslator(t: Translator): void {
+    this.t = t;
   }
 
   update(

@@ -41,4 +41,75 @@ describe('DeepSeekProvider', () => {
     const provider = new DeepSeekProvider(httpClient({ ok: false, error: { kind: 'network', message: 'error.network' } }));
     await expect(provider.fetchSnapshot(new AbortController().signal)).resolves.toBeDefined();
   });
+
+  it('reports a drifted usage payload as malformed rather than throwing', async () => {
+    const http = {
+      getJson: vi.fn(async (url: string) => {
+        if (url.includes('/user/balance')) {
+          return { ok: true, body: { is_available: true, balance_infos: [{ currency: 'CNY', total_balance: '10', granted_balance: '10', topped_up_balance: '0' }] } };
+        }
+        return { ok: true, body: { data: {} } };
+      }),
+    } as unknown as HttpClient;
+    const provider = new DeepSeekProvider(http);
+    await provider.connect(secretReader({
+      'deepseek:api-key': 'sk-test',
+      'deepseek:session-token': 'token',
+      'deepseek:web-cookie': 'sessionid=abc',
+    }));
+    const snapshot = await provider.fetchSnapshot(new AbortController().signal);
+    expect(snapshot.capabilities['deepseek.usageAmount']?.kind).toBe('failed');
+    expect(
+      snapshot.capabilities['deepseek.usageAmount']?.kind === 'failed'
+        ? snapshot.capabilities['deepseek.usageAmount'].error.kind
+        : undefined,
+    ).toBe('malformed');
+  });
+
+  it('keeps the balance usable when the usage payload drifts', async () => {
+    const http = {
+      getJson: vi.fn(async (url: string) => {
+        if (url.includes('/user/balance')) {
+          return { ok: true, body: { is_available: true, balance_infos: [{ currency: 'CNY', total_balance: '10', granted_balance: '10', topped_up_balance: '0' }] } };
+        }
+        return { ok: true, body: { data: {} } };
+      }),
+    } as unknown as HttpClient;
+    const provider = new DeepSeekProvider(http);
+    await provider.connect(secretReader({
+      'deepseek:api-key': 'sk-test',
+      'deepseek:session-token': 'token',
+      'deepseek:web-cookie': 'sessionid=abc',
+    }));
+    const snapshot = await provider.fetchSnapshot(new AbortController().signal);
+    expect(snapshot.capabilities['deepseek.balance']?.kind).toBe('ok');
+    expect(snapshot.capabilities['deepseek.usageAmount']?.kind).toBe('failed');
+  });
+
+  it('reports account totals from the platform summary when the key list is unknown', async () => {
+    const http = {
+      getJson: vi.fn(async (url: string) => {
+        if (url.includes('/user/balance')) {
+          return { ok: true, body: { is_available: true, balance_infos: [{ currency: 'CNY', total_balance: '10', granted_balance: '10', topped_up_balance: '0' }] } };
+        }
+        if (url.includes('get_user_summary')) {
+          return { ok: true, body: { data: { biz_data: { total_costs: [{ currency: 'CNY', amount: '9.25' }] } } } };
+        }
+        return { ok: true, body: { data: { biz_data: { data: [] } } } };
+      }),
+    } as unknown as HttpClient;
+    const provider = new DeepSeekProvider(http);
+    await provider.connect(secretReader({
+      'deepseek:api-key': 'sk-test',
+      'deepseek:session-token': 'token',
+      'deepseek:web-cookie': 'sessionid=abc',
+    }));
+    const snapshot = await provider.fetchSnapshot(new AbortController().signal);
+    const state = snapshot.capabilities['deepseek.accountSummary'];
+    expect(state?.kind).toBe('ok');
+    expect(state?.kind === 'ok' ? state.data : undefined).toMatchObject({
+      totals: [{ currency: 'CNY', amount: 9.25 }],
+      source: 'summary',
+    });
+  });
 });

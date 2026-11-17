@@ -12,8 +12,11 @@ export class Scheduler {
   private backoffUntil = 0;
   private lastManualAt = Number.NEGATIVE_INFINITY;
   private manualInFlight: Promise<void> | undefined;
+  private options: SchedulerOptions;
 
-  constructor(private readonly options: SchedulerOptions) {}
+  constructor(options: SchedulerOptions) {
+    this.options = options;
+  }
 
   start(refresh: () => Promise<void>): void {
     this.refresh = refresh;
@@ -24,6 +27,12 @@ export class Scheduler {
       if (Date.now() < this.backoffUntil) return;
       void this.run();
     }, this.options.refreshIntervalMinutes * 60_000);
+  }
+
+  /** Apply new options and restart the timer so the new interval takes effect. */
+  reconfigure(options: SchedulerOptions): void {
+    this.options = options;
+    if (this.refresh !== undefined) this.start(this.refresh);
   }
 
   async refreshNow(): Promise<void> {

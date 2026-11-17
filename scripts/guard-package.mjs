@@ -2,15 +2,20 @@ import { execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  CREDENTIAL_FIELD_PATTERN,
+  CREDENTIAL_PATTERNS,
+  COOKIE_HEADER_PATTERN,
+  LOCAL_PATH_PATTERN,
+} from './secret-patterns.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
 const SECRET_PATTERNS = [
-  /sk-[A-Za-z0-9]{16,}/,
-  /Bearer\s+[A-Za-z0-9\-._~+/]{20,}/,
-  /"Cookie"\s*:\s*"[^"]{8,}"/i,
+  ...CREDENTIAL_PATTERNS,
+  CREDENTIAL_FIELD_PATTERN,
+  COOKIE_HEADER_PATTERN,
 ];
-const LOCAL_PATH_PATTERN = /[A-Za-z]:\\Users\\|\/home\/[a-z0-9_-]+\//i;
 const SCANNED = [
   'dist/extension.js',
   'dist/webview.js',

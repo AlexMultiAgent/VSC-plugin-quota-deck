@@ -75,6 +75,6 @@ export interface QuotaProvider {
   readonly displayName: string;
   getCapabilities(): ProviderCapabilities;
   connect(secrets: SecretReader): Promise<ConnectionState>;
-  fetchSnapshot(signal: AbortSignal, range?: RangeId): Promise<ProviderSnapshot>;
+  fetchSnapshot(signal: AbortSignal, range?: RangeId, timeZone?: string): Promise<ProviderSnapshot>;
   dispose(): void;
 }

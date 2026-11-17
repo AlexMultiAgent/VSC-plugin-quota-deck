@@ -9,7 +9,11 @@ function provider(id: QuotaProvider['id'], snapshot: ProviderSnapshot): QuotaPro
   return {
     id,
     displayName: id,
-    getCapabilities: () => ({ capabilities: [] }),
+    getCapabilities: () => ({
+      capabilities: [
+        { id: `${id}.balance`, titleKey: 'capability.deepseek.balance', credential: 'api-key', required: true },
+      ],
+    }),
     connect: async () => ({ kind: 'ready', capabilities: [] }),
     fetchSnapshot: async () => snapshot,
     dispose: vi.fn(),
@@ -35,7 +39,37 @@ describe('Coordinator', () => {
     });
     const snapshots = await coordinator.refreshAll();
     expect(snapshots['deepseek']).toBeDefined();
-    expect(snapshots['qwen']).toBeUndefined();
+    expect(snapshots['qwen']?.capabilities['qwen.balance']?.kind).toBe('failed');
+    expect(snapshots['deepseek']?.capabilities['deepseek.balance']?.kind).toBeUndefined();
+  });
+
+  it('reports a failed provider as failed rather than dropping it', async () => {
+    const failing: QuotaProvider = {
+      ...provider('minimax-cn', makeSnapshot('minimax-cn', {})),
+      getCapabilities: () => ({ capabilities: [{ id: 'minimax.plan', titleKey: 'capability.minimax.plan', credential: 'token-plan-key', required: true }] }),
+      fetchSnapshot: async () => { throw new Error('boom'); },
+    };
+    const coordinator = new Coordinator({ providers: [failing] });
+    const snapshots = await coordinator.refreshAll();
+    const state = snapshots['minimax-cn']?.capabilities['minimax.plan'];
+    expect(state?.kind).toBe('failed');
+  });
+
+  it('keeps a provider in the live view when a later refresh fails', async () => {
+    let attempt = 0;
+    const flaky: QuotaProvider = {
+      ...provider('deepseek', makeSnapshot('deepseek', {})),
+      getCapabilities: () => ({ capabilities: [{ id: 'deepseek.balance', titleKey: 'capability.deepseek.balance', credential: 'api-key', required: true }] }),
+      fetchSnapshot: async () => {
+        attempt += 1;
+        if (attempt === 1) return makeSnapshot('deepseek', {});
+        throw new Error('boom');
+      },
+    };
+    const coordinator = new Coordinator({ providers: [flaky] });
+    await coordinator.refreshAll();
+    await coordinator.refreshAll();
+    expect(coordinator.getLast()['deepseek']).toBeDefined();
   });
 
   it('keeps the last good snapshot when a refresh fails', async () => {
@@ -57,7 +91,32 @@ describe('Coordinator', () => {
     await coordinator.refreshAll();
     await coordinator.refreshAll();
     const snapshots = await coordinator.refreshAll();
-    expect(snapshots['deepseek']?.capabilities['deepseek.balance']?.kind).toBe('failed');
+    const state = snapshots['deepseek']?.capabilities['deepseek.balance'];
+    expect(state?.kind === 'stale' || state?.kind === 'failed').toBe(true);
+  });
+
+  it('marks a carried-over value as stale instead of hiding it', async () => {
+    let attempt = 0;
+    const flaky: QuotaProvider = {
+      ...provider('deepseek', makeSnapshot('deepseek', {})),
+      fetchSnapshot: async () => {
+        attempt += 1;
+        if (attempt === 1) {
+          return makeSnapshot('deepseek', {
+            'deepseek.balance': { kind: 'ok', fetchedAt: 'x', data: { cny: 1 } },
+          });
+        }
+        throw new Error('boom');
+      },
+    };
+    const storage = new Map<string, unknown>();
+    const coordinator = new Coordinator({ providers: [flaky], cache: new SnapshotCache(storage) });
+    await coordinator.refreshAll();
+    await coordinator.refreshAll();
+    const snapshots = await coordinator.refreshAll();
+    const state = snapshots['deepseek']?.capabilities['deepseek.balance'];
+    expect(state?.kind).toBe('stale');
+    expect(state?.kind === 'stale' ? state.data : undefined).toEqual({ cny: 1 });
   });
 
   it('coalesces concurrent refreshes into one request', async () => {

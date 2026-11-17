@@ -133,10 +133,16 @@ describe('buildDashboardModel', () => {
               data: {
                 rangeId: 'last7',
                 points: [
-                  { date: '2026-11-15', requests: 3, totalTokens: 300, cacheHitTokens: 100, cacheMissTokens: 50, outputTokens: 150, cost: 1.5, currency: 'CNY' },
-                  { date: '2026-11-16', requests: 2, totalTokens: 200, cacheHitTokens: 80, cacheMissTokens: 40, outputTokens: 80, cost: 0.5, currency: 'CNY' },
+                  { date: '2026-11-15', requests: 3, totalTokens: 300, cacheHitTokens: 100, cacheMissTokens: 50, outputTokens: 150 },
+                  { date: '2026-11-16', requests: 2, totalTokens: 200, cacheHitTokens: 80, cacheMissTokens: 40, outputTokens: 80 },
                 ],
-                byModel: [{ model: 'deepseek-chat', requests: 5, totalTokens: 500, cost: 2, currency: 'CNY' }],
+                costs: [
+                  { date: '2026-11-15', cost: 1.5, currency: 'CNY' },
+                  { date: '2026-11-16', cost: 0.5, currency: 'CNY' },
+                ],
+                byModel: [{ model: 'deepseek-chat', requests: 5, totalTokens: 500 }],
+                modelCosts: [{ model: 'deepseek-chat', cost: 2, currency: 'CNY' }],
+                currencies: ['CNY'],
               },
             },
           }),
@@ -168,10 +174,16 @@ describe('buildDashboardModel', () => {
               data: {
                 rangeId: 'last7',
                 points: [
-                  { date: '2026-11-15', requests: 3, totalTokens: 300, cacheHitTokens: 100, cacheMissTokens: 50, outputTokens: 150, cost: 1.5, currency: 'CNY' },
-                  { date: '2026-11-16', requests: 2, totalTokens: 200, cacheHitTokens: 80, cacheMissTokens: 40, outputTokens: 80, cost: 0.5, currency: 'CNY' },
+                  { date: '2026-11-15', requests: 3, totalTokens: 300, cacheHitTokens: 100, cacheMissTokens: 50, outputTokens: 150 },
+                  { date: '2026-11-16', requests: 2, totalTokens: 200, cacheHitTokens: 80, cacheMissTokens: 40, outputTokens: 80 },
+                ],
+                costs: [
+                  { date: '2026-11-15', cost: 1.5, currency: 'CNY' },
+                  { date: '2026-11-16', cost: 0.5, currency: 'CNY' },
                 ],
                 byModel: [],
+                modelCosts: [],
+                currencies: ['CNY'],
               },
             },
           }),
@@ -217,6 +229,63 @@ describe('buildDashboardModel', () => {
   it('localizes the pricing state', () => {
     expect(buildDashboardModel(options({ pricing: 'offPeak' })).pricingLabel).toBe('Off-peak pricing right now');
     expect(buildDashboardModel(options({ pricing: 'unavailable' })).pricingLabel).toBe('Pricing calendar unavailable');
+  });
+
+  it('counts tokens once and keeps costs apart when a day carries two currencies', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['deepseek'],
+        snapshots: {
+          deepseek: makeSnapshot('deepseek', {
+            'deepseek.usageAmount': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: {
+                rangeId: 'last7',
+                points: [
+                  { date: '2026-11-15', requests: 3, totalTokens: 300, cacheHitTokens: 100, cacheMissTokens: 50, outputTokens: 150 },
+                ],
+                costs: [
+                  { date: '2026-11-15', cost: 50, currency: 'CNY' },
+                  { date: '2026-11-15', cost: 7, currency: 'USD' },
+                ],
+                byModel: [{ model: 'deepseek-chat', requests: 3, totalTokens: 300 }],
+                modelCosts: [
+                  { model: 'deepseek-chat', cost: 50, currency: 'CNY' },
+                  { model: 'deepseek-chat', cost: 7, currency: 'USD' },
+                ],
+                currencies: ['CNY', 'USD'],
+              },
+            },
+          }),
+        },
+      }),
+    );
+    expect(model.tiles.find((tile) => tile.key === 'tokens')!.value).toBe('300');
+    expect(model.usage.costTotals).toEqual([
+      { currency: 'CNY', amount: 50 },
+      { currency: 'USD', amount: 7 },
+    ]);
+    expect(model.usage.byModel).toHaveLength(2);
+  });
+
+  it('shows the account totals reported by the platform', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['deepseek'],
+        snapshots: {
+          deepseek: makeSnapshot('deepseek', {
+            'deepseek.accountSummary': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: { totals: [{ currency: 'CNY', amount: 9.25 }], source: 'summary', keyCount: 0 },
+            },
+          }),
+        },
+      }),
+    );
+    expect(model.accountTotals).toEqual([{ currency: 'CNY', amount: 9.25 }]);
+    expect(model.accountTotalSource).toBe('summary');
   });
 
   it('shows MiniMax media meters and points when the account returns them', () => {

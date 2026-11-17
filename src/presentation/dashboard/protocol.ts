@@ -84,6 +84,12 @@ function isBalanceRows(value: unknown): boolean {
   );
 }
 
+function isCurrencyTotals(value: unknown): boolean {
+  return Array.isArray(value) && value.every(
+    (row) => isRecord(row) && typeof row.currency === 'string' && typeof row.total === 'number',
+  );
+}
+
 function isRangeOptions(value: unknown): boolean {
   return Array.isArray(value) && value.every(
     (entry) => isRecord(entry) && isRangeId(entry.id) && typeof entry.label === 'string',
@@ -106,6 +112,7 @@ function isDashboardModel(value: unknown): value is DashboardModel {
   if (!Array.isArray(value.providers) || !value.providers.every(
     (provider) => isRecord(provider) && typeof provider.id === 'string' &&
       typeof provider.name === 'string' && typeof provider.state === 'string' &&
+      typeof provider.stateLabel === 'string' &&
       isRecord(provider.accent) && typeof provider.accent.light === 'string' &&
       typeof provider.accent.dark === 'string' && isMeters(provider.meters) &&
       isStringOrNull(provider.message) && isStringOrNull(provider.fetchedAt),
@@ -120,13 +127,20 @@ function isDashboardModel(value: unknown): value is DashboardModel {
     !isPoints(usage.requests) ||
     !isPoints(usage.tokens) ||
     !isTokenSeries(usage.tokenSeries) ||
-    !isModelRows(usage.byModel)
+    !isModelRows(usage.byModel) ||
+    !isCurrencyTotals(usage.costTotals)
   ) return false;
   if (!Array.isArray(value.qwen) || !value.qwen.every(
     (row) => isRecord(row) && typeof row.capability === 'string' &&
       typeof row.label === 'string' && typeof row.state === 'string',
   )) return false;
   if (!isBalanceRows(value.balances)) return false;
+  if (!isCurrencyTotals(value.accountTotals)) return false;
+  if (
+    value.accountTotalSource !== 'summary' &&
+    value.accountTotalSource !== 'aggregated' &&
+    value.accountTotalSource !== 'unavailable'
+  ) return false;
   if (typeof value.rangeLabel !== 'string' || !isRangeOptions(value.ranges)) return false;
   if (typeof value.pricingLabel !== 'string' || !isLabels(value.labels)) return false;
   return isRangeId(value.range);

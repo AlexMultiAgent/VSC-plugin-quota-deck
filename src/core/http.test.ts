@@ -92,6 +92,36 @@ describe('HttpClient', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('does not issue a request when the caller signal is already aborted', async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock;
+    const client = new HttpClient({ timeoutMs: 1_000, maxAttempts: 3, backoffBaseMs: 1 });
+    const controller = new AbortController();
+    controller.abort();
+    const result = await client.getJson('https://api.example.com/v1/thing', { signal: controller.signal });
+    expect(failure(result).kind).toBe('timeout');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does not retry after the caller aborts the request', async () => {
+    const fetchMock = vi.fn().mockImplementation(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () =>
+            reject(Object.assign(new Error('aborted'), { name: 'AbortError' })),
+          );
+        }),
+    );
+    globalThis.fetch = fetchMock;
+    const client = new HttpClient({ timeoutMs: 1_000, maxAttempts: 3, backoffBaseMs: 1 });
+    const controller = new AbortController();
+    const pending = client.getJson('https://api.example.com/v1/thing', { signal: controller.signal });
+    controller.abort();
+    const result = await pending;
+    expect(failure(result).kind).toBe('timeout');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('reports invalid JSON as a malformed error', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,

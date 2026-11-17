@@ -1,6 +1,11 @@
 import type { Translator } from '../localization';
 import type { ProviderId, ProviderSnapshot } from '../core/types';
 import type { MessageKey } from '../localization/messages';
+import { SHANGHAI } from '../core/time';
+import { capabilityValue } from '../core/capability';
+import type { MiniMaxPlan, MiniMaxPoints, MiniMaxSubscription } from '../providers/minimax/shape';
+import type { DeepSeekBalance } from '../providers/deepseek/shape';
+import { formatMoney, providerDisplayName, remainingBar } from './display';
 import { rangeLabel } from './labels';
 
 const ESCAPES: Record<string, string> = {
@@ -14,13 +19,6 @@ const ESCAPES: Record<string, string> = {
 export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => ESCAPES[character] ?? character);
 }
-
-const PROVIDER_NAME: Record<ProviderId, string> = {
-  'minimax-cn': 'MiniMax CN',
-  'minimax-global': 'MiniMax Global',
-  deepseek: 'DeepSeek',
-  qwen: 'Qwen',
-};
 
 const REGION: Record<ProviderId, string> = {
   'minimax-cn': 'Domestic',
@@ -48,12 +46,6 @@ interface BalanceEntry {
   readonly total: number;
 }
 
-interface MiniMaxModelRow {
-  readonly model: string;
-  readonly remaining: number | null;
-  readonly total: number | null;
-}
-
 interface UsagePoint {
   readonly date: string;
   readonly requests: number;
@@ -61,53 +53,47 @@ interface UsagePoint {
   readonly cacheHitTokens: number;
   readonly cacheMissTokens: number;
   readonly outputTokens: number;
+}
+
+interface UsageCost {
+  readonly date: string;
   readonly cost: number;
   readonly currency: string;
 }
 
 interface UsageSummary {
-  readonly cost: number;
   readonly requests: number;
   readonly tokens: number;
   readonly cacheHitRate: number | null;
 }
 
 function balances(snapshot: ProviderSnapshot | undefined): BalanceEntry[] {
-  const state = snapshot?.capabilities['deepseek.balance'];
-  if (state === undefined || state.kind !== 'ok') return [];
-  const data = state.data as { entries?: BalanceEntry[] } | undefined;
-  return data?.entries ?? [];
+  return capabilityValue<DeepSeekBalance>(snapshot, 'deepseek.balance')?.entries ?? [];
 }
 
 function bar(percent: number): string {
-  const clamped = Math.min(100, Math.max(0, percent));
-  const filled = clamped === 0 ? 0 : Math.max(1, Math.round((clamped / 100) * 10));
-  return '█'.repeat(filled) + '░'.repeat(10 - filled);
+  return remainingBar(percent);
 }
 
-function formatMoney(amount: number, currency: string): string {
-  return currency === 'CNY' ? `¥${amount.toFixed(2)}` : `${currency} ${amount.toFixed(2)}`;
-}
-
-function shanghaiTime(iso: string): string {
+function zonedTime(iso: string, timeZone: string): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Shanghai',
+    timeZone,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
+    hourCycle: 'h23',
   }).formatToParts(new Date(iso));
   const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
   return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
 }
 
-function usageDate(value: string): string {
+function usageDate(value: string, timeZone: string): string {
   const parsed = Date.parse(value);
   if (Number.isNaN(parsed)) return value.slice(0, 10);
   const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Shanghai',
+    timeZone,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -121,24 +107,31 @@ function summarize(points: readonly UsagePoint[]): UsageSummary {
   const cacheMiss = points.reduce((sum, point) => sum + point.cacheMissTokens, 0);
   const denominator = cacheHit + cacheMiss;
   return {
-    cost: points.reduce((sum, point) => sum + point.cost, 0),
     requests: points.reduce((sum, point) => sum + point.requests, 0),
     tokens: points.reduce((sum, point) => sum + point.totalTokens, 0),
     cacheHitRate: denominator === 0 ? null : cacheHit / denominator,
   };
 }
 
-function usageRow(label: string, summary: UsageSummary, currency: string): string {
+function usageRow(label: string, summary: UsageSummary, cost: number, currency: string): string {
   const cache = summary.cacheHitRate === null ? '' : `cache ${Math.round(summary.cacheHitRate * 100)}%`;
   return (
     `<tr><td>${escapeHtml(label)}</td>` +
-    `<td>${escapeHtml(formatMoney(summary.cost, currency))}</td>` +
+    `<td>${escapeHtml(formatMoney(cost, currency))}</td>` +
     `<td>${summary.requests} req · ${summary.tokens} tok</td>` +
     `<td class="t-muted">${escapeHtml(cache)}</td></tr>`
   );
 }
 
-function usageRows(snapshot: ProviderSnapshot | undefined, t: Translator): string {
+function costTotals(costs: readonly UsageCost[]): Map<string, number> {
+  const totals = new Map<string, number>();
+  for (const row of costs) {
+    totals.set(row.currency, (totals.get(row.currency) ?? 0) + row.cost);
+  }
+  return totals;
+}
+
+function usageRows(snapshot: ProviderSnapshot | undefined, t: Translator, timeZone: string): string {
   const state = snapshot?.capabilities['deepseek.usageAmount'];
   if (state === undefined) return '';
   if (state.kind === 'failed') {
@@ -147,34 +140,46 @@ function usageRows(snapshot: ProviderSnapshot | undefined, t: Translator): strin
     }
     return '';
   }
-  if (state.kind !== 'ok') return '';
-  const data = state.data as { points?: UsagePoint[]; rangeId?: string } | undefined;
+  if (state.kind !== 'ok' && state.kind !== 'stale') return '';
+  const data = state.data as
+    | { points?: UsagePoint[]; costs?: UsageCost[]; rangeId?: string }
+    | undefined;
   const points = data?.points ?? [];
   if (points.length === 0) return '';
 
-  const currency = points[0]!.currency || 'CNY';
+  const costs = data?.costs ?? [];
   const rangeId = data?.rangeId ?? 'last7';
   const rows: string[] = [];
+  const pushRows = (label: string, subset: readonly UsagePoint[]) => {
+    const summary = summarize(subset);
+    const totals = costTotals(costs.filter((row) => subset.some((point) => point.date === row.date)));
+    if (totals.size === 0) {
+      rows.push(usageRow(label, summary, 0, 'CNY'));
+      return;
+    }
+    for (const [currency, total] of totals) {
+      rows.push(usageRow(label, summary, total, currency));
+    }
+  };
   if (rangeId === 'last7') {
-    const today = usageDate(new Date().toISOString());
-    const todayPoints = points.filter((point) => usageDate(point.date) === today);
-    if (todayPoints.length > 0) rows.push(usageRow(t('dashboard.range.today'), summarize(todayPoints), currency));
-    rows.push(usageRow(t('dashboard.range.last7'), summarize(points), currency));
+    const today = usageDate(new Date().toISOString(), timeZone);
+    const todayPoints = points.filter((point) => usageDate(point.date, timeZone) === today);
+    if (todayPoints.length > 0) pushRows(t('dashboard.range.today'), todayPoints);
+    pushRows(t('dashboard.range.last7'), points);
   } else {
-    rows.push(usageRow(rangeLabel(rangeId as Parameters<typeof rangeLabel>[0], t), summarize(points), currency));
+    pushRows(rangeLabel(rangeId as Parameters<typeof rangeLabel>[0], t), points);
   }
   return rows.join('');
 }
 
-function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator): string {
+function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, timeZone: string): string {
   if (snapshot === undefined) {
     return `<tr><td colspan="4" class="t-muted">${escapeHtml(t('state.unconfigured'))}</td></tr>`;
   }
 
-  const plan = snapshot.capabilities['minimax.plan'];
-  if (plan !== undefined && plan.kind === 'ok') {
-    const data = plan.data as { windows?: WindowView[]; models?: MiniMaxModelRow[] } | undefined;
-    const rows = (data?.windows ?? [])
+  const plan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
+  if (plan !== undefined) {
+    const rows = plan.windows
       .filter((window) => window.remainingPercent !== null)
       .map(
         (window) =>
@@ -183,24 +188,18 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator): st
           `<td class="t-muted">${window.resetAt === null ? '' : new Date(window.resetAt).toISOString().slice(11, 16)}</td>` +
           '<td></td></tr>',
       );
-    for (const model of data?.models ?? []) {
+    for (const model of plan.models ?? []) {
       if (model.model === 'general' || model.total === null || model.total <= 0 || model.remaining === null) continue;
       const percent = Math.round((model.remaining / model.total) * 100);
       rows.push(`<tr><td>${escapeHtml(model.model)}</td><td>${bar(percent)} ${percent}%</td><td class="t-muted">${model.remaining}/${model.total}</td><td></td></tr>`);
     }
-    const pointsState = snapshot.capabilities['minimax.points'];
-    if (pointsState?.kind === 'ok') {
-      const pointData = pointsState.data as { balance?: number | null } | undefined;
-      if (typeof pointData?.balance === 'number') {
-        rows.push(`<tr><td>${escapeHtml(t('capability.minimax.points'))}</td><td>${pointData.balance.toLocaleString('en-US')}</td><td></td><td></td></tr>`);
-      }
+    const points = capabilityValue<MiniMaxPoints>(snapshot, 'minimax.points');
+    if (typeof points?.balance === 'number') {
+      rows.push(`<tr><td>${escapeHtml(t('capability.minimax.points'))}</td><td>${points.balance.toLocaleString('en-US')}</td><td></td><td></td></tr>`);
     }
-    const subscriptionState = snapshot.capabilities['minimax.subscription'];
-    if (subscriptionState?.kind === 'ok') {
-      const subscription = subscriptionState.data as { expiresAt?: number | null } | undefined;
-      if (typeof subscription?.expiresAt === 'number') {
-        rows.push(`<tr><td>Expires</td><td>${new Date(subscription.expiresAt).toISOString().slice(0, 10)}</td><td></td><td></td></tr>`);
-      }
+    const subscription = capabilityValue<MiniMaxSubscription>(snapshot, 'minimax.subscription');
+    if (typeof subscription?.expiresAt === 'number') {
+      rows.push(`<tr><td>Expires</td><td>${new Date(subscription.expiresAt).toISOString().slice(0, 10)}</td><td></td><td></td></tr>`);
     }
     if (rows.length > 0) return rows.join('');
   }
@@ -215,10 +214,10 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator): st
           '<td class="t-muted">balance</td><td></td></tr>',
       )
       .join('');
-    return rows + usageRows(snapshot, t);
+    return rows + usageRows(snapshot, t, timeZone);
   }
 
-  const usage = usageRows(snapshot, t);
+  const usage = usageRows(snapshot, t, timeZone);
   if (usage.length > 0) return usage;
 
   const failed = Object.values(snapshot.capabilities).find((state) => state.kind === 'failed');
@@ -237,6 +236,7 @@ export function renderTooltip(
   order: ProviderId[],
   t: Translator,
   lastRefreshIso?: string,
+  timeZone: string = SHANGHAI,
 ): string {
   const cards = order
     .map((id) => {
@@ -245,11 +245,11 @@ export function renderTooltip(
       const sessionBadge = t(SESSION_BADGE[id]);
       return (
         '<table class="t-card">' +
-        `<tr><td class="t-title">${escapeHtml(PROVIDER_NAME[id])}</td>` +
+        `<tr><td class="t-title">${escapeHtml(providerDisplayName(id))}</td>` +
         `<td class="t-muted">${escapeHtml(REGION[id])}</td>` +
         `<td class="t-badge">${escapeHtml(sourceBadge)}</td>` +
         `<td class="t-badge">${escapeHtml(sessionBadge)}</td></tr>` +
-        `<tr><td colspan="4">${providerRows(snapshot, t)}</td></tr>` +
+        `<tr><td colspan="4">${providerRows(snapshot, t, timeZone)}</td></tr>` +
         '</table>'
       );
     })
@@ -258,7 +258,7 @@ export function renderTooltip(
   const footer =
     lastRefreshIso === undefined
       ? ''
-      : `${escapeHtml(t('tooltip.updated'))} ${escapeHtml(shanghaiTime(lastRefreshIso))}`;
+      : `${escapeHtml(t('tooltip.updated'))} ${escapeHtml(zonedTime(lastRefreshIso, timeZone))}`;
 
   return (
     '<div class="t-root">' +

@@ -21,11 +21,11 @@ import { buildSwitcherItems } from './presentation/switcher';
 import { renderTooltip } from './presentation/tooltip';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  const settings = readSettings();
-  const t = translatorFor(resolveLanguage(settings.language, vscode.env.language));
+  let settings = readSettings();
+  let t = translatorFor(resolveLanguage(settings.language, vscode.env.language));
   const cache = new SnapshotCache({
     get: (key) => context.globalState.get(key),
-    set: (key, value) => void context.globalState.update(key, value),
+    set: (key, value) => context.globalState.update(key, value),
   });
   const http = new HttpClient({ timeoutMs: 15_000, maxAttempts: 3 });
   const providers = buildProviders(http);
@@ -37,6 +37,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const coordinator = new Coordinator({
     providers,
     cache,
+    timeZone: settings.timeZone,
     onRateLimited: (retryAfterMs) => scheduler.pauseUntil(Date.now() + retryAfterMs),
   });
   const secrets = new SecretStore(context.secrets);
@@ -64,21 +65,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   function currentModel(snapshots = coordinator.getLast()): DashboardModel {
-    const current = readSettings();
     return buildDashboardModel({
       snapshots,
-      order: current.providerOrder,
+      order: settings.providerOrder,
       t,
       range,
       pricing: pricingState(Date.now()),
-      warningThresholdPercent: current.warningThresholdPercent,
+      warningThresholdPercent: settings.warningThresholdPercent,
     });
   }
 
   function refreshTooltip(): void {
-    const current = readSettings();
     const markdown = new vscode.MarkdownString(
-      renderTooltip(coordinator.getLast(), current.providerOrder, t, lastRefreshIso),
+      renderTooltip(coordinator.getLast(), settings.providerOrder, t, lastRefreshIso, settings.timeZone),
     );
     markdown.supportHtml = true;
     markdown.isTrusted = false;
@@ -88,13 +87,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   async function refreshAll(): Promise<void> {
     const snapshots = await coordinator.refreshAll(range);
     lastRefreshIso = new Date().toISOString();
-    const current = readSettings();
     statusBar.update(
       snapshots,
-      current.providerOrder,
-      current.statusBarMode,
-      current.primaryProvider,
-      current.warningThresholdPercent,
+      settings.providerOrder,
+      settings.statusBarMode,
+      settings.primaryProvider,
+      settings.warningThresholdPercent,
       configuredProviders(),
     );
     dashboard.update(currentModel(snapshots));
@@ -127,7 +125,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   };
 
   async function configureProviders(): Promise<void> {
-    await runOnboarding(writer, t, configuredProviders());
+    await runOnboarding(writer, t, configuredProviders);
   }
 
   context.subscriptions.push(
@@ -139,7 +137,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       refresh: () => scheduler.refreshNow(),
       openDashboard: async () => {
         if (!anyConfigured()) {
-          await runOnboarding(writer, t, configuredProviders());
+          await runOnboarding(writer, t, configuredProviders);
           return;
         }
         try {
@@ -147,26 +145,24 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           dashboard.update(currentModel());
           refreshTooltip();
         } catch {
-          const current = readSettings();
-          const items = buildFallbackItems(coordinator.getLast(), current.providerOrder);
+          const items = buildFallbackItems(coordinator.getLast(), settings.providerOrder, t);
           await vscode.window.showQuickPick(items, { title: 'QuotaDeck CN' });
         }
       },
       switchProvider: async () => {
-        const current = readSettings();
-        const items = buildSwitcherItems(configuredProviders(), t, current.primaryProvider);
+        const items = buildSwitcherItems(configuredProviders(), t, settings.primaryProvider);
         const picked = await vscode.window.showQuickPick(items, { title: t('switcher.title') });
         if (picked === undefined || typeof picked !== 'object' || !('id' in picked)) return;
         await vscode.workspace
           .getConfiguration('quotaDeck')
           .update('statusBar.primaryProvider', picked.id);
-        const after = readSettings();
+        settings = readSettings();
         statusBar.update(
           coordinator.getLast(),
-          after.providerOrder,
-          after.statusBarMode,
-          after.primaryProvider,
-          after.warningThresholdPercent,
+          settings.providerOrder,
+          settings.statusBarMode,
+          settings.primaryProvider,
+          settings.warningThresholdPercent,
           configuredProviders(),
         );
         refreshTooltip();
@@ -200,6 +196,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   context.subscriptions.push(
     vscode.window.onDidChangeWindowState((state) => scheduler.setFocused(state.focused)),
+  );
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (!event.affectsConfiguration('quotaDeck')) return;
+      settings = readSettings();
+      t = translatorFor(resolveLanguage(settings.language, vscode.env.language));
+      statusBar.setTranslator(t);
+      scheduler.reconfigure({
+        refreshIntervalMinutes: settings.refreshIntervalMinutes,
+        pauseWhenUnfocused: settings.pauseWhenUnfocused,
+      });
+      void refreshAll();
+    }),
   );
 
   scheduler.start(refreshAll);

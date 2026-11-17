@@ -102,8 +102,11 @@ describe('renderTooltip', () => {
           fetchedAt: '2026-11-16T00:00:00.000Z',
           data: {
             rangeId: 'last7',
-            points: [{ date: '2026-11-16T00:00:00.000Z', requests: 3, totalTokens: 300, cacheHitTokens: 100, cacheMissTokens: 50, outputTokens: 150, cost: 1.5, currency: 'CNY' }],
+            points: [{ date: '2026-11-16T00:00:00.000Z', requests: 3, totalTokens: 300, cacheHitTokens: 100, cacheMissTokens: 50, outputTokens: 150 }],
+            costs: [{ date: '2026-11-16T00:00:00.000Z', cost: 1.5, currency: 'CNY' }],
             byModel: [],
+            modelCosts: [],
+            currencies: ['CNY'],
           },
         },
       }),
@@ -141,6 +144,34 @@ describe('renderTooltip', () => {
       }),
     };
     expect(renderTooltip(snapshots, ['deepseek'], t)).not.toContain('cookie');
+  });
+
+  it('keeps two currencies apart in the usage summary', () => {
+    const snapshots = {
+      deepseek: makeSnapshot('deepseek', {
+        'deepseek.usageAmount': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            rangeId: 'last7',
+            points: [
+              { date: '2026-11-16T00:00:00.000Z', requests: 3, totalTokens: 300, cacheHitTokens: 100, cacheMissTokens: 50, outputTokens: 150 },
+            ],
+            costs: [
+              { date: '2026-11-16T00:00:00.000Z', cost: 50, currency: 'CNY' },
+              { date: '2026-11-16T00:00:00.000Z', cost: 7, currency: 'USD' },
+            ],
+            byModel: [],
+            modelCosts: [],
+            currencies: ['CNY', 'USD'],
+          },
+        },
+      }),
+    };
+    const html = renderTooltip(snapshots, ['deepseek'], t);
+    expect(html).toContain('¥50.00');
+    expect(html).toContain('USD 7.00');
+    expect(html).not.toContain('¥57.00');
   });
 
   it('shows MiniMax media quota, points, and expiry', () => {

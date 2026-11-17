@@ -1,11 +1,9 @@
-export const SECRET_PATTERNS = [
-  /sk-[A-Za-z0-9_-]{12,}/,
-  /[A-Fa-f0-9]{32,}/,
-  /[A-Za-z0-9+/=_-]{40,}/,
-  /sessionId=[A-Za-z0-9_-]{8,}/,
-  /(?:token|secret|password|api_?key)["']?\s*[:=]\s*["']?[A-Za-z0-9+/_-]{16,}/i,
-];
+import {
+  CREDENTIAL_FIELD_PATTERN,
+  CREDENTIAL_PATTERNS,
+} from './secret-patterns.mjs';
 
+export const SECRET_PATTERNS = [...CREDENTIAL_PATTERNS, CREDENTIAL_FIELD_PATTERN];
 export const SECRET_KEY_PATTERN = /token|secret|password|cookie|authorization|api_?key/i;
 export const FINANCIAL_KEY_PATTERN = /balance|cost|amount/i;
 export const REDACTED = '<redacted>';

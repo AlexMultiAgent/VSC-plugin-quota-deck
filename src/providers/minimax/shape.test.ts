@@ -71,19 +71,27 @@ describe('readMiniMaxSubscription', () => {
 });
 
 describe('readMiniMaxTokenUsage', () => {
-  it('aggregates yesterday, seven days, and the current month from records', () => {
+  it('aggregates the records inside the requested range', () => {
     const now = Date.parse('2026-03-15T07:30:00Z');
     const records = [
       { consume_token: 10, created_at: Date.parse('2026-03-14T10:00:00Z') / 1000 },
       { consume_token: 20, created_at: Date.parse('2026-03-10T17:00:00Z') / 1000 },
       { consume_token: 30, created_at: Date.parse('2026-02-20T17:00:00Z') / 1000 },
     ];
-    expect(readMiniMaxTokenUsage({ charge_records: records }, now)).toEqual({
-      yesterday: 10,
-      lastSevenDays: 30,
-      currentMonth: 30,
+    expect(readMiniMaxTokenUsage({ charge_records: records }, 'last7', now)).toEqual({
+      rangeId: 'last7',
+      tokens: 30,
       currency: null,
     });
+  });
+
+  it('reports only the records inside the current month for a month range', () => {
+    const now = Date.parse('2026-03-15T07:30:00Z');
+    const records = [
+      { consume_token: 10, created_at: Date.parse('2026-03-14T10:00:00Z') / 1000 },
+      { consume_token: 30, created_at: Date.parse('2026-02-20T17:00:00Z') / 1000 },
+    ];
+    expect(readMiniMaxTokenUsage({ charge_records: records }, 'thisMonth', now).tokens).toBe(10);
   });
 });
 

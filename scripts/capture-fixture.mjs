@@ -1,44 +1,41 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { sanitizeValue } from './sanitize.mjs';
 
-const MINIMAX_ORIGIN = process.env.MINIMAX_ORIGIN ?? 'https://www.minimaxi.com';
-const MINIMAX_GLOBAL_ORIGIN = process.env.MINIMAX_GLOBAL_ORIGIN ?? 'https://www.minimax.io';
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const { origins, endpoints, credentials } = JSON.parse(
+  readFileSync(join(root, 'src', 'providers', 'endpoints.json'), 'utf8'),
+);
 
 function minimaxEndpoints(provider, capability) {
-  const origin = provider === 'minimax-cn' ? MINIMAX_ORIGIN : MINIMAX_GLOBAL_ORIGIN;
-  const tokenEnv = provider === 'minimax-cn' ? 'MINIMAX_CN_TOKEN_PLAN' : 'MINIMAX_GLOBAL_TOKEN_PLAN';
-  const cookieEnv = provider === 'minimax-cn' ? 'MINIMAX_CN_WEB_COOKIE' : 'MINIMAX_GLOBAL_WEB_COOKIE';
-  switch (capability) {
-    case 'minimax.plan':
-      return [{ url: `${origin}/v1/api/openplatform/coding_plan/remains`, auth: { kind: 'bearer', env: tokenEnv } }];
-    case 'minimax.subscription':
-      return [{ url: `${origin}/v1/api/openplatform/charge/combo/cycle_audio_resource_package`, auth: { kind: 'bearer', env: tokenEnv } }];
-    case 'minimax.tokenUsage':
-      return [{ url: `${origin}/account/amount`, auth: { kind: 'bearer', env: tokenEnv } }];
-    case 'minimax.points':
-      return [{ url: `${origin}/backend/account/token_plan_credit`, auth: { kind: 'cookie', env: cookieEnv } }];
-    default:
-      throw new Error(`unknown MiniMax capability: ${capability}`);
-  }
+  const origin = process.env.MINIMAX_ORIGIN ?? origins[provider];
+  const { tokenPlanEnv, cookieEnv } = credentials[provider];
+  const path = endpoints[capability];
+  if (path === undefined) throw new Error(`unknown MiniMax capability: ${capability}`);
+  const auth =
+    capability === 'minimax.points'
+      ? { kind: 'cookie', env: cookieEnv }
+      : { kind: 'bearer', env: tokenPlanEnv };
+  return [{ url: `${origin}${path}`, auth }];
 }
 
 function deepseekEndpoints(capability) {
-  switch (capability) {
-    case 'deepseek.balance':
-      return [{ url: 'https://api.deepseek.com/user/balance', auth: { kind: 'bearer', env: 'DEEPSEEK_API_KEY' } }];
-    case 'deepseek.usageAmount':
-      return [{ url: 'https://platform.deepseek.com/api/v0/usage/by_api_key/amount', auth: { kind: 'session', env: 'DEEPSEEK_SESSION_TOKEN', cookieEnv: 'DEEPSEEK_COOKIE' } }];
-    case 'deepseek.usageCost':
-      return [{ url: 'https://platform.deepseek.com/api/v0/usage/by_api_key/cost', auth: { kind: 'session', env: 'DEEPSEEK_SESSION_TOKEN', cookieEnv: 'DEEPSEEK_COOKIE' } }];
-    case 'deepseek.accountSummary':
-      return [{ url: 'https://platform.deepseek.com/api/v0/users/get_user_summary', auth: { kind: 'session', env: 'DEEPSEEK_SESSION_TOKEN', cookieEnv: 'DEEPSEEK_COOKIE' } }];
-    default:
-      throw new Error(`unknown DeepSeek capability: ${capability}`);
+  const path = endpoints[capability];
+  if (path === undefined) throw new Error(`unknown DeepSeek capability: ${capability}`);
+  const { apiKeyEnv, sessionTokenEnv, cookieEnv } = credentials.deepseek;
+  if (capability === 'deepseek.balance') {
+    return [{ url: `${origins['deepseek-api']}${path}`, auth: { kind: 'bearer', env: apiKeyEnv } }];
   }
+  return [
+    {
+      url: `${origins['deepseek-platform']}${path}`,
+      auth: { kind: 'session', env: sessionTokenEnv, cookieEnv },
+    },
+  ];
 }
 
-function endpoints(provider, capability) {
+function specsFor(provider, capability) {
   if (provider === 'minimax-cn' || provider === 'minimax-global') {
     return minimaxEndpoints(provider, capability);
   }
@@ -81,7 +78,7 @@ const capability = argument('capability');
 const caseName = argument('case');
 const sensitiveKeys = (process.env.FIXTURE_SENSITIVE_KEYS ?? '').split(',').filter(Boolean);
 
-const specs = endpoints(provider, capability);
+const specs = specsFor(provider, capability);
 const bodies = [];
 
 for (const spec of specs) {

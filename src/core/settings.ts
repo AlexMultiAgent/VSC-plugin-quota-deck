@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { validTimeZone } from './time';
 import { isProviderId, type ProviderId } from './types';
 
 export type Language = 'auto' | 'zh-CN' | 'en-US';
@@ -17,23 +18,34 @@ export interface Settings {
 
 const DEFAULT_ORDER: ProviderId[] = ['minimax-cn', 'minimax-global', 'deepseek', 'qwen'];
 const DEFAULT_WARNING_THRESHOLD_PERCENT = 20;
+const DEFAULT_REFRESH_INTERVAL_MINUTES = 5;
+const DEFAULT_TIME_ZONE = 'Asia/Shanghai';
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
+function clamp(value: number, min: number, max: number, fallback: number): number {
+  return Math.min(max, Math.max(min, Number.isFinite(value) ? value : fallback));
+}
+
+function numberSetting(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
 }
 
 export function readSettings(): Settings {
   const config = vscode.workspace.getConfiguration('quotaDeck');
   const language = config.get<Language>('language', 'auto');
-  const refresh = config.get<number>('refreshIntervalMinutes', 5);
+  const refresh = numberSetting(config.get<unknown>('refreshIntervalMinutes'), DEFAULT_REFRESH_INTERVAL_MINUTES);
   const mode = config.get<StatusBarMode>('statusBar.mode', 'all');
   const primary = config.get<string>('statusBar.primaryProvider', 'minimax-cn');
   const order = config.get<unknown[]>('statusBar.providerOrder', DEFAULT_ORDER);
-  const warningThreshold = config.get<number>(
-    'statusBar.warningThresholdPercent',
+  const warningThreshold = numberSetting(
+    config.get<unknown>('statusBar.warningThresholdPercent'),
     DEFAULT_WARNING_THRESHOLD_PERCENT,
   );
-  const timeZone = config.get<string>('timeZone', 'Asia/Shanghai');
+  const timeZone = validTimeZone(config.get<string>('timeZone', DEFAULT_TIME_ZONE));
 
   const validOrder = Array.isArray(order)
     ? order.filter((id): id is ProviderId => typeof id === 'string' && isProviderId(id))
@@ -41,12 +53,12 @@ export function readSettings(): Settings {
 
   return {
     language,
-    refreshIntervalMinutes: clamp(refresh, 1, 60),
+    refreshIntervalMinutes: clamp(refresh, 1, 60, DEFAULT_REFRESH_INTERVAL_MINUTES),
     pauseWhenUnfocused: config.get<boolean>('pauseWhenUnfocused', true),
     statusBarMode: mode,
     primaryProvider: isProviderId(primary) ? primary : 'minimax-cn',
     providerOrder: validOrder.length > 0 ? [...new Set(validOrder)] : [...DEFAULT_ORDER],
-    warningThresholdPercent: clamp(warningThreshold, 11, 99),
+    warningThresholdPercent: clamp(warningThreshold, 11, 99, DEFAULT_WARNING_THRESHOLD_PERCENT),
     timeZone,
   };
 }

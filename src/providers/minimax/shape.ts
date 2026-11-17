@@ -1,4 +1,5 @@
-import { rangeFor } from '../../core/time';
+import { rangeFor, SHANGHAI, type RangeId } from '../../core/time';
+import { asRecord, numberOrNull } from '../shape';
 
 export interface MiniMaxWindow {
   readonly window: 'fiveHour' | 'weekly';
@@ -27,9 +28,8 @@ export interface MiniMaxSubscription {
 }
 
 export interface MiniMaxTokenUsage {
-  readonly yesterday: number;
-  readonly lastSevenDays: number;
-  readonly currentMonth: number;
+  readonly rangeId: RangeId;
+  readonly tokens: number;
   readonly currency: string | null;
 }
 
@@ -38,19 +38,6 @@ export interface MiniMaxPoints {
   readonly expiresAt: number | null;
 }
 
-function asRecord(value: unknown, path: string): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null) throw new Error(`unknown response shape: ${path}`);
-  return value as Record<string, unknown>;
-}
-
-function asNumber(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string' && value.trim() !== '') {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
 
 function asTimestamp(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -87,14 +74,14 @@ export function readMiniMaxPlan(response: unknown): MiniMaxPlan {
   const records = rows.map((row) => asRecord(row, 'model_remains[]'));
   const general =
     records.find((row) => String(row.model_name ?? '') === 'general') ?? records[0]!;
-  const fiveHourTotal = asNumber(general.current_interval_total_count);
-  const fiveHourUsed = asNumber(general.current_interval_usage_count);
-  const fiveHourField = asNumber(general.current_interval_remaining_percent);
+  const fiveHourTotal = numberOrNull(general.current_interval_total_count);
+  const fiveHourUsed = numberOrNull(general.current_interval_usage_count);
+  const fiveHourField = numberOrNull(general.current_interval_remaining_percent);
   const fiveHourPercent = percentFrom(fiveHourTotal, fiveHourUsed, fiveHourField);
 
-  const weeklyTotal = asNumber(general.current_weekly_total_count);
-  const weeklyUsed = asNumber(general.current_weekly_usage_count);
-  const weeklyField = asNumber(general.current_weekly_remaining_percent);
+  const weeklyTotal = numberOrNull(general.current_weekly_total_count);
+  const weeklyUsed = numberOrNull(general.current_weekly_usage_count);
+  const weeklyField = numberOrNull(general.current_weekly_remaining_percent);
   const weeklyPercent = percentFrom(weeklyTotal, weeklyUsed, weeklyField);
 
   const windows: MiniMaxWindow[] = [
@@ -127,9 +114,9 @@ export function readMiniMaxPlan(response: unknown): MiniMaxPlan {
   }
 
   const models: MiniMaxModel[] = records.map((record) => {
-    const total = asNumber(record.current_interval_total_count);
-    const used = asNumber(record.current_interval_usage_count);
-    const percent = percentFrom(total, used, asNumber(record.current_interval_remaining_percent));
+    const total = numberOrNull(record.current_interval_total_count);
+    const used = numberOrNull(record.current_interval_usage_count);
+    const percent = percentFrom(total, used, numberOrNull(record.current_interval_remaining_percent));
     return {
       model: String(record.model_name ?? ''),
       remaining: total !== null && percent.value !== null ? Math.round(total * (percent.value / 100)) : null,
@@ -160,31 +147,29 @@ function recordTime(value: unknown): number | null {
   return timestamp;
 }
 
-export function readMiniMaxTokenUsage(response: unknown, now = Date.now()): MiniMaxTokenUsage {
+export function readMiniMaxTokenUsage(
+  response: unknown,
+  rangeId: RangeId = 'last7',
+  now = Date.now(),
+  timeZone: string = SHANGHAI,
+): MiniMaxTokenUsage {
   const root = asRecord(response, 'root');
   const records = Array.isArray(root.charge_records) ? root.charge_records : [];
-  const yesterdayRange = rangeFor('yesterday', now);
-  const sevenDayRange = rangeFor('last7', now);
-  const monthRange = rangeFor('thisMonth', now);
-  let yesterday = 0;
-  let lastSevenDays = 0;
-  let currentMonth = 0;
+  const range = rangeFor(rangeId, now, timeZone);
+  let tokens = 0;
 
   for (const raw of records) {
     if (typeof raw !== 'object' || raw === null) continue;
     const record = raw as Record<string, unknown>;
     const timestamp = recordTime(record.created_at);
-    const tokens = asNumber(record.consume_token) ?? 0;
     if (timestamp === null) continue;
-    if (timestamp >= yesterdayRange.start && timestamp < yesterdayRange.end) yesterday += tokens;
-    if (timestamp >= sevenDayRange.start && timestamp <= sevenDayRange.end) lastSevenDays += tokens;
-    if (timestamp >= monthRange.start && timestamp <= monthRange.end) currentMonth += tokens;
+    if (timestamp < range.start || timestamp > range.end) continue;
+    tokens += numberOrNull(record.consume_token) ?? 0;
   }
 
   return {
-    yesterday,
-    lastSevenDays,
-    currentMonth,
+    rangeId,
+    tokens,
     currency: typeof root.currency === 'string' ? root.currency : null,
   };
 }
@@ -198,7 +183,7 @@ export function readMiniMaxPoints(response: unknown): MiniMaxPoints {
   const balanceKeys = ['token_plan_credit', 'credit', 'points', 'point_balance', 'balance'];
   let balance: number | null = null;
   for (const key of balanceKeys) {
-    balance = asNumber(data[key]);
+    balance = numberOrNull(data[key]);
     if (balance !== null) break;
   }
   return {

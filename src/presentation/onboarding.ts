@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { Translator } from '../localization';
 import type { ProviderId } from '../core/types';
+import { providerDisplayName } from './display';
 
 export interface CredentialWriter {
   configureMiniMax(providerId: 'minimax-cn' | 'minimax-global'): Promise<void>;
@@ -13,17 +14,12 @@ interface ProviderChoice {
 }
 
 const CHOICES: ProviderChoice[] = [
-  { id: 'minimax-cn', label: 'MiniMax CN' },
-  { id: 'minimax-global', label: 'MiniMax Global' },
-  { id: 'deepseek', label: 'DeepSeek' },
+  { id: 'minimax-cn', label: providerDisplayName('minimax-cn') },
+  { id: 'minimax-global', label: providerDisplayName('minimax-global') },
+  { id: 'deepseek', label: providerDisplayName('deepseek') },
 ];
 
-const PROVIDER_LABEL: Record<ProviderId, string> = {
-  'minimax-cn': 'MiniMax CN',
-  'minimax-global': 'MiniMax Global',
-  deepseek: 'DeepSeek',
-  qwen: 'Qwen',
-};
+const SUMMARY_PROVIDERS: ProviderId[] = ['minimax-cn', 'minimax-global', 'deepseek'];
 
 async function run(command: string): Promise<void> {
   try {
@@ -37,10 +33,9 @@ function summaryItems(
   configured: Partial<Record<ProviderId, boolean>>,
   t: Translator,
 ): string[] {
-  const pending = (Object.keys(PROVIDER_LABEL) as ProviderId[])
-    .filter((id) => id !== 'qwen')
+  const pending = SUMMARY_PROVIDERS
     .filter((id) => configured[id] !== true)
-    .map((id) => `${PROVIDER_LABEL[id]} — ${t('switcher.notConfigured')}`);
+    .map((id) => `${providerDisplayName(id)} — ${t('switcher.notConfigured')}`);
   return [
     t('onboarding.configureAnother'),
     t('onboarding.refreshNow'),
@@ -50,11 +45,17 @@ function summaryItems(
   ];
 }
 
+export type ConfiguredProviders =
+  | Partial<Record<ProviderId, boolean>>
+  | (() => Partial<Record<ProviderId, boolean>>);
+
 export async function runOnboarding(
   writer: CredentialWriter,
   t: Translator,
-  configured: Partial<Record<ProviderId, boolean>> = {},
+  configured: ConfiguredProviders = () => ({}),
 ): Promise<void> {
+  const readConfigured = (): Partial<Record<ProviderId, boolean>> =>
+    typeof configured === 'function' ? configured() : configured;
   const picked = await vscode.window.showQuickPick(
     CHOICES.map((choice) => ({ label: choice.label, id: choice.id })),
     { title: t('onboarding.chooseProvider') },
@@ -67,7 +68,7 @@ export async function runOnboarding(
     await writer.configureMiniMax(picked.id);
   }
 
-  const summary = await vscode.window.showQuickPick(summaryItems(configured, t), {
+  const summary = await vscode.window.showQuickPick(summaryItems(readConfigured(), t), {
     title: t('onboarding.nextStep'),
   });
   if (summary === t('onboarding.refreshNow')) {

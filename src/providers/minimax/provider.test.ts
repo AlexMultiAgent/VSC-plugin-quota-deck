@@ -52,4 +52,38 @@ describe('MiniMaxProvider', () => {
       expect(JSON.stringify(state.data)).not.toContain('"remainingPercent":0');
     }
   });
+
+  it('scopes the token usage to the requested range', async () => {
+    const now = Date.now();
+    const http = {
+      getJson: vi.fn(async (url: string) => {
+        if (url.includes('/account/amount')) {
+          return {
+            ok: true,
+            body: {
+              currency: 'CNY',
+              charge_records: [
+                { created_at: now - 60_000, consume_token: 100 },
+                { created_at: now - 40 * 86_400_000, consume_token: 900 },
+              ],
+            },
+          };
+        }
+        return { ok: false, error: { kind: 'auth', message: 'error.auth' } };
+      }),
+    } as unknown as HttpClient;
+    const provider = new MiniMaxProvider('minimax-cn', 'https://www.minimaxi.com', http);
+    await provider.connect(secretReader({ 'minimax-cn:token-plan-key': 'token' }));
+    const snapshot = await provider.fetchSnapshot(
+      new AbortController().signal,
+      'last7',
+      'Asia/Shanghai',
+    );
+    const state = snapshot.capabilities['minimax.tokenUsage'];
+    expect(state?.kind).toBe('ok');
+    expect(state?.kind === 'ok' ? state.data : undefined).toMatchObject({
+      rangeId: 'last7',
+      tokens: 100,
+    });
+  });
 });
