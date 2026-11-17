@@ -126,9 +126,15 @@ For each of the 128 × 128 output pixels, 8 × 8 = 64 sub-pixel samples are take
 `(px + (i + 0.5) / 8, py + (j + 0.5) / 8)`. Each sample is evaluated against the continuous
 geometry, so edges resolve by coverage rather than by rounding.
 
-Samples are accumulated **premultiplied** — `r·a`, `g·a`, `b·a`, and `a` are summed and divided by
-the sample count — and unpremultiplied at the end. Premultiplication is required because the tile's
-corners are transparent; averaging straight alpha would darken the antialiased corner pixels.
+Samples are accumulated **premultiplied** — `r·a`, `g·a`, `b·a` and `a` are summed — and
+unpremultiplied at the end by dividing the colour sums by `Σa`. Premultiplication is required
+because the tile's corners are transparent; averaging straight alpha would darken the antialiased
+corner pixels.
+
+The colour sums are already in the 0–255 range after that division, because each sample's colour
+components are 0–255 and only its alpha is normalised. The final alpha is `Σa / 64`, scaled to
+0–255 for the PNG. **The colour channels must not be scaled by 255 a second time** — doing so
+overflows the byte and wraps modulo 256, turning white into 1.
 
 ### 6.2 Shape tests
 

@@ -281,9 +281,9 @@ function renderPixels(size) {
       const index = (py * size + px) * 4;
       const alpha = accA / total;
       if (alpha > 0) {
-        pixels[index] = Math.round((accR / accA) * 255);
-        pixels[index + 1] = Math.round((accG / accA) * 255);
-        pixels[index + 2] = Math.round((accB / accA) * 255);
+        pixels[index] = Math.round(accR / accA);
+        pixels[index + 1] = Math.round(accG / accA);
+        pixels[index + 2] = Math.round(accB / accA);
         pixels[index + 3] = Math.round(alpha * 255);
       }
     }
