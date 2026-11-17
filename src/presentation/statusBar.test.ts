@@ -126,6 +126,26 @@ describe('renderStatusBarText', () => {
     expect(text).toContain('42%');
   });
 
+  it('prioritizes the five-hour window over a lower weekly balance', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 92, resetAt: null, unlimited: false },
+              { window: 'weekly', remainingPercent: 37, resetAt: null, unlimited: false },
+            ],
+          },
+        },
+      }),
+    };
+    const text = renderStatusBarText(snapshots, ['minimax-cn'], t);
+    expect(text).toContain('92%');
+    expect(text).not.toContain('37%');
+  });
+
   it('uses the four-stage quota tones', () => {
     const windowAt = (remainingPercent: number) => ({
       'minimax-cn': makeSnapshot('minimax-cn', {
@@ -251,7 +271,7 @@ describe('StatusBarPresenter', () => {
     presenter.dispose();
   });
 
-  it('uses a warning background below the configured threshold', () => {
+  it('uses transparent backgrounds and colored text below the configured threshold', () => {
     const presenter = new StatusBarPresenter(t);
     presenter.update(
       {
@@ -269,8 +289,59 @@ describe('StatusBarPresenter', () => {
       20,
       { 'minimax-cn': true },
     );
-    expect((state.statusBarItems[0]!.backgroundColor as { id: string }).id)
-      .toBe('statusBarItem.warningBackground');
+    expect(state.statusBarItems[0]!.backgroundColor).toBeUndefined();
+    expect((state.statusBarItems[0]!.color as { id: string }).id).toBe('charts.orange');
+    presenter.dispose();
+  });
+
+  it('uses green text without a warning background when the five-hour window is healthy', () => {
+    const presenter = new StatusBarPresenter(t);
+    presenter.update(
+      {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.plan': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: {
+              windows: [
+                { window: 'fiveHour', remainingPercent: 92, resetAt: null, unlimited: false },
+                { window: 'weekly', remainingPercent: 19, resetAt: null, unlimited: false },
+              ],
+            },
+          },
+        }),
+      },
+      ['minimax-cn'],
+      'all',
+      'minimax-cn',
+      20,
+      { 'minimax-cn': true },
+    );
+    expect(state.statusBarItems[0]!.backgroundColor).toBeUndefined();
+    expect((state.statusBarItems[0]!.color as { id: string }).id).toBe('charts.green');
+    presenter.dispose();
+  });
+
+  it('uses yellow text without a warning background in the caution stage', () => {
+    const presenter = new StatusBarPresenter(t);
+    presenter.update(
+      {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.plan': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: { windows: [{ window: 'fiveHour', remainingPercent: 49, resetAt: null, unlimited: false }] },
+          },
+        }),
+      },
+      ['minimax-cn'],
+      'all',
+      'minimax-cn',
+      20,
+      { 'minimax-cn': true },
+    );
+    expect(state.statusBarItems[0]!.backgroundColor).toBeUndefined();
+    expect((state.statusBarItems[0]!.color as { id: string }).id).toBe('charts.yellow');
     presenter.dispose();
   });
 
@@ -294,6 +365,7 @@ describe('StatusBarPresenter', () => {
     );
     expect((state.statusBarItems[0]!.backgroundColor as { id: string }).id)
       .toBe('statusBarItem.errorBackground');
+    expect(state.statusBarItems[0]!.color).toBe('#ffffff');
     presenter.dispose();
   });
 

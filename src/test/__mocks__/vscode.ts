@@ -31,6 +31,7 @@ export interface StatusBarItem {
   text: string;
   tooltip: string | MarkdownString | { value: string };
   command: string | { command: string; title: string };
+  color: string | ThemeColor | undefined;
   backgroundColor: unknown;
   show(): void;
   hide(): void;
@@ -174,6 +175,7 @@ export const window = {
       text: '',
       tooltip: '',
       command: '',
+      color: undefined,
       backgroundColor: undefined,
       visible: false,
       show() { item.visible = true; },

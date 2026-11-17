@@ -100,7 +100,7 @@ export class DashboardPanel {
       '<title>QuotaDeck CN</title>' +
       `<style nonce="${styleNonce}">${DASHBOARD_STYLES}</style>` +
       '</head>' +
-      '<body><div id="app"></div>' +
+      '<body><div id="app"><div class="webview-status" role="status">正在加载额度数据…</div></div>' +
       `<script nonce="${scriptNonce}" src="${scriptUri}"></script>` +
       '</body></html>'
     );
@@ -112,6 +112,7 @@ const DASHBOARD_STYLES = `
 body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; padding: 16px; background: var(--vscode-editor-background); color: var(--vscode-foreground); }
 body[data-loading="true"] #app { opacity: 0.55; transition: opacity 120ms ease-out; }
 @media (prefers-reduced-motion: reduce) { body[data-loading="true"] #app { transition: none; } }
+.webview-status { color: var(--vscode-descriptionForeground); margin: 24px 0 12px; }
 .hero { font-size: 48px; font-weight: 600; line-height: 1.1; }
 .hero-label { color: var(--vscode-descriptionForeground); font-size: 13px; }
 .hero-section { margin-bottom: 16px; }

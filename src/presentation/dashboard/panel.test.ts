@@ -16,6 +16,7 @@ describe('DashboardPanel', () => {
     expect(html).toContain("default-src 'none'");
     expect(html).toMatch(/nonce-[A-Za-z0-9+/=]+/);
     expect(html).toContain('vscode-resource:');
+    expect(html).toContain('正在加载额度数据');
   });
 
   it('uses the localized title', () => {

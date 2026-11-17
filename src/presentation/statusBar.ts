@@ -40,6 +40,11 @@ function tightestWindow(snapshot: ProviderSnapshot | undefined): MiniMaxWindowVi
   return pickTightestWindow(miniMaxWindows(snapshot));
 }
 
+function preferredWindow(snapshot: ProviderSnapshot | undefined): MiniMaxWindowView | undefined {
+  const windows = miniMaxWindows(snapshot);
+  return windows.find((window) => window.window === 'fiveHour') ?? pickTightestWindow(windows);
+}
+
 function deepSeekBalance(snapshot: ProviderSnapshot | undefined): BalanceView | undefined {
   const entries = capabilityValue<DeepSeekBalance>(snapshot, 'deepseek.balance')?.entries ?? [];
   if (entries.length === 0) return undefined;
@@ -82,7 +87,7 @@ function visibleTone(
   warningThresholdPercent: number,
 ): QuotaTone {
   const tones = visible.flatMap((id) => {
-    const window = tightestWindow(snapshots[id]);
+    const window = preferredWindow(snapshots[id]);
     return window === undefined
       ? []
       : [quotaTone(window.remainingPercent!, warningThresholdPercent)];
@@ -152,7 +157,7 @@ export function renderStatusBarText(
       return `${label} ${state.icon} ${state.label}`;
     }
 
-    const window = tightestWindow(snapshot);
+    const window = preferredWindow(snapshot);
     if (window === undefined) {
       const state = unavailableState(snapshot, t);
       return `${label} ${state.icon} ${state.label}`;
@@ -204,9 +209,15 @@ export class StatusBarPresenter {
     this.item.backgroundColor =
       tone === 'critical'
         ? new vscode.ThemeColor('statusBarItem.errorBackground')
-        : tone === 'warning' || tone === 'caution'
-          ? new vscode.ThemeColor('statusBarItem.warningBackground')
-          : undefined;
+        : undefined;
+    this.item.color =
+      tone === 'critical'
+        ? '#ffffff'
+        : tone === 'warning'
+          ? new vscode.ThemeColor('charts.orange')
+          : tone === 'caution'
+            ? new vscode.ThemeColor('charts.yellow')
+            : new vscode.ThemeColor('charts.green');
     this.item.tooltip = this.t('statusBar.tooltip.header');
     this.item.show();
   }
