@@ -38,11 +38,11 @@ describe('resolveLanguage', () => {
 describe('translatorFor', () => {
   it('returns Chinese strings for the zh-CN bundle', () => {
     const t = translatorFor('zh-CN');
-    expect(t('statusBar.noData')).toBe('QuotaDeck CN — 未配置');
+    expect(t('statusBar.noData')).toBe('未配置');
   });
 
   it('returns English strings for the en-US bundle', () => {
     const t = translatorFor('en-US');
-    expect(t('statusBar.noData')).toBe('QuotaDeck CN — not configured');
+    expect(t('statusBar.noData')).toBe('Not configured');
   });
 });

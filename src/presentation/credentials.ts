@@ -3,12 +3,31 @@ import type { Translator } from '../localization';
 import type { SecretStore } from '../core/secrets';
 import type { CredentialKind, ProviderId } from '../core/types';
 
-async function askSecret(label: string): Promise<string | undefined> {
+interface SecretInput {
+  readonly title: string;
+  readonly placeHolder: string;
+  readonly prompt: string;
+  readonly existing?: string;
+  readonly validateInput?: (value: string) => string | undefined;
+}
+
+function isCompleteCookieHeader(value: string): boolean {
+  return value.split(';').some((part) => {
+    const entry = part.trim();
+    const separator = entry.indexOf('=');
+    return separator > 0 && separator < entry.length - 1;
+  });
+}
+
+async function askSecret(input: SecretInput): Promise<string | undefined> {
   return vscode.window.showInputBox({
-    title: label,
+    title: input.title,
     password: true,
     ignoreFocusOut: true,
-    placeHolder: 'Leave empty to skip',
+    placeHolder: input.placeHolder,
+    prompt: input.prompt,
+    ...(input.existing !== undefined ? { value: input.existing } : {}),
+    ...(input.validateInput !== undefined ? { validateInput: input.validateInput } : {}),
   });
 }
 
@@ -18,34 +37,64 @@ export async function configureMiniMax(
   t: Translator,
 ): Promise<void> {
   const region = providerId === 'minimax-cn' ? 'cn' : 'global';
-  const tokenPlan = await askSecret(
-    region === 'cn'
+  const existingTokenPlan = await store.read(providerId, 'token-plan-key');
+  const existingCookie = await store.read(providerId, 'web-cookie');
+  const tokenPlan = await askSecret({
+    title: region === 'cn'
       ? t('credentials.minimax.cn.tokenPlan')
       : t('credentials.minimax.global.tokenPlan'),
-  );
+    placeHolder: t('credentials.minimax.optionalPlaceholder'),
+    prompt: t('credentials.minimax.optionalPlaceholder'),
+    ...(existingTokenPlan !== undefined ? { existing: existingTokenPlan } : {}),
+  });
   if (tokenPlan !== undefined && tokenPlan.length > 0) {
     await store.write(providerId, 'token-plan-key', tokenPlan);
   }
-  const cookie = await askSecret(
-    region === 'cn'
+  const cookie = await askSecret({
+    title: region === 'cn'
       ? t('credentials.minimax.cn.cookie')
       : t('credentials.minimax.global.cookie'),
-  );
+    placeHolder: t('credentials.minimax.optionalPlaceholder'),
+    prompt: t('credentials.minimax.optionalPlaceholder'),
+    ...(existingCookie !== undefined ? { existing: existingCookie } : {}),
+  });
   if (cookie !== undefined && cookie.length > 0) {
     await store.write(providerId, 'web-cookie', cookie);
   }
 }
 
 export async function configureDeepSeek(store: SecretStore, t: Translator): Promise<void> {
-  const apiKey = await askSecret(t('credentials.deepseek.apiKey'));
+  const existingApiKey = await store.read('deepseek', 'api-key');
+  const existingSessionToken = await store.read('deepseek', 'session-token');
+  const existingCookie = await store.read('deepseek', 'web-cookie');
+  const apiKey = await askSecret({
+    title: t('credentials.deepseek.apiKey'),
+    placeHolder: t('credentials.deepseek.apiKeyPlaceholder'),
+    prompt: t('credentials.deepseek.apiKeyPrompt'),
+    ...(existingApiKey !== undefined ? { existing: existingApiKey } : {}),
+    validateInput: (value) =>
+      value.trim().length === 0 ? t('credentials.deepseek.apiKeyRequired') : undefined,
+  });
   if (apiKey !== undefined && apiKey.length > 0) {
     await store.write('deepseek', 'api-key', apiKey);
   }
-  const sessionToken = await askSecret(t('credentials.deepseek.sessionToken'));
+  const sessionToken = await askSecret({
+    title: t('credentials.deepseek.sessionToken'),
+    placeHolder: t('credentials.deepseek.sessionTokenPlaceholder'),
+    prompt: t('credentials.deepseek.sessionTokenPrompt'),
+    ...(existingSessionToken !== undefined ? { existing: existingSessionToken } : {}),
+  });
   if (sessionToken !== undefined && sessionToken.length > 0) {
     await store.write('deepseek', 'session-token', sessionToken);
   }
-  const cookie = await askSecret(t('credentials.deepseek.cookie'));
+  const cookie = await askSecret({
+    title: t('credentials.deepseek.cookie'),
+    placeHolder: t('credentials.deepseek.cookiePlaceholder'),
+    prompt: t('credentials.deepseek.cookiePrompt'),
+    ...(existingCookie !== undefined ? { existing: existingCookie } : {}),
+    validateInput: (value) =>
+      isCompleteCookieHeader(value) ? undefined : t('credentials.deepseek.cookieRequiredFormat'),
+  });
   if (cookie !== undefined && cookie.length > 0) {
     await store.write('deepseek', 'web-cookie', cookie);
   }

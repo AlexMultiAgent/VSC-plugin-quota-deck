@@ -20,6 +20,7 @@ export class DashboardPanel {
     private readonly title: string,
     private readonly onRangeChange: (range: RangeId) => void,
     private readonly onConfigure: () => void = () => undefined,
+    private readonly onRefresh: () => void = () => undefined,
   ) {}
 
   show(): void {
@@ -54,6 +55,10 @@ export class DashboardPanel {
       }
       if (message.kind === 'configure') {
         this.onConfigure();
+        return;
+      }
+      if (message.kind === 'refresh') {
+        this.onRefresh();
       }
     });
     this.panel.onDidDispose(() => {
@@ -110,7 +115,7 @@ body[data-loading="true"] #app { opacity: 0.55; transition: opacity 120ms ease-o
 .hero { font-size: 48px; font-weight: 600; line-height: 1.1; }
 .hero-label { color: var(--vscode-descriptionForeground); font-size: 13px; }
 .hero-section { margin-bottom: 16px; }
-.action-row { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.action-row { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 12px; }
 .action-button { background: var(--vscode-button-background); border: 1px solid var(--vscode-button-border, transparent); border-radius: 4px; color: var(--vscode-button-foreground); cursor: pointer; font: inherit; padding: 5px 12px; }
 .action-button:hover { background: var(--vscode-button-hoverBackground); }
 .action-button:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 2px; }
@@ -127,6 +132,17 @@ body[data-loading="true"] #app { opacity: 0.55; transition: opacity 120ms ease-o
 .provider-name { align-items: center; display: flex; font-size: 15px; gap: 8px; margin: 0 0 4px; }
 .provider-dot { border-radius: 50%; display: inline-block; height: 10px; width: 10px; }
 .provider-state, .provider-error { color: var(--vscode-descriptionForeground); font-size: 12px; }
+.provider-balance { align-items: baseline; display: flex; gap: 6px; margin-top: 8px; }
+.provider-balance-label { color: var(--vscode-descriptionForeground); font-size: 12px; }
+.provider-balance-value { font-size: 16px; }
+.provider-capabilities { display: grid; gap: 4px; margin: 10px 0 0; }
+.provider-capability { display: flex; gap: 8px; justify-content: space-between; font-size: 12px; }
+.provider-capability dt, .provider-capability dd { margin: 0; }
+.provider-capability dd { color: var(--vscode-descriptionForeground); }
+.provider-capability.is-positive dd { color: var(--vscode-testing-iconPassed); }
+.provider-capability.is-warning dd { color: var(--vscode-editorWarning-foreground); }
+.provider-capability.is-critical dd { color: var(--vscode-errorForeground); }
+.provider-capability-message { color: var(--vscode-descriptionForeground); font-size: 11px; margin: -1px 0 3px; }
 .provider-error { color: var(--vscode-errorForeground); margin: 8px 0 0; }
 .meter { display: grid; grid-template-columns: 72px 1fr 48px; align-items: center; gap: 8px; margin-top: 6px; }
 .meter-label, .meter-value { color: var(--vscode-descriptionForeground); font-size: 12px; }

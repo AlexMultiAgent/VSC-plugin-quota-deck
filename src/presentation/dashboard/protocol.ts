@@ -8,6 +8,7 @@ export type HostMessage =
 export type WebviewMessage =
   | { readonly kind: 'ready' }
   | { readonly kind: 'configure' }
+  | { readonly kind: 'refresh' }
   | { readonly kind: 'setRange'; readonly range: RangeId };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -66,6 +67,19 @@ function isMeters(value: unknown): boolean {
   );
 }
 
+function isProviderCapabilities(value: unknown): boolean {
+  return Array.isArray(value) && value.every(
+    (capability) =>
+      isRecord(capability) &&
+      typeof capability.id === 'string' &&
+      typeof capability.label === 'string' &&
+      ['ok', 'stale', 'failed', 'unconfigured', 'unsupported'].includes(String(capability.state)) &&
+      typeof capability.stateLabel === 'string' &&
+      ['positive', 'warning', 'critical', 'muted'].includes(String(capability.tone)) &&
+      isStringOrNull(capability.message),
+  );
+}
+
 function isModelRows(value: unknown): boolean {
   return Array.isArray(value) && value.every(
     (row) =>
@@ -115,6 +129,7 @@ function isDashboardModel(value: unknown): value is DashboardModel {
       typeof provider.stateLabel === 'string' &&
       isRecord(provider.accent) && typeof provider.accent.light === 'string' &&
       typeof provider.accent.dark === 'string' && isMeters(provider.meters) &&
+      isStringOrNull(provider.balance) && isProviderCapabilities(provider.capabilities) &&
       isStringOrNull(provider.message) && isStringOrNull(provider.fetchedAt),
   )) return false;
   if (!isRecord(value.usage)) return false;
@@ -163,6 +178,7 @@ export function isWebviewMessage(value: unknown): value is WebviewMessage {
   if (!isRecord(value)) return false;
   if (value.kind === 'ready') return hasExactKeys(value, ['kind']);
   if (value.kind === 'configure') return hasExactKeys(value, ['kind']);
+  if (value.kind === 'refresh') return hasExactKeys(value, ['kind']);
   if (value.kind === 'setRange') {
     return hasExactKeys(value, ['kind', 'range']) && isRangeId(value.range);
   }

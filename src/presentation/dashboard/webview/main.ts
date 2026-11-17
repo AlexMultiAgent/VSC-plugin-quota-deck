@@ -23,6 +23,9 @@ function draw(): void {
     onConfigure: () => {
       vscode.postMessage({ kind: 'configure' });
     },
+    onRefresh: () => {
+      vscode.postMessage({ kind: 'refresh' });
+    },
   });
 }
 

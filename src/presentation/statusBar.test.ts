@@ -24,11 +24,18 @@ describe('formatBalance', () => {
 describe('renderStatusBarText', () => {
   beforeEach(() => __reset());
 
-  it('shows the title and the provider segments', () => {
+  it('shows compact provider segments without repeating the extension name', () => {
     const text = renderStatusBarText({}, ['minimax-cn', 'deepseek'], t);
-    expect(text).toContain('QuotaDeck CN');
+    expect(text).not.toContain('QuotaDeck CN');
     expect(text).toContain('MM');
     expect(text).toContain('DS');
+  });
+
+  it('keeps the empty state compact while retaining the status icon', () => {
+    const text = renderStatusBarText({}, ['minimax-cn'], t, 'all', 'minimax-cn', 20, {
+      'minimax-cn': false,
+    });
+    expect(text).toBe('$(pulse) Not configured');
   });
 
   it('shows only the primary provider in focused mode', () => {

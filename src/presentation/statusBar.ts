@@ -131,7 +131,7 @@ export function renderStatusBarText(
   configured?: Partial<Record<ProviderId, boolean>>,
 ): string {
   const visible = visibleProviderIds(order, mode, primary, configured);
-  if (visible.length === 0) return t('statusBar.noData');
+  if (visible.length === 0) return `$(pulse) ${t('statusBar.noData')}`;
 
   const segments = visible.map((id) => {
     const label = t(SEGMENT_LABEL[id]);
@@ -161,10 +161,9 @@ export function renderStatusBarText(
     return `${label} ${STATUS_ICON[quotaTone(percent, warningThresholdPercent)]} ${Math.round(percent)}%${countdown}${stale}`;
   });
 
-  const title = `$(pulse) ${t('statusBar.title')}  `;
   const kept = segments.slice(0, MAX_STATUS_BAR_SEGMENTS);
   const dropped = segments.length - kept.length;
-  return dropped === 0 ? `${title}${kept.join('  ')}` : `${title}${kept.join('  ')} +${dropped}`;
+  return dropped === 0 ? `$(pulse) ${kept.join('  ')}` : `$(pulse) ${kept.join('  ')} +${dropped}`;
 }
 
 export class StatusBarPresenter {

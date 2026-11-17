@@ -6,6 +6,7 @@
 
 - 状态栏显示各服务商的剩余额度、余额与重置倒计时。
 - 状态栏只显示已配置的服务商，避免未配置项占据空间。
+- 状态栏默认每 5 分钟自动刷新，也可从仪表盘“立即刷新”或命令面板手动刷新。
 - MiniMax 剩余额度低于可配置阈值（默认 20%）时使用警告色。
 - 悬停提示展示完整摘要，并区分账户数据与 Web Session。
 - 可选仪表盘：时间范围切换、图表、模型明细、Qwen 能力矩阵与表格视图。
@@ -29,7 +30,7 @@
 从 VS Code Marketplace 安装 `QuotaDeck CN — MiniMax DeepSeek Qwen`，或下载 `.vsix` 后执行：
 
 ```bash
-code --install-extension quota-deck-0.1.3.vsix
+code --install-extension quota-deck-0.1.4.vsix
 ```
 
 ## Configure
@@ -38,6 +39,17 @@ code --install-extension quota-deck-0.1.3.vsix
 2. 在仪表盘点击“配置服务商”，或在命令面板搜索 `QuotaDeck CN: 配置服务商` / `Configure Providers`。
 3. 选择 MiniMax CN、MiniMax Global 或 DeepSeek，输入对应凭据。
 4. 再次点击状态栏图标查看额度。
+
+DeepSeek 凭据获取方式：
+
+- **API 密钥**：登录 `https://platform.deepseek.com`，进入 `API Keys` 创建并复制。
+- **平台会话令牌**：登录后按 `F12` 打开开发者工具，进入 `Network → Fetch/XHR`，
+  打开用量页面，在发往 `platform.deepseek.com/api/v0/...` 的请求头中复制
+  `Authorization: Bearer` 后面的值。
+- **平台 Cookie**：在同一请求头的 `Cookie` 中复制完整值。Cookie 必须与会话令牌同时配置。
+
+余额只需 API 密钥。会话令牌与 Cookie 用于详细用量和账户汇总，属于可选项。
+已有凭据会以掩码形式预填；直接按 `Enter` 保留，按 `Ctrl+A` 后可重新输入并替换。
 
 警告阈值可在 VS Code 设置中搜索 `QuotaDeck warning threshold`，或直接设置
 `quotaDeck.statusBar.warningThresholdPercent`。默认值为 `20`，支持 `11` 到 `99`；
@@ -83,6 +95,7 @@ Cookie 只发送到对应厂商域名，并按各适配器声明的最小 Cookie
 
 - MiniMax 与 DeepSeek 的部分账户接口不是稳定的公共开发者 API，平台调整后可能暂时返回“不支持”或“获取失败”。
 - 本开发环境中只有 DeepSeek 余额完成了真实接口验证；MiniMax 和 DeepSeek 详细用量仍需使用自己的账户运行 `docs/contracts` 中的验证流程。
+- DeepSeek 余额可用但详细接口未配置时，仪表盘会显示“部分可用”，并列出四项能力状态。
 - Qwen 在 V1 中明确不支持，不显示任何伪造额度。
 
 ## License

@@ -5,6 +5,7 @@ import { lineChartSvg, stackedBarSvg } from '../charts';
 export interface WebviewRenderOptions {
   readonly onRangeChange: (range: RangeId) => void;
   readonly onConfigure: () => void;
+  readonly onRefresh: () => void;
 }
 
 function element<K extends keyof HTMLElementTagNameMap>(
@@ -106,9 +107,13 @@ export function renderDashboard(
 ): void {
   container.replaceChildren();
   const actions = element('div', 'action-row');
+  const refresh = element('button', 'action-button', model.labels.refreshNow);
+  refresh.type = 'button';
+  refresh.addEventListener('click', () => options.onRefresh());
   const configure = element('button', 'action-button', model.labels.configureProviders);
   configure.type = 'button';
   configure.addEventListener('click', () => options.onConfigure());
+  actions.appendChild(refresh);
   actions.appendChild(configure);
   container.appendChild(actions);
 
@@ -150,6 +155,12 @@ export function renderDashboard(
     title.appendChild(document.createTextNode(provider.name));
     card.appendChild(title);
     card.appendChild(element('div', 'provider-state', provider.stateLabel));
+    if (provider.balance !== null) {
+      const balance = element('div', 'provider-balance');
+      balance.appendChild(element('span', 'provider-balance-label', model.labels.accountBalance));
+      balance.appendChild(element('strong', 'provider-balance-value', provider.balance));
+      card.appendChild(balance);
+    }
     for (const meter of provider.meters) {
       const row = element('div', 'meter');
       row.appendChild(element('div', 'meter-label', meter.label));
@@ -161,6 +172,19 @@ export function renderDashboard(
       row.appendChild(track);
       row.appendChild(element('div', 'meter-value', meter.percent === null ? '—' : `${Math.round(meter.percent)}%`));
       card.appendChild(row);
+    }
+    if (provider.id === 'deepseek' && provider.capabilities.length > 0) {
+      const details = element('dl', 'provider-capabilities');
+      for (const capability of provider.capabilities) {
+        const row = element('div', `provider-capability is-${capability.tone}`);
+        row.appendChild(element('dt', undefined, capability.label));
+        row.appendChild(element('dd', undefined, capability.stateLabel));
+        details.appendChild(row);
+        if (capability.message !== null) {
+          details.appendChild(element('p', 'provider-capability-message', capability.message));
+        }
+      }
+      card.appendChild(details);
     }
     if (provider.message) card.appendChild(element('p', 'provider-error', provider.message));
     providers.appendChild(card);

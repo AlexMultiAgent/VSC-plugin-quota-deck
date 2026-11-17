@@ -94,6 +94,14 @@ export const state = {
   configuration: new Map<string, unknown>(),
   secrets: new Map<string, string>(),
   inputBoxResults: [] as Array<string | undefined>,
+  inputBoxOptions: [] as Array<{
+    password?: boolean;
+    title?: string;
+    placeHolder?: string;
+    prompt?: string;
+    value?: string;
+    validateInput?: (value: string) => string | undefined;
+  }>,
   quickPickResults: [] as unknown[],
   quickPickOffered: [] as unknown[][],
   registeredCommands: new Map<string, (...args: never[]) => unknown>(),
@@ -108,6 +116,7 @@ export function __reset(): void {
   state.configuration.clear();
   state.secrets.clear();
   state.inputBoxResults = [];
+  state.inputBoxOptions = [];
   state.quickPickResults = [];
   state.quickPickOffered = [];
   state.registeredCommands.clear();
@@ -174,7 +183,15 @@ export const window = {
     state.statusBarItems.push(item);
     return item;
   },
-  showInputBox(options?: { password?: boolean; title?: string; placeHolder?: string }): Promise<string | undefined> {
+  showInputBox(options?: {
+    password?: boolean;
+    title?: string;
+    placeHolder?: string;
+    prompt?: string;
+    value?: string;
+    validateInput?: (value: string) => string | undefined;
+  }): Promise<string | undefined> {
+    state.inputBoxOptions.push(options ?? {});
     state.output.push(`input:${options?.title ?? ''}:${options?.placeHolder ?? ''}`);
     return Promise.resolve(state.inputBoxResults.shift());
   },

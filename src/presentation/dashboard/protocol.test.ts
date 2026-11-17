@@ -18,6 +18,8 @@ function emptyModel(): DashboardModel {
     pricingLabel: 'Peak pricing right now',
     labels: {
       configureProviders: 'Configure providers',
+      refreshNow: 'Refresh now',
+      accountBalance: 'Account balance',
       cost: 'Cost', requests: 'Requests', tokens: 'Tokens', cache: 'Cache', usageTable: 'Usage',
       modelTable: 'Models', balanceTable: 'Balances', costTable: 'Costs', accountTotalTable: 'Account totals',
       accountTotalSummary: 'Summary', accountTotalAggregated: 'Aggregated', accountTotalUnavailable: 'Unavailable',
@@ -42,6 +44,36 @@ describe('host messages', () => {
     expect(isHostMessage({ kind: 'state', model: { hero: { label: 1, value: '1' } }, range: 'last7' })).toBe(false);
   });
 
+  it('validates provider balance and capability details', () => {
+    const model = emptyModel();
+    model.providers.push({
+      id: 'deepseek',
+      name: 'DeepSeek',
+      state: 'partial',
+      stateLabel: 'Partially available',
+      accent: { light: '#2a78d6', dark: '#3987e5' },
+      meters: [],
+      message: null,
+      fetchedAt: null,
+      balance: '¥10.00',
+      capabilities: [{
+        id: 'deepseek.usageAmount',
+        label: 'Usage detail',
+        state: 'unconfigured',
+        stateLabel: 'Not configured',
+        tone: 'muted',
+        message: 'Missing platform session token and cookie.',
+      }],
+    });
+    expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(true);
+    const provider = model.providers[0]!;
+    model.providers.splice(0, 1, {
+      ...provider,
+      capabilities: [{ ...provider.capabilities[0]!, tone: 'evil' as never }],
+    });
+    expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(false);
+  });
+
   it('rejects a non-object', () => {
     expect(isHostMessage('state')).toBe(false);
   });
@@ -58,6 +90,10 @@ describe('webview messages', () => {
 
   it('accepts a request to configure providers', () => {
     expect(isWebviewMessage({ kind: 'configure' })).toBe(true);
+  });
+
+  it('accepts a request to refresh quota data', () => {
+    expect(isWebviewMessage({ kind: 'refresh' })).toBe(true);
   });
 
   it('rejects an unknown range', () => {

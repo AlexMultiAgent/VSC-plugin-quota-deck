@@ -17,6 +17,10 @@ function options(overrides: Partial<DashboardOptions> = {}): DashboardOptions {
 }
 
 describe('buildDashboardModel', () => {
+  it('localizes the dashboard refresh action', () => {
+    expect(buildDashboardModel(options()).labels.refreshNow).toBe('Refresh now');
+  });
+
   it('returns one entry per provider in the given order', () => {
     const model = buildDashboardModel(options({ order: ['minimax-cn', 'deepseek'] }));
     expect(model.providers.map((provider) => provider.id)).toEqual(['minimax-cn', 'deepseek']);
@@ -40,6 +44,77 @@ describe('buildDashboardModel', () => {
     expect(model.providers[0]!.state).toBe('failed');
   });
 
+  it('marks a provider partial when balance works but detail capabilities are unavailable', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['deepseek'],
+        snapshots: {
+          deepseek: makeSnapshot('deepseek', {
+            'deepseek.balance': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: { entries: [{ currency: 'CNY', total: 10 }] },
+            },
+            'deepseek.usageAmount': { kind: 'unconfigured', reason: 'missing platform session' },
+            'deepseek.usageCost': { kind: 'unconfigured', reason: 'missing platform session' },
+            'deepseek.accountSummary': { kind: 'unconfigured', reason: 'missing platform session' },
+          }),
+        },
+      }),
+    );
+    expect(model.providers[0]!.state).toBe('partial');
+  });
+
+  it('shows the DeepSeek balance and capability status on its dashboard card', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['deepseek'],
+        snapshots: {
+          deepseek: makeSnapshot('deepseek', {
+            'deepseek.balance': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: { entries: [{ currency: 'CNY', total: 10 }] },
+            },
+            'deepseek.usageAmount': { kind: 'unconfigured', reason: 'missing platform session' },
+            'deepseek.usageCost': { kind: 'unconfigured', reason: 'missing platform session' },
+            'deepseek.accountSummary': { kind: 'unconfigured', reason: 'missing platform session' },
+          }),
+        },
+      }),
+    );
+    const provider = model.providers[0]!;
+    expect(provider.balance).toBe('¥10.00');
+    expect(provider.capabilities.map((capability) => capability.state)).toEqual([
+      'ok',
+      'unconfigured',
+      'unconfigured',
+      'unconfigured',
+    ]);
+    expect(provider.capabilities[1]!.message).toContain('platform session token');
+  });
+
+  it('explains when a saved cookie has no supported session item', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['deepseek'],
+        snapshots: {
+          deepseek: makeSnapshot('deepseek', {
+            'deepseek.balance': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: { entries: [{ currency: 'CNY', total: 10 }] },
+            },
+            'deepseek.usageAmount': { kind: 'unconfigured', reason: 'no allow-listed session cookie' },
+            'deepseek.usageCost': { kind: 'unconfigured', reason: 'no allow-listed session cookie' },
+            'deepseek.accountSummary': { kind: 'unconfigured', reason: 'no allow-listed session cookie' },
+          }),
+        },
+      }),
+    );
+    expect(model.providers[0]!.capabilities[1]!.message).toMatch(/complete Cookie/i);
+  });
+
   it('marks all-unconfigured capabilities as not configured', () => {
     const model = buildDashboardModel(
       options({
@@ -52,6 +127,20 @@ describe('buildDashboardModel', () => {
       }),
     );
     expect(model.providers[0]!.state).toBe('not-configured');
+  });
+
+  it('does not show the DeepSeek session hint on MiniMax capabilities', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['minimax-cn'],
+        snapshots: {
+          'minimax-cn': makeSnapshot('minimax-cn', {
+            'minimax.points': { kind: 'unconfigured', reason: 'missing web session cookie' },
+          }),
+        },
+      }),
+    );
+    expect(model.providers[0]!.capabilities[0]!.message).toBeNull();
   });
 
   it('exposes the lowest remaining percentage as the hero value', () => {

@@ -70,6 +70,20 @@ describe('DashboardPanel', () => {
     expect(requested).toBe(1);
   });
 
+  it('hands a refresh request to the host', () => {
+    let requested = 0;
+    const panel = new DashboardPanel(
+      Uri.file('/ext'),
+      'QuotaDeck CN',
+      () => undefined,
+      () => undefined,
+      () => { requested += 1; },
+    );
+    panel.show();
+    state.webviewPanels[0]!.webview.receiveMessage({ kind: 'refresh' });
+    expect(requested).toBe(1);
+  });
+
   it('ignores malformed messages', () => {
     const seen: string[] = [];
     const panel = new DashboardPanel(Uri.file('/ext'), 'QuotaDeck CN', (range) => {

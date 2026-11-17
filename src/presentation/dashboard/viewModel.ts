@@ -1,5 +1,5 @@
 import type { Translator } from '../../localization';
-import type { ProviderId, ProviderSnapshot } from '../../core/types';
+import type { CapabilityState, ProviderId, ProviderSnapshot } from '../../core/types';
 import type { RangeId } from '../../core/time';
 import { capabilityValue } from '../../core/capability';
 import type { PricingState } from '../../providers/deepseek/pricing';
@@ -39,6 +39,17 @@ export interface ProviderAccent {
   readonly dark: string;
 }
 
+export type CapabilityHealth = CapabilityState['kind'];
+
+export interface ProviderCapabilityView {
+  readonly id: string;
+  readonly label: string;
+  readonly state: CapabilityHealth;
+  readonly stateLabel: string;
+  readonly tone: 'positive' | 'warning' | 'critical' | 'muted';
+  readonly message: string | null;
+}
+
 export interface DashboardProvider {
   readonly id: ProviderId;
   readonly name: string;
@@ -46,6 +57,8 @@ export interface DashboardProvider {
   readonly stateLabel: string;
   readonly accent: ProviderAccent;
   readonly meters: QuotaMeter[];
+  readonly balance: string | null;
+  readonly capabilities: ProviderCapabilityView[];
   readonly message: string | null;
   readonly fetchedAt: string | null;
 }
@@ -93,6 +106,8 @@ export interface RangeOption {
 
 export interface DashboardLabels {
   readonly configureProviders: string;
+  readonly refreshNow: string;
+  readonly accountBalance: string;
   readonly cost: string;
   readonly requests: string;
   readonly tokens: string;
@@ -267,9 +282,10 @@ function health(snapshot: ProviderSnapshot | undefined): ProviderHealth {
   if (states.length === 0) return 'not-configured';
   if (states.every((state) => state.kind === 'unsupported')) return 'unsupported';
   if (states.every((state) => state.kind === 'unconfigured')) return 'not-configured';
-  if (states.some((state) => state.kind === 'failed')) return 'failed';
+  const hasLiveValue = states.some((state) => state.kind === 'ok' || state.kind === 'stale');
+  if (states.some((state) => state.kind === 'failed') && !hasLiveValue) return 'failed';
   if (states.every((state) => state.kind === 'stale')) return 'stale';
-  if (states.some((state) => state.kind === 'ok')) return 'ok';
+  if (states.every((state) => state.kind === 'ok')) return 'ok';
   return 'partial';
 }
 
@@ -288,6 +304,62 @@ function healthLabel(state: ProviderHealth, t: Translator): string {
     case 'not-configured':
       return t('state.unconfigured');
   }
+}
+
+function capabilityHealthLabel(state: CapabilityHealth, t: Translator): string {
+  switch (state) {
+    case 'ok':
+      return t('state.ok');
+    case 'stale':
+      return t('state.stale');
+    case 'failed':
+      return t('state.failed');
+    case 'unsupported':
+      return t('state.unsupported');
+    case 'unconfigured':
+      return t('state.unconfigured');
+  }
+}
+
+function capabilityTone(state: CapabilityHealth): ProviderCapabilityView['tone'] {
+  if (state === 'ok') return 'positive';
+  if (state === 'stale') return 'warning';
+  if (state === 'failed') return 'critical';
+  return 'muted';
+}
+
+function providerCapabilities(
+  snapshot: ProviderSnapshot | undefined,
+  t: Translator,
+): ProviderCapabilityView[] {
+  if (snapshot === undefined) return [];
+  return Object.entries(snapshot.capabilities).map(([id, state]) => ({
+    id,
+    label: capabilityLabel(id, t),
+    state: state.kind,
+    stateLabel: capabilityHealthLabel(state.kind, t),
+    tone: capabilityTone(state.kind),
+    message:
+      state.kind === 'failed'
+        ? t(state.error.message)
+        : state.kind === 'unconfigured' &&
+            snapshot.providerId === 'deepseek' &&
+            id !== 'deepseek.balance'
+          ? state.reason === 'no allow-listed session cookie'
+            ? t('dashboard.deepseek.invalidCookie')
+            : t('dashboard.deepseek.missingSession')
+          : null,
+  }));
+}
+
+function providerBalance(snapshot: ProviderSnapshot | undefined): string | null {
+  const balances = balanceRows(snapshot);
+  if (balances.length === 0) return null;
+  const currency = selectPrimaryCurrency(balances.map((entry) => entry.currency));
+  const primary = currency === undefined
+    ? balances[0]
+    : balances.find((entry) => entry.currency === currency);
+  return primary === undefined ? null : formatMoney(primary.total, primary.currency);
 }
 
 export function buildDashboardModel(options: DashboardOptions): DashboardModel {
@@ -321,6 +393,8 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       stateLabel: healthLabel(state, t),
       accent: ACCENT[id],
       meters,
+      balance: id === 'deepseek' ? providerBalance(snapshot) : null,
+      capabilities: providerCapabilities(snapshot, t),
       message:
         failed !== undefined && failed.kind === 'failed'
           ? t(failed.error.message)
@@ -401,6 +475,8 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
 
   const labels: DashboardLabels = {
     configureProviders: t('dashboard.configureProviders'),
+    refreshNow: t('dashboard.refreshNow'),
+    accountBalance: t('dashboard.accountBalance'),
     cost: t('dashboard.chart.cost'),
     requests: t('dashboard.chart.requests'),
     tokens: t('dashboard.chart.tokens'),

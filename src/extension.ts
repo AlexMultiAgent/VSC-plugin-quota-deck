@@ -50,6 +50,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     void selectRange(next);
   }, () => {
     void configureProviders();
+  }, () => {
+    void scheduler.refreshNow();
   });
 
   function configuredProviders(): Partial<Record<ProviderId, boolean>> {

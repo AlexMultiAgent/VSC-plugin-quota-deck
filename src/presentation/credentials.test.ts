@@ -64,6 +64,75 @@ describe('configureDeepSeek', () => {
     expect(await store.read('deepseek', 'session-token')).toBe('session-token');
     expect(await store.read('deepseek', 'web-cookie')).toBe('session=abc');
   });
+
+  it('prefills saved credentials as masked input defaults', async () => {
+    const store = new SecretStore(SecretStorage);
+    await store.write('deepseek', 'api-key', 'sk-existing');
+    await store.write('deepseek', 'session-token', 'existing-token');
+    await store.write('deepseek', 'web-cookie', 'session=existing');
+    state.inputBoxResults = ['sk-existing', 'existing-token', 'session=existing'];
+
+    await configureDeepSeek(store, t);
+
+    expect(state.inputBoxOptions.map((options) => options.value)).toEqual([
+      'sk-existing',
+      'existing-token',
+      'session=existing',
+    ]);
+    expect(state.inputBoxOptions.every((options) => options.password === true)).toBe(true);
+  });
+
+  it('accepts replacement values while showing the saved defaults', async () => {
+    const store = new SecretStore(SecretStorage);
+    await store.write('deepseek', 'api-key', 'sk-existing');
+    await store.write('deepseek', 'session-token', 'existing-token');
+    await store.write('deepseek', 'web-cookie', 'session=existing');
+    state.inputBoxResults = ['sk-new', 'new-token', 'session=new'];
+
+    await configureDeepSeek(store, t);
+
+    expect(state.inputBoxOptions.map((options) => options.value)).toEqual([
+      'sk-existing',
+      'existing-token',
+      'session=existing',
+    ]);
+    expect(await store.read('deepseek', 'api-key')).toBe('sk-new');
+    expect(await store.read('deepseek', 'session-token')).toBe('new-token');
+    expect(await store.read('deepseek', 'web-cookie')).toBe('session=new');
+  });
+
+  it('explains where to find each DeepSeek credential', async () => {
+    state.inputBoxResults = ['sk-test', undefined, undefined];
+    const store = new SecretStore(SecretStorage);
+
+    await configureDeepSeek(store, t);
+
+    expect(state.inputBoxOptions[0]!.prompt).toContain('platform.deepseek.com');
+    expect(state.inputBoxOptions[0]!.prompt).toContain('API Keys');
+    expect(state.inputBoxOptions[1]!.prompt).toContain('F12');
+    expect(state.inputBoxOptions[1]!.prompt).toContain('Authorization: Bearer');
+    expect(state.inputBoxOptions[2]!.prompt).toContain('Cookie');
+  });
+
+  it('rejects an empty required API key', async () => {
+    state.inputBoxResults = [undefined, undefined, undefined];
+    const store = new SecretStore(SecretStorage);
+
+    await configureDeepSeek(store, t);
+
+    expect(state.inputBoxOptions[0]!.validateInput?.('')).toBeDefined();
+    expect(state.inputBoxOptions[0]!.validateInput?.('sk-valid')).toBeUndefined();
+  });
+
+  it('requires a complete cookie header instead of a bare cookie value', async () => {
+    state.inputBoxResults = ['sk-test', 'session-token', 'complete-header'];
+    const store = new SecretStore(SecretStorage);
+
+    await configureDeepSeek(store, t);
+
+    expect(state.inputBoxOptions[2]!.validateInput?.('bare-cookie-value')).toBeDefined();
+    expect(state.inputBoxOptions[2]!.validateInput?.('sessionId=abc; acw_tc=def')).toBeUndefined();
+  });
 });
 
 describe('clearCredential', () => {
