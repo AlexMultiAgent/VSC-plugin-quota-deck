@@ -80,6 +80,14 @@ function isProviderCapabilities(value: unknown): boolean {
   );
 }
 
+function isProviderRangeUsage(value: unknown): boolean {
+  return value === null || (
+    isRecord(value) &&
+    typeof value.label === 'string' &&
+    typeof value.value === 'string'
+  );
+}
+
 function isModelRows(value: unknown): boolean {
   return Array.isArray(value) && value.every(
     (row) =>
@@ -129,7 +137,8 @@ function isDashboardModel(value: unknown): value is DashboardModel {
       typeof provider.stateLabel === 'string' &&
       isRecord(provider.accent) && typeof provider.accent.light === 'string' &&
       typeof provider.accent.dark === 'string' && isMeters(provider.meters) &&
-      isStringOrNull(provider.balance) && isProviderCapabilities(provider.capabilities) &&
+      isStringOrNull(provider.balance) && isProviderRangeUsage(provider.rangeUsage) &&
+      isProviderCapabilities(provider.capabilities) &&
       isStringOrNull(provider.message) && isStringOrNull(provider.fetchedAt),
   )) return false;
   if (!isRecord(value.usage)) return false;

@@ -20,6 +20,8 @@ function emptyModel(): DashboardModel {
       configureProviders: 'Configure providers',
       refreshNow: 'Refresh now',
       accountBalance: 'Account balance',
+      historyRange: 'History usage range',
+      liveQuotaNote: '5-hour and Weekly quota windows are live.',
       cost: 'Cost', requests: 'Requests', tokens: 'Tokens', cache: 'Cache', usageTable: 'Usage',
       modelTable: 'Models', balanceTable: 'Balances', costTable: 'Costs', accountTotalTable: 'Account totals',
       accountTotalSummary: 'Summary', accountTotalAggregated: 'Aggregated', accountTotalUnavailable: 'Unavailable',
@@ -56,6 +58,7 @@ describe('host messages', () => {
       message: null,
       fetchedAt: null,
       balance: '¥10.00',
+      rangeUsage: null,
       capabilities: [{
         id: 'deepseek.usageAmount',
         label: 'Usage detail',

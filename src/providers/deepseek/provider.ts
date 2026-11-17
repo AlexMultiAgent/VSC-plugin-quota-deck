@@ -28,6 +28,9 @@ const CAPABILITIES: readonly CapabilityDescriptor[] = [
 ];
 
 const PLATFORM_COOKIE_NAMES: readonly string[] = [
+  'aws-waf-token',
+  'HWWAFSESID',
+  'HWWAFSESTIME',
   'sessionid',
   'sessionId',
   'token',

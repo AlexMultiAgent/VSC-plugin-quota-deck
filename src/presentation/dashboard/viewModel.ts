@@ -31,7 +31,7 @@ export interface QuotaMeter {
   readonly label: string;
   readonly percent: number | null;
   readonly resetLabel: string | null;
-  readonly tone: 'positive' | 'warning' | 'critical' | 'muted';
+  readonly tone: 'positive' | 'caution' | 'warning' | 'critical' | 'muted';
 }
 
 export interface ProviderAccent {
@@ -40,6 +40,11 @@ export interface ProviderAccent {
 }
 
 export type CapabilityHealth = CapabilityState['kind'];
+
+export interface ProviderRangeUsage {
+  readonly label: string;
+  readonly value: string;
+}
 
 export interface ProviderCapabilityView {
   readonly id: string;
@@ -58,6 +63,7 @@ export interface DashboardProvider {
   readonly accent: ProviderAccent;
   readonly meters: QuotaMeter[];
   readonly balance: string | null;
+  readonly rangeUsage: ProviderRangeUsage | null;
   readonly capabilities: ProviderCapabilityView[];
   readonly message: string | null;
   readonly fetchedAt: string | null;
@@ -108,6 +114,8 @@ export interface DashboardLabels {
   readonly configureProviders: string;
   readonly refreshNow: string;
   readonly accountBalance: string;
+  readonly historyRange: string;
+  readonly liveQuotaNote: string;
   readonly cost: string;
   readonly requests: string;
   readonly tokens: string;
@@ -362,6 +370,20 @@ function providerBalance(snapshot: ProviderSnapshot | undefined): string | null 
   return primary === undefined ? null : formatMoney(primary.total, primary.currency);
 }
 
+function providerRangeUsage(
+  id: ProviderId,
+  snapshot: ProviderSnapshot | undefined,
+  t: Translator,
+): ProviderRangeUsage | null {
+  if (id !== 'minimax-cn' && id !== 'minimax-global') return null;
+  const usage = capabilityValue<MiniMaxTokenUsage>(snapshot, 'minimax.tokenUsage');
+  if (usage === undefined) return null;
+  return {
+    label: `${rangeLabel(usage.rangeId, t)} · ${t('dashboard.tokens')}`,
+    value: usage.tokens.toLocaleString('en-US'),
+  };
+}
+
 export function buildDashboardModel(options: DashboardOptions): DashboardModel {
   const { snapshots, order, t, range, pricing } = options;
   const warningThresholdPercent = options.warningThresholdPercent ?? 20;
@@ -394,6 +416,7 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       accent: ACCENT[id],
       meters,
       balance: id === 'deepseek' ? providerBalance(snapshot) : null,
+      rangeUsage: providerRangeUsage(id, snapshot, t),
       capabilities: providerCapabilities(snapshot, t),
       message:
         failed !== undefined && failed.kind === 'failed'
@@ -477,6 +500,8 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
     configureProviders: t('dashboard.configureProviders'),
     refreshNow: t('dashboard.refreshNow'),
     accountBalance: t('dashboard.accountBalance'),
+    historyRange: t('dashboard.historyRange'),
+    liveQuotaNote: t('dashboard.liveQuotaNote'),
     cost: t('dashboard.chart.cost'),
     requests: t('dashboard.chart.requests'),
     tokens: t('dashboard.chart.tokens'),

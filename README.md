@@ -7,7 +7,8 @@
 - 状态栏显示各服务商的剩余额度、余额与重置倒计时。
 - 状态栏只显示已配置的服务商，避免未配置项占据空间。
 - 状态栏默认每 5 分钟自动刷新，也可从仪表盘“立即刷新”或命令面板手动刷新。
-- MiniMax 剩余额度低于可配置阈值（默认 20%）时使用警告色。
+- 额度按剩余比例使用绿色、黄色、橙色、红色四阶段提示；剩余 5% 及以下进入严重警告。
+- 历史用量区间与实时额度窗口分开展示，MiniMax 卡片显示所选区间的 Token 用量。
 - 悬停提示展示完整摘要，并区分账户数据与 Web Session。
 - 可选仪表盘：时间范围切换、图表、模型明细、Qwen 能力矩阵与表格视图。
 - MiniMax 国内版与国际版账号独立配置。
@@ -30,7 +31,7 @@
 从 VS Code Marketplace 安装 `QuotaDeck CN — MiniMax DeepSeek Qwen`，或下载 `.vsix` 后执行：
 
 ```bash
-code --install-extension quota-deck-0.1.4.vsix
+code --install-extension quota-deck-0.1.5.vsix
 ```
 
 ## Configure
@@ -50,6 +51,8 @@ DeepSeek 凭据获取方式：
 
 余额只需 API 密钥。会话令牌与 Cookie 用于详细用量和账户汇总，属于可选项。
 已有凭据会以掩码形式预填；直接按 `Enter` 保留，按 `Ctrl+A` 后可重新输入并替换。
+DeepSeek 当前的 `aws-waf-token`、`HWWAFSESID`、`HWWAFSESTIME` 会按白名单转发，
+偏好、缓存等无关 Cookie 不会发送。
 
 警告阈值可在 VS Code 设置中搜索 `QuotaDeck warning threshold`，或直接设置
 `quotaDeck.statusBar.warningThresholdPercent`。默认值为 `20`，支持 `11` 到 `99`；

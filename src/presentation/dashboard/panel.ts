@@ -143,10 +143,20 @@ body[data-loading="true"] #app { opacity: 0.55; transition: opacity 120ms ease-o
 .provider-capability.is-warning dd { color: var(--vscode-editorWarning-foreground); }
 .provider-capability.is-critical dd { color: var(--vscode-errorForeground); }
 .provider-capability-message { color: var(--vscode-descriptionForeground); font-size: 11px; margin: -1px 0 3px; }
+.provider-range-usage { align-items: baseline; display: flex; gap: 6px; margin-top: 8px; }
+.provider-range-label { color: var(--vscode-descriptionForeground); font-size: 12px; }
+.provider-range-value { font-variant-numeric: tabular-nums; }
 .provider-error { color: var(--vscode-errorForeground); margin: 8px 0 0; }
+.history-controls { margin: 4px 0 16px; }
+.history-title { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
+.filter-note { color: var(--vscode-descriptionForeground); font-size: 11px; margin: 8px 0 0; }
 .meter { display: grid; grid-template-columns: 72px 1fr 48px; align-items: center; gap: 8px; margin-top: 6px; }
 .meter-label, .meter-value { color: var(--vscode-descriptionForeground); font-size: 12px; }
 .meter-value { font-variant-numeric: tabular-nums; text-align: right; }
+.meter-value.is-positive { color: var(--vscode-testing-iconPassed); }
+.meter-value.is-caution { color: var(--vscode-charts-yellow); }
+.meter-value.is-warning { color: var(--vscode-charts-orange); }
+.meter-value.is-critical { color: var(--vscode-errorForeground); font-weight: 600; }
 .meter-track { background: var(--vscode-editorWidget-background); border-radius: 4px; height: 8px; overflow: hidden; }
 .meter-fill { height: 100%; border-radius: 4px; }
 .chart-card, .table-card { border: 1px solid var(--vscode-panel-border); border-radius: 6px; margin-bottom: 12px; padding: 12px; }

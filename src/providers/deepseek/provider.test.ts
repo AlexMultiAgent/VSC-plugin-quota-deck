@@ -112,4 +112,42 @@ describe('DeepSeekProvider', () => {
       source: 'summary',
     });
   });
+
+  it('forwards the WAF cookies used by the platform while dropping unrelated cookies', async () => {
+    const calls: Array<{ url: string; headers?: Readonly<Record<string, string>> }> = [];
+    const http = {
+      getJson: vi.fn(async (url: string, options?: { headers?: Readonly<Record<string, string>> }) => {
+        calls.push({ url, ...(options?.headers !== undefined ? { headers: options.headers } : {}) });
+        if (url.includes('/user/balance')) {
+          return { ok: true, body: { is_available: true, balance_infos: [{ currency: 'CNY', total_balance: '10', granted_balance: '10', topped_up_balance: '0' }] } };
+        }
+        if (url.includes('get_user_summary')) {
+          return { ok: true, body: { data: { biz_data: { total_costs: [{ currency: 'CNY', amount: '9.25' }] } } } };
+        }
+        return { ok: true, body: { data: { biz_data: { data: [] } } } };
+      }),
+    } as unknown as HttpClient;
+    const provider = new DeepSeekProvider(http);
+    await provider.connect(secretReader({
+      'deepseek:api-key': 'sk-test',
+      'deepseek:session-token': 'token',
+      'deepseek:web-cookie': [
+        'aws-waf-token=waf-value',
+        'HWWAFSESID=session-id',
+        'HWWAFSESTIME=timestamp',
+        'ds_cookie_preference=preference',
+        '.thumbcache_example=private-cache',
+      ].join('; '),
+    }));
+
+    await provider.fetchSnapshot(new AbortController().signal);
+
+    const platformCalls = calls.filter((call) => call.url.includes('platform.deepseek.com'));
+    expect(platformCalls).toHaveLength(3);
+    for (const call of platformCalls) {
+      expect(call.headers?.Cookie).toBe(
+        'aws-waf-token=waf-value; HWWAFSESID=session-id; HWWAFSESTIME=timestamp',
+      );
+    }
+  });
 });

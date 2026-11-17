@@ -42,6 +42,8 @@ export const enUs: MessageBundle = {
   'dashboard.title': 'QuotaDeck CN — Usage & Insights',
   'dashboard.configureProviders': 'Configure providers',
   'dashboard.refreshNow': 'Refresh now',
+  'dashboard.historyRange': 'History usage range',
+  'dashboard.liveQuotaNote': '5-hour and Weekly are live quota windows and do not change with the history range.',
   'dashboard.lowestRemaining': 'Lowest remaining quota',
   'dashboard.accountBalance': 'Account balance',
   'dashboard.deepseek.missingSession': 'Add the platform session token and cookie to enable detailed usage.',

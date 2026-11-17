@@ -132,18 +132,6 @@ export function renderDashboard(
   }
   container.appendChild(tiles);
 
-  const filters = element('nav', 'filter-row');
-  filters.setAttribute('aria-label', 'Usage range');
-  for (const option of model.ranges) {
-    const button = element('button', 'filter-button', option.label);
-    button.type = 'button';
-    button.setAttribute('aria-pressed', String(option.id === model.range));
-    if (option.id === model.range) button.classList.add('is-selected');
-    button.addEventListener('click', () => options.onRangeChange(option.id));
-    filters.appendChild(button);
-  }
-  container.appendChild(filters);
-
   const providers = element('section', 'providers');
   for (const provider of model.providers) {
     const card = element('article', 'provider-card');
@@ -167,11 +155,18 @@ export function renderDashboard(
       const track = element('div', 'meter-track');
       const fill = element('div', 'meter-fill');
       fill.style.width = `${Math.max(0, Math.min(100, meter.percent ?? 0))}%`;
-      fill.style.background = `var(--vscode-charts-${meter.tone === 'critical' ? 'red' : meter.tone === 'warning' ? 'yellow' : 'green'})`;
+      fill.style.background = `var(--vscode-charts-${meter.tone === 'critical' ? 'red' : meter.tone === 'warning' ? 'orange' : meter.tone === 'caution' ? 'yellow' : 'green'})`;
       track.appendChild(fill);
       row.appendChild(track);
-      row.appendChild(element('div', 'meter-value', meter.percent === null ? '—' : `${Math.round(meter.percent)}%`));
+      const value = element('div', `meter-value is-${meter.tone}`, meter.percent === null ? '—' : `${Math.round(meter.percent)}%`);
+      row.appendChild(value);
       card.appendChild(row);
+    }
+    if (provider.rangeUsage !== null) {
+      const usage = element('div', 'provider-range-usage');
+      usage.appendChild(element('span', 'provider-range-label', provider.rangeUsage.label));
+      usage.appendChild(element('strong', 'provider-range-value', provider.rangeUsage.value));
+      card.appendChild(usage);
     }
     if (provider.id === 'deepseek' && provider.capabilities.length > 0) {
       const details = element('dl', 'provider-capabilities');
@@ -190,6 +185,22 @@ export function renderDashboard(
     providers.appendChild(card);
   }
   container.appendChild(providers);
+
+  const history = element('section', 'history-controls');
+  history.appendChild(element('h2', 'history-title', model.labels.historyRange));
+  const filters = element('nav', 'filter-row');
+  filters.setAttribute('aria-label', model.labels.historyRange);
+  for (const option of model.ranges) {
+    const button = element('button', 'filter-button', option.label);
+    button.type = 'button';
+    button.setAttribute('aria-pressed', String(option.id === model.range));
+    if (option.id === model.range) button.classList.add('is-selected');
+    button.addEventListener('click', () => options.onRangeChange(option.id));
+    filters.appendChild(button);
+  }
+  history.appendChild(filters);
+  history.appendChild(element('p', 'filter-note', model.labels.liveQuotaNote));
+  container.appendChild(history);
 
   if (model.usage.available) {
     container.appendChild(chartCard(

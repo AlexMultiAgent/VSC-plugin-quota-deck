@@ -126,7 +126,7 @@ describe('renderStatusBarText', () => {
     expect(text).toContain('42%');
   });
 
-  it('uses the configured warning threshold strictly', () => {
+  it('uses the four-stage quota tones', () => {
     const windowAt = (remainingPercent: number) => ({
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -137,10 +137,14 @@ describe('renderStatusBarText', () => {
       }),
     });
 
-    expect(renderStatusBarText(windowAt(20), ['minimax-cn'], t, 'all', 'minimax-cn', 20))
-      .toContain('MM $(check) 20%');
+    expect(renderStatusBarText(windowAt(50), ['minimax-cn'], t, 'all', 'minimax-cn', 20))
+      .toContain('MM $(check) 50%');
+    expect(renderStatusBarText(windowAt(49), ['minimax-cn'], t, 'all', 'minimax-cn', 20))
+      .toContain('MM $(warning) 49%');
     expect(renderStatusBarText(windowAt(19), ['minimax-cn'], t, 'all', 'minimax-cn', 20))
       .toContain('MM $(warning) 19%');
+    expect(renderStatusBarText(windowAt(5), ['minimax-cn'], t, 'all', 'minimax-cn', 20))
+      .toContain('MM $(error) 5%');
   });
 
   it('hides providers that are not configured', () => {
@@ -267,6 +271,29 @@ describe('StatusBarPresenter', () => {
     );
     expect((state.statusBarItems[0]!.backgroundColor as { id: string }).id)
       .toBe('statusBarItem.warningBackground');
+    presenter.dispose();
+  });
+
+  it('uses an error background at the critical threshold', () => {
+    const presenter = new StatusBarPresenter(t);
+    presenter.update(
+      {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.plan': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: { windows: [{ window: 'fiveHour', remainingPercent: 5, resetAt: null, unlimited: false }] },
+          },
+        }),
+      },
+      ['minimax-cn'],
+      'all',
+      'minimax-cn',
+      20,
+      { 'minimax-cn': true },
+    );
+    expect((state.statusBarItems[0]!.backgroundColor as { id: string }).id)
+      .toBe('statusBarItem.errorBackground');
     presenter.dispose();
   });
 

@@ -45,6 +45,8 @@ export const MESSAGES = {
   'dashboard.title': 'QuotaDeck CN — 用量与洞察',
   'dashboard.configureProviders': '配置服务商',
   'dashboard.refreshNow': '立即刷新',
+  'dashboard.historyRange': '历史用量范围',
+  'dashboard.liveQuotaNote': '5-hour / Weekly 为当前实时额度，不随历史区间变化。',
   'dashboard.lowestRemaining': '最低剩余额度',
   'dashboard.accountBalance': '账户余额',
   'dashboard.deepseek.missingSession': '填写平台会话令牌和 Cookie 后可获取详细用量。',

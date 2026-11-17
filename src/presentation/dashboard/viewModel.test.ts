@@ -183,7 +183,7 @@ describe('buildDashboardModel', () => {
         },
       }),
     );
-    expect(model.providers[0]!.meters.map((meter) => meter.tone)).toEqual(['positive', 'warning']);
+    expect(model.providers[0]!.meters.map((meter) => meter.tone)).toEqual(['caution', 'warning']);
   });
 
   it('shows no hero value when nothing has a percentage', () => {
@@ -398,5 +398,27 @@ describe('buildDashboardModel', () => {
     );
     expect(model.providers[0]!.meters.find((meter) => meter.key === 'model:video')?.percent).toBe(100);
     expect(model.tiles.find((tile) => tile.key === 'points')?.value).toBe('6,850');
+  });
+
+  it('shows MiniMax token usage for the selected history range', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['minimax-cn'],
+        range: 'last30',
+        snapshots: {
+          'minimax-cn': makeSnapshot('minimax-cn', {
+            'minimax.tokenUsage': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: { rangeId: 'last30', tokens: 12345, currency: 'CNY' },
+            },
+          }),
+        },
+      }),
+    );
+    expect(model.providers[0]!.rangeUsage).toEqual({
+      label: 'Last 30 days · Tokens',
+      value: '12,345',
+    });
   });
 });

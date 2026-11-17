@@ -52,6 +52,7 @@ function deepSeekBalance(snapshot: ProviderSnapshot | undefined): BalanceView | 
 const MAX_STATUS_BAR_SEGMENTS = 3;
 const STATUS_ICON = {
   positive: '$(check)',
+  caution: '$(warning)',
   warning: '$(warning)',
   critical: '$(error)',
   neutral: '$(dashboard)',
@@ -88,6 +89,7 @@ function visibleTone(
   });
   if (tones.includes('critical')) return 'critical';
   if (tones.includes('warning')) return 'warning';
+  if (tones.includes('caution')) return 'caution';
   return 'positive';
 }
 
@@ -202,7 +204,7 @@ export class StatusBarPresenter {
     this.item.backgroundColor =
       tone === 'critical'
         ? new vscode.ThemeColor('statusBarItem.errorBackground')
-        : tone === 'warning'
+        : tone === 'warning' || tone === 'caution'
           ? new vscode.ThemeColor('statusBarItem.warningBackground')
           : undefined;
     this.item.tooltip = this.t('statusBar.tooltip.header');

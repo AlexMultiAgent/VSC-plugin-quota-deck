@@ -34,6 +34,10 @@ session-expiry response remain unverified in this environment. Re-run the
 capture script with `DEEPSEEK_SESSION_TOKEN` and `DEEPSEEK_COOKIE` before
 treating detailed usage as live-verified.
 
+A platform request observed on 2026-11-18 used `aws-waf-token`, `HWWAFSESID`,
+and `HWWAFSESTIME` alongside the bearer session token. These names are
+allow-listed; preference and cache cookies are not forwarded.
+
 ## Endpoints
 
 Every endpoint lives in `src/providers/endpoints.json`, which both the
