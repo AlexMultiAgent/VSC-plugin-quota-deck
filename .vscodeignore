@@ -8,6 +8,7 @@ out/**
 **/*.map
 scripts/**
 docs/**
+CLAUDE.md
 .vscode-test/**
 esbuild.mjs
 tsconfig.json
