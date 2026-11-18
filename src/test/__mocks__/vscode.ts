@@ -12,6 +12,7 @@ export class EventEmitter<T> {
 
 export const StatusBarAlignment = { Left: 1, Right: 2 } as const;
 export const ViewColumn = { Active: -1, Beside: -2, One: 1 } as const;
+export const TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 } as const;
 
 export class MarkdownString {
   value: string;
@@ -25,6 +26,45 @@ export class MarkdownString {
 
 export class ThemeColor {
   constructor(readonly id: string) {}
+}
+
+export class ThemeIcon {
+  constructor(
+    readonly id: string,
+    readonly color?: ThemeColor,
+  ) {}
+}
+
+export class TreeItem {
+  id: string | undefined;
+  description: string | MarkdownString | undefined;
+  tooltip: string | MarkdownString | undefined;
+  iconPath: ThemeIcon | undefined;
+  command: { command: string; title: string } | undefined;
+  contextValue: string | undefined;
+
+  constructor(
+    public label: string,
+    public collapsibleState: number,
+  ) {}
+}
+
+export interface TreeDataProvider<T> {
+  onDidChangeTreeData(
+    listener: (element?: T | null | undefined) => void,
+  ): Disposable;
+  getTreeItem(element: T): TreeItem;
+  getChildren(element?: T): T[] | Promise<T[]>;
+}
+
+export interface TreeView<T> {
+  readonly viewId: string;
+  readonly treeDataProvider: TreeDataProvider<T>;
+  readonly options: {
+    readonly canSelectMany?: boolean | undefined;
+    readonly showCollapseAll?: boolean | undefined;
+  };
+  dispose(): void;
 }
 
 export interface StatusBarItem {
@@ -130,6 +170,9 @@ export const state = {
   statusBarItems: [] as StatusBarItem[],
   webviewPanels: [] as WebviewPanel[],
   hoverProviders: [] as Array<{ provideHover(): unknown }>,
+  treeViews: [] as Array<TreeView<unknown> & {
+    treeDataProvider: TreeDataProvider<unknown>;
+  }>,
   output: [] as string[],
   configurationListeners: [] as Array<(event: { affectsConfiguration(section: string): boolean }) => void>,
 };
@@ -146,6 +189,7 @@ export function __reset(): void {
   state.statusBarItems = [];
   state.webviewPanels = [];
   state.hoverProviders = [];
+  state.treeViews = [];
   state.output = [];
   state.configurationListeners = [];
 }
@@ -206,6 +250,26 @@ export const window = {
     };
     state.statusBarItems.push(item);
     return item;
+  },
+  createTreeView<T>(
+    viewId: string,
+    options: {
+      treeDataProvider: TreeDataProvider<T>;
+      canSelectMany?: boolean;
+      showCollapseAll?: boolean;
+    },
+  ): TreeView<T> {
+    const view: TreeView<T> = {
+      viewId,
+      treeDataProvider: options.treeDataProvider,
+      options: {
+        canSelectMany: options.canSelectMany,
+        showCollapseAll: options.showCollapseAll,
+      },
+      dispose() {},
+    };
+    state.treeViews.push(view as TreeView<unknown>);
+    return view;
   },
   showInputBox(options?: {
     password?: boolean;
