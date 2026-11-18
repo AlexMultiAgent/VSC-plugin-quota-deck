@@ -55,72 +55,61 @@ describe('configureMiniMax', () => {
 describe('configureDeepSeek', () => {
   beforeEach(() => __reset());
 
-  it('writes the api key', async () => {
-    state.inputBoxResults = ['sk-test', undefined, undefined];
+  it('asks only for the api key', async () => {
+    state.inputBoxResults = ['sk-test'];
     const store = new SecretStore(SecretStorage);
     await configureDeepSeek(store, t);
     expect(await store.read('deepseek', 'api-key')).toBe('sk-test');
+    expect(state.inputBoxOptions).toHaveLength(1);
   });
 
-  it('writes optional session credentials', async () => {
-    state.inputBoxResults = ['sk-test', 'session-token', 'session=abc'];
+  it('clears legacy session credentials instead of reading or writing them', async () => {
     const store = new SecretStore(SecretStorage);
+    await store.write('deepseek', 'session-token', 'legacy-token');
+    await store.write('deepseek', 'web-cookie', 'session=legacy');
+    state.inputBoxResults = ['sk-test'];
+
     await configureDeepSeek(store, t);
-    expect(await store.read('deepseek', 'session-token')).toBe('session-token');
-    expect(await store.read('deepseek', 'web-cookie')).toBe('session=abc');
+
+    expect(await store.read('deepseek', 'session-token')).toBeUndefined();
+    expect(await store.read('deepseek', 'web-cookie')).toBeUndefined();
+    expect(state.inputBoxOptions).toHaveLength(1);
   });
 
-  it('prefills saved credentials as masked input defaults', async () => {
+  it('prefills the saved api key as a masked input default', async () => {
     const store = new SecretStore(SecretStorage);
     await store.write('deepseek', 'api-key', 'sk-existing');
-    await store.write('deepseek', 'session-token', 'existing-token');
-    await store.write('deepseek', 'web-cookie', 'session=existing');
-    state.inputBoxResults = ['sk-existing', 'existing-token', 'session=existing'];
+    state.inputBoxResults = ['sk-existing'];
 
     await configureDeepSeek(store, t);
 
-    expect(state.inputBoxOptions.map((options) => options.value)).toEqual([
-      'sk-existing',
-      'existing-token',
-      'session=existing',
-    ]);
+    expect(state.inputBoxOptions.map((options) => options.value)).toEqual(['sk-existing']);
     expect(state.inputBoxOptions.every((options) => options.password === true)).toBe(true);
   });
 
-  it('accepts replacement values while showing the saved defaults', async () => {
+  it('accepts a replacement api key while showing the saved default', async () => {
     const store = new SecretStore(SecretStorage);
     await store.write('deepseek', 'api-key', 'sk-existing');
-    await store.write('deepseek', 'session-token', 'existing-token');
-    await store.write('deepseek', 'web-cookie', 'session=existing');
-    state.inputBoxResults = ['sk-new', 'new-token', 'session=new'];
+    state.inputBoxResults = ['sk-new'];
 
     await configureDeepSeek(store, t);
 
-    expect(state.inputBoxOptions.map((options) => options.value)).toEqual([
-      'sk-existing',
-      'existing-token',
-      'session=existing',
-    ]);
+    expect(state.inputBoxOptions.map((options) => options.value)).toEqual(['sk-existing']);
     expect(await store.read('deepseek', 'api-key')).toBe('sk-new');
-    expect(await store.read('deepseek', 'session-token')).toBe('new-token');
-    expect(await store.read('deepseek', 'web-cookie')).toBe('session=new');
   });
 
-  it('explains where to find each DeepSeek credential', async () => {
-    state.inputBoxResults = ['sk-test', undefined, undefined];
+  it('explains where to find the DeepSeek api key', async () => {
+    state.inputBoxResults = ['sk-test'];
     const store = new SecretStore(SecretStorage);
 
     await configureDeepSeek(store, t);
 
     expect(state.inputBoxOptions[0]!.prompt).toContain('platform.deepseek.com');
     expect(state.inputBoxOptions[0]!.prompt).toContain('API Keys');
-    expect(state.inputBoxOptions[1]!.prompt).toContain('F12');
-    expect(state.inputBoxOptions[1]!.prompt).toContain('Authorization: Bearer');
-    expect(state.inputBoxOptions[2]!.prompt).toContain('Cookie');
   });
 
   it('rejects an empty required API key', async () => {
-    state.inputBoxResults = [undefined, undefined, undefined];
+    state.inputBoxResults = [undefined];
     const store = new SecretStore(SecretStorage);
 
     await configureDeepSeek(store, t);
@@ -128,22 +117,13 @@ describe('configureDeepSeek', () => {
     expect(state.inputBoxOptions[0]!.validateInput?.('')).toBeDefined();
     expect(state.inputBoxOptions[0]!.validateInput?.('sk-valid')).toBeUndefined();
   });
-
-  it('requires a complete cookie header instead of a bare cookie value', async () => {
-    state.inputBoxResults = ['sk-test', 'session-token', 'complete-header'];
-    const store = new SecretStore(SecretStorage);
-
-    await configureDeepSeek(store, t);
-
-    expect(state.inputBoxOptions[2]!.validateInput?.('bare-cookie-value')).toBeDefined();
-    expect(state.inputBoxOptions[2]!.validateInput?.('sessionId=abc; acw_tc=def')).toBeUndefined();
-  });
 });
 
 describe('configureQwen', () => {
   beforeEach(() => __reset());
 
   it('stores the AccessKey ID and secret only in SecretStorage', async () => {
+    state.quickPickResults = ['Continue with AccessKey'];
     state.inputBoxResults = ['LTAI-test-id', 'access-secret'];
     const store = new SecretStore(SecretStorage);
 
@@ -155,7 +135,8 @@ describe('configureQwen', () => {
     expect(state.output.join('\n')).not.toContain('access-secret');
   });
 
-  it('explains that both fields are required and names the BSS RAM permission', async () => {
+  it('explains that both fields are required and names the balance RAM permission', async () => {
+    state.quickPickResults = ['Continue with AccessKey'];
     state.inputBoxResults = ['LTAI-test-id', undefined];
     const store = new SecretStore(SecretStorage);
 
@@ -164,8 +145,35 @@ describe('configureQwen', () => {
     expect(state.inputBoxOptions[0]!.validateInput?.('')).toBeDefined();
     expect(state.inputBoxOptions[1]!.validateInput?.('')).toBeDefined();
     expect(state.inputBoxOptions[0]!.prompt).toContain('AccessKey');
-    expect(state.inputBoxOptions[0]!.prompt).toContain('bss:DescribeAcccount');
+    expect(state.inputBoxOptions[0]!.prompt).toContain('bss:QueryAccountBalance');
     expect(state.inputBoxOptions[0]!.prompt).toContain('SecretStorage');
+  });
+
+  it('shows setup guidance before asking for a credential', async () => {
+    state.quickPickResults = ['Continue with AccessKey'];
+    state.inputBoxResults = ['LTAI-test-id', 'access-secret'];
+    const store = new SecretStore(SecretStorage);
+
+    await configureQwen(store, t);
+
+    const choices = state.quickPickOffered[0] as Array<{ label: string; detail?: string }>;
+    expect(choices.map((choice) => choice.label)).toEqual([
+      'Continue with AccessKey',
+      'Open RAM console',
+    ]);
+    expect(choices[0]!.detail).toContain('bss:QueryAccountBalance');
+    expect(choices[0]!.detail).toContain('local development environment');
+    expect(choices[0]!.detail).toContain('not a Model Studio API Key');
+  });
+
+  it('opens the RAM console from the setup guidance', async () => {
+    state.quickPickResults = ['Open RAM console', 'Continue with AccessKey'];
+    state.inputBoxResults = ['LTAI-test-id', 'access-secret'];
+    const store = new SecretStore(SecretStorage);
+
+    await configureQwen(store, t);
+
+    expect(state.openedExternal).toEqual(['https://ram.console.aliyun.com/manage/ak']);
   });
 });
 
@@ -173,7 +181,7 @@ describe('clearCredential', () => {
   beforeEach(() => __reset());
 
   it('clears a credential after confirmation', async () => {
-    state.inputBoxResults = ['sk-test', undefined, undefined];
+    state.inputBoxResults = ['sk-test'];
     state.quickPickResults = ['Clear'];
     const store = new SecretStore(SecretStorage);
     await configureDeepSeek(store, t);
@@ -182,7 +190,7 @@ describe('clearCredential', () => {
   });
 
   it('keeps a credential when cancelled', async () => {
-    state.inputBoxResults = ['sk-test', undefined, undefined];
+    state.inputBoxResults = ['sk-test'];
     state.quickPickResults = ['Cancel'];
     const store = new SecretStore(SecretStorage);
     await configureDeepSeek(store, t);

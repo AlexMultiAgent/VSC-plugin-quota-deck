@@ -181,6 +181,7 @@ export function renderDashboard(
       }
       card.appendChild(details);
     }
+    if (provider.note) card.appendChild(element('p', 'provider-note', provider.note));
     if (provider.message) card.appendChild(element('p', 'provider-error', provider.message));
     providers.appendChild(card);
   }

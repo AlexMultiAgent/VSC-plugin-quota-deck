@@ -11,14 +11,6 @@ interface SecretInput {
   readonly validateInput?: (value: string) => string | undefined;
 }
 
-function isCompleteCookieHeader(value: string): boolean {
-  return value.split(';').some((part) => {
-    const entry = part.trim();
-    const separator = entry.indexOf('=');
-    return separator > 0 && separator < entry.length - 1;
-  });
-}
-
 async function askSecret(input: SecretInput): Promise<string | undefined> {
   return vscode.window.showInputBox({
     title: input.title,
@@ -65,8 +57,6 @@ export async function configureMiniMax(
 
 export async function configureDeepSeek(store: SecretStore, t: Translator): Promise<void> {
   const existingApiKey = await store.read('deepseek', 'api-key');
-  const existingSessionToken = await store.read('deepseek', 'session-token');
-  const existingCookie = await store.read('deepseek', 'web-cookie');
   const apiKey = await askSecret({
     title: t('credentials.deepseek.apiKey'),
     placeHolder: t('credentials.deepseek.apiKeyPlaceholder'),
@@ -78,29 +68,36 @@ export async function configureDeepSeek(store: SecretStore, t: Translator): Prom
   if (apiKey !== undefined && apiKey.length > 0) {
     await store.write('deepseek', 'api-key', apiKey);
   }
-  const sessionToken = await askSecret({
-    title: t('credentials.deepseek.sessionToken'),
-    placeHolder: t('credentials.deepseek.sessionTokenPlaceholder'),
-    prompt: t('credentials.deepseek.sessionTokenPrompt'),
-    ...(existingSessionToken !== undefined ? { existing: existingSessionToken } : {}),
-  });
-  if (sessionToken !== undefined && sessionToken.length > 0) {
-    await store.write('deepseek', 'session-token', sessionToken);
-  }
-  const cookie = await askSecret({
-    title: t('credentials.deepseek.cookie'),
-    placeHolder: t('credentials.deepseek.cookiePlaceholder'),
-    prompt: t('credentials.deepseek.cookiePrompt'),
-    ...(existingCookie !== undefined ? { existing: existingCookie } : {}),
-    validateInput: (value) =>
-      isCompleteCookieHeader(value) ? undefined : t('credentials.deepseek.cookieRequiredFormat'),
-  });
-  if (cookie !== undefined && cookie.length > 0) {
-    await store.write('deepseek', 'web-cookie', cookie);
-  }
+  await store.delete('deepseek', 'session-token');
+  await store.delete('deepseek', 'web-cookie');
 }
 
 export async function configureQwen(store: SecretStore, t: Translator): Promise<void> {
+  const continueWithAccessKey = t('credentials.qwen.setupContinue');
+  const openConsole = t('credentials.qwen.setupOpenConsole');
+  while (true) {
+    const setup = await vscode.window.showQuickPick(
+      [
+        {
+          label: continueWithAccessKey,
+          detail: t('credentials.qwen.setupDetail'),
+          action: 'continue',
+        },
+        {
+          label: openConsole,
+          description: 'ram.console.aliyun.com',
+          action: 'open',
+        },
+      ] as const,
+      { title: t('credentials.qwen.setupTitle') },
+    );
+    if (setup === undefined) return;
+    if (setup.action === 'continue') break;
+    await vscode.env.openExternal(
+      vscode.Uri.parse('https://ram.console.aliyun.com/manage/ak'),
+    );
+  }
+
   const existingAccessKeyId = await store.read('qwen', 'access-key-id');
   const existingAccessKeySecret = await store.read('qwen', 'access-key-secret');
   const accessKeyId = await askSecret({

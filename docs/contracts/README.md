@@ -5,7 +5,7 @@ It deliberately distinguishes verified capabilities from capabilities that were
 not tested because no test credential was available.
 
 - [MiniMax](minimax.md): unavailable in the current implementation environment.
-- [DeepSeek](deepseek.md): balance verified; detailed usage unavailable.
+- [DeepSeek](deepseek.md): balance verified; detailed usage and billing stay on the official website.
 
 Fixtures under `src/test/fixtures/` are sanitized, anonymized, and guarded
 against credential-shaped values and non-zero financial values. Re-run

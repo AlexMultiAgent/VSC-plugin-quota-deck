@@ -69,6 +69,7 @@ export interface DashboardProvider {
   readonly rangeUsage: ProviderRangeUsage | null;
   readonly hoursLabel: string | null;
   readonly capabilities: ProviderCapabilityView[];
+  readonly note: string | null;
   readonly message: string | null;
   readonly fetchedAt: string | null;
 }
@@ -361,19 +362,9 @@ function providerCapabilities(
     tone: capabilityTone(state.kind),
     message:
       state.kind === 'failed'
-        ? snapshot.providerId === 'deepseek' && id !== 'deepseek.balance'
-          ? state.error.kind === 'auth'
-            ? t('dashboard.deepseek.sessionExpired')
-            : state.error.kind === 'malformed' || state.error.kind === 'unknown'
-              ? t('dashboard.deepseek.usageFailed')
-              : t(state.error.message)
-          : t(state.error.message)
-        : state.kind === 'unconfigured' &&
-            snapshot.providerId === 'deepseek' &&
-            id !== 'deepseek.balance'
-          ? state.reason === 'no allow-listed session cookie'
-            ? t('dashboard.deepseek.invalidCookie')
-            : t('dashboard.deepseek.missingSession')
+        ? t(state.error.message)
+        : state.kind === 'unsupported' && snapshot.providerId === 'qwen'
+          ? t('dashboard.qwen.unsupportedDetail')
           : null,
   }));
   const shownMessages = new Set<string>();
@@ -452,6 +443,9 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       rangeUsage: providerRangeUsage(id, snapshot, t),
       hoursLabel: id === 'deepseek' ? pricingPeriodLabel(pricing, t) : null,
       capabilities,
+      note: id === 'deepseek' && snapshot !== undefined
+        ? t('dashboard.deepseek.officialBilling')
+        : null,
       message:
         failed !== undefined && failed.kind === 'failed' && !hasDeepSeekCapabilityMessage
           ? t(failed.error.message)

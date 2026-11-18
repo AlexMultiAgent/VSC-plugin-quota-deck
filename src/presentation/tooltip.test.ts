@@ -90,7 +90,8 @@ describe('renderTooltip', () => {
     };
     const html = renderTooltip(snapshots, ['deepseek'], t);
     expect(html).toContain('Account');
-    expect(html).toContain('Web Session');
+    expect(html).toContain('API Key');
+    expect(html).not.toContain('Web Session');
   });
 
   it('marks the MiniMax plan as an API-key session', () => {
@@ -149,7 +150,7 @@ describe('renderTooltip', () => {
     expect(html).toContain('112.80');
   });
 
-  it('shows today and seven-day usage totals', () => {
+  it('does not show DeepSeek detailed usage retained in a legacy cache', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-11-16T04:00:00.000Z'));
     const snapshots = {
@@ -170,9 +171,9 @@ describe('renderTooltip', () => {
     };
     const html = renderTooltip(snapshots, ['deepseek'], t);
     vi.useRealTimers();
-    expect(html).toContain('Last 7 days');
-    expect(html).toContain('Today');
-    expect(html).toContain('cache');
+    expect(html).not.toContain('Last 7 days');
+    expect(html).not.toContain('Today');
+    expect(html).not.toContain('cache');
   });
 
   it('shows Qwen available, cash, and credit amounts from the account balance', () => {
@@ -230,13 +231,13 @@ describe('renderTooltip', () => {
     expect(html).not.toContain('Off-peak');
   });
 
-  it('warns when the DeepSeek session expired', () => {
+  it('does not ask for a DeepSeek platform session from a legacy cache', () => {
     const snapshots = {
       deepseek: makeSnapshot('deepseek', {
         'deepseek.usageAmount': { kind: 'failed', error: { kind: 'auth', message: 'error.auth' } },
       }),
     };
-    expect(renderTooltip(snapshots, ['deepseek'], t)).toContain('session expired');
+    expect(renderTooltip(snapshots, ['deepseek'], t)).not.toContain('session expired');
   });
 
   it('shows the last refresh time and dashboard hint', () => {
@@ -256,34 +257,6 @@ describe('renderTooltip', () => {
       }),
     };
     expect(renderTooltip(snapshots, ['deepseek'], t)).not.toContain('cookie');
-  });
-
-  it('keeps two currencies apart in the usage summary', () => {
-    const snapshots = {
-      deepseek: makeSnapshot('deepseek', {
-        'deepseek.usageAmount': {
-          kind: 'ok',
-          fetchedAt: 'x',
-          data: {
-            rangeId: 'last7',
-            points: [
-              { date: '2026-11-16T00:00:00.000Z', requests: 3, totalTokens: 300, cacheHitTokens: 100, cacheMissTokens: 50, outputTokens: 150 },
-            ],
-            costs: [
-              { date: '2026-11-16T00:00:00.000Z', cost: 50, currency: 'CNY' },
-              { date: '2026-11-16T00:00:00.000Z', cost: 7, currency: 'USD' },
-            ],
-            byModel: [],
-            modelCosts: [],
-            currencies: ['CNY', 'USD'],
-          },
-        },
-      }),
-    };
-    const html = renderTooltip(snapshots, ['deepseek'], t);
-    expect(html).toContain('¥50.00');
-    expect(html).toContain('USD 7.00');
-    expect(html).not.toContain('¥57.00');
   });
 
   it('shows MiniMax media quota, points, and expiry', () => {

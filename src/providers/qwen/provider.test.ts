@@ -94,11 +94,11 @@ describe('QwenProvider', () => {
     });
     expect(snapshot.capabilities['qwen.modelQuota']).toEqual({
       kind: 'unsupported',
-      reason: 'no public API for free or model quota remaining',
+      reason: 'model-level quota is not integrated; use the Model Studio console',
     });
     expect(snapshot.capabilities['qwen.consumption']).toEqual({
       kind: 'unsupported',
-      reason: 'consumption detail is not available from the balance API',
+      reason: 'BSS bill detail API is not implemented; use Alibaba Cloud Billing',
     });
 
     const post = vi.mocked(client.postJson);

@@ -62,11 +62,11 @@ export class QwenProvider implements QuotaProvider {
     capabilities['qwen.accountBalance'] = await this.fetchBalance(fetchedAt, signal);
     capabilities['qwen.modelQuota'] = {
       kind: 'unsupported',
-      reason: 'no public API for free or model quota remaining',
+      reason: 'model-level quota is not integrated; use the Model Studio console',
     };
     capabilities['qwen.consumption'] = {
       kind: 'unsupported',
-      reason: 'consumption detail is not available from the balance API',
+      reason: 'BSS bill detail API is not implemented; use Alibaba Cloud Billing',
     };
     return { providerId: this.id, fetchedAt, capabilities };
   }

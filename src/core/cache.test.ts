@@ -35,6 +35,24 @@ describe('SnapshotCache', () => {
     expect(await cache.load('deepseek', 'thisMonth')).toEqual(snapshot);
   });
 
+  it('drops retired DeepSeek detail capabilities from legacy caches', async () => {
+    const storage = new Map<string, unknown>([[
+      'quotaDeck.snapshot.deepseek.last7',
+      {
+        ...snapshot,
+        capabilities: {
+          ...snapshot.capabilities,
+          'deepseek.usageAmount': { kind: 'unconfigured', reason: 'missing platform session' },
+          'deepseek.usageCost': { kind: 'unconfigured', reason: 'missing platform session' },
+          'deepseek.accountSummary': { kind: 'unconfigured', reason: 'missing platform session' },
+        },
+      },
+    ]]);
+    const cache = new SnapshotCache(storage);
+
+    expect(await cache.load('deepseek', 'last7')).toEqual(snapshot);
+  });
+
   it('strips credential fields before persisting a snapshot', async () => {
     const storage = new Map<string, unknown>();
     const cache = new SnapshotCache(storage);

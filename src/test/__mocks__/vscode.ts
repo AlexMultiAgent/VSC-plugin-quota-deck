@@ -70,6 +70,26 @@ export const Uri = {
   joinPath(base: Uri, ...segments: string[]): Uri {
     return Uri.file([base.path, ...segments].join('/'));
   },
+  parse(value: string): Uri {
+    const parsed = new URL(value);
+    return {
+      scheme: parsed.protocol.replace(/:$/, ''),
+      authority: parsed.host,
+      path: parsed.pathname,
+      query: parsed.search.replace(/^\?/, ''),
+      fragment: parsed.hash.replace(/^#/, ''),
+      fsPath: parsed.pathname,
+      with(change: { path?: string; query?: string; fragment?: string }): Uri {
+        return Uri.parse(value);
+      },
+      toString: () => value,
+      toJSON: () => ({
+        scheme: parsed.protocol.replace(/:$/, ''),
+        authority: parsed.host,
+        path: parsed.pathname,
+      }),
+    };
+  },
 };
 
 export interface Webview {
@@ -94,6 +114,7 @@ export interface WebviewPanel {
 export const state = {
   configuration: new Map<string, unknown>(),
   secrets: new Map<string, string>(),
+  openedExternal: [] as string[],
   inputBoxResults: [] as Array<string | undefined>,
   inputBoxOptions: [] as Array<{
     password?: boolean;
@@ -116,6 +137,7 @@ export const state = {
 export function __reset(): void {
   state.configuration.clear();
   state.secrets.clear();
+  state.openedExternal = [];
   state.inputBoxResults = [];
   state.inputBoxOptions = [];
   state.quickPickResults = [];
@@ -283,7 +305,13 @@ export const languages = {
   },
 };
 
-export const env = { language: 'zh-cn' };
+export const env = {
+  language: 'zh-cn',
+  async openExternal(uri: Uri): Promise<boolean> {
+    state.openedExternal.push(uri.toString());
+    return true;
+  },
+};
 export const extensions = { getExtension: () => undefined };
 
 export const SecretStorage = {

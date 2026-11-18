@@ -88,15 +88,16 @@ These are product and security rules, not implementation details — do not trad
 - **Currencies are never added together.** Token counts are currency-independent and may be
   summed; monetary amounts may not. Keep one row per currency and label the currency.
 - **Provenance is explicit.** Every displayed value is labelled account / local / estimated, and the
-  session badge (API Key vs Web Session) is a separate axis. Never present an estimate as account
+  credential badge (API Key vs AccessKey) is a separate axis. Never present an estimate as account
   quota.
 - **Qwen uses the Alibaba Cloud Billing OpenAPI, not a Model Studio API Key.** The adapter calls
   account-level `QueryAccountBalance` at `business.aliyuncs.com` with ACS3-HMAC-SHA256 signing.
-  AccessKey ID and Secret live only in Secret Storage. Free/model quota and consumption detail are
-  unsupported because no stable public API exists.
-- **Never combine DeepSeek account-summary totals with summed per-key totals.** They are
-  alternative sources; `selectAccountTotals()` in `src/providers/deepseek/aggregate.ts` picks
-  exactly one of them and reports which.
+  AccessKey ID and Secret live only in Secret Storage. Model-level quota is not integrated.
+  Consumption detail requires the separate BSS bill APIs, extra permissions, and pagination, so it
+  is not implemented and must be viewed in the Alibaba Cloud billing console.
+- **DeepSeek only uses the public balance endpoint.** The extension never asks for or forwards a
+  platform session token or Cookie. Detailed DeepSeek usage, cost, and account summaries belong on
+  `platform.deepseek.com`.
 
 ## Gotchas
 
@@ -115,10 +116,10 @@ These are product and security rules, not implementation details — do not trad
   `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md` §6 lists `providers/minimax/cn.ts`,
   `global.ts`, `cookies.ts`; the implementation uses one `provider.ts` + `shape.ts` per vendor with
   a shared `providers/cookies.ts`. Read the code, not the spec tree.
-- **Provider endpoints mix public and web APIs.** Qwen account balance uses Alibaba Cloud's public
-  Billing OpenAPI. MiniMax and DeepSeek detailed usage are undocumented web APIs and remain
-  unverified against every account type. Treat an unexpected response shape as contract drift to
-  investigate, not something to paper over.
+- **Provider endpoints mix public and web APIs.** Qwen account balance and DeepSeek balance use
+  public APIs. MiniMax account endpoints are undocumented web APIs and remain unverified against
+  every account type. Treat an unexpected response shape as contract drift to investigate, not
+  something to paper over.
 - **The marketplace icon is generated.** `media/icon.png` comes from `npm run icon`; never
   hand-edit the PNG. The generator is deterministic, so a regeneration that shows a diff means the
   geometry changed. The release gate rejects an icon that is not 128 × 128.
@@ -147,9 +148,9 @@ node scripts/capture-fixture.mjs --provider deepseek --capability deepseek.balan
 npm run guard:fixtures
 ```
 
-Credentials come from environment variables only (`DEEPSEEK_API_KEY`, `DEEPSEEK_SESSION_TOKEN`,
-`DEEPSEEK_COOKIE`, `MINIMAX_CN_TOKEN_PLAN`, `MINIMAX_CN_WEB_COOKIE`, `MINIMAX_GLOBAL_TOKEN_PLAN`,
-`MINIMAX_GLOBAL_WEB_COOKIE`) — never from a file or a command-line argument.
+Credentials come from environment variables only (`DEEPSEEK_API_KEY`, `MINIMAX_CN_TOKEN_PLAN`,
+`MINIMAX_CN_WEB_COOKIE`, `MINIMAX_GLOBAL_TOKEN_PLAN`, `MINIMAX_GLOBAL_WEB_COOKIE`) — never from a
+file or a command-line argument.
 `scripts/capture-fixture.mjs` is dev-only and must never be imported from `src/`.
 
 Sanitization preserves structure but zeroes financial fields (`balance|cost|amount` → `0` / `0.00`)

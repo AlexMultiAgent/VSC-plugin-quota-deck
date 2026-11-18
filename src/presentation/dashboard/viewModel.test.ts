@@ -44,7 +44,7 @@ describe('buildDashboardModel', () => {
     expect(model.providers[0]!.state).toBe('failed');
   });
 
-  it('marks a provider partial when balance works but detail capabilities are unavailable', () => {
+  it('keeps DeepSeek healthy with only its API-key balance and points to official bills', () => {
     const model = buildDashboardModel(
       options({
         order: ['deepseek'],
@@ -54,100 +54,15 @@ describe('buildDashboardModel', () => {
               kind: 'ok',
               fetchedAt: 'x',
               data: { entries: [{ currency: 'CNY', total: 10 }] },
-            },
-            'deepseek.usageAmount': { kind: 'unconfigured', reason: 'missing platform session' },
-            'deepseek.usageCost': { kind: 'unconfigured', reason: 'missing platform session' },
-            'deepseek.accountSummary': { kind: 'unconfigured', reason: 'missing platform session' },
-          }),
-        },
-      }),
-    );
-    expect(model.providers[0]!.state).toBe('partial');
-  });
-
-  it('shows the DeepSeek balance and capability status on its dashboard card', () => {
-    const model = buildDashboardModel(
-      options({
-        order: ['deepseek'],
-        snapshots: {
-          deepseek: makeSnapshot('deepseek', {
-            'deepseek.balance': {
-              kind: 'ok',
-              fetchedAt: 'x',
-              data: { entries: [{ currency: 'CNY', total: 10 }] },
-            },
-            'deepseek.usageAmount': { kind: 'unconfigured', reason: 'missing platform session' },
-            'deepseek.usageCost': { kind: 'unconfigured', reason: 'missing platform session' },
-            'deepseek.accountSummary': { kind: 'unconfigured', reason: 'missing platform session' },
-          }),
-        },
-      }),
-    );
-    const provider = model.providers[0]!;
-    expect(provider.balance).toBe('¥10.00');
-    expect(provider.capabilities.map((capability) => capability.state)).toEqual([
-      'ok',
-      'unconfigured',
-      'unconfigured',
-      'unconfigured',
-    ]);
-    expect(provider.capabilities[1]!.message).toContain('platform session token');
-  });
-
-  it('explains when a saved cookie has no supported session item', () => {
-    const model = buildDashboardModel(
-      options({
-        order: ['deepseek'],
-        snapshots: {
-          deepseek: makeSnapshot('deepseek', {
-            'deepseek.balance': {
-              kind: 'ok',
-              fetchedAt: 'x',
-              data: { entries: [{ currency: 'CNY', total: 10 }] },
-            },
-            'deepseek.usageAmount': { kind: 'unconfigured', reason: 'no allow-listed session cookie' },
-            'deepseek.usageCost': { kind: 'unconfigured', reason: 'no allow-listed session cookie' },
-            'deepseek.accountSummary': { kind: 'unconfigured', reason: 'no allow-listed session cookie' },
-          }),
-        },
-      }),
-    );
-    expect(model.providers[0]!.capabilities[1]!.message).toMatch(/complete Cookie/i);
-  });
-
-  it('prompts for DeepSeek Web Session setup when a detail request fails', () => {
-    const model = buildDashboardModel(
-      options({
-        order: ['deepseek'],
-        snapshots: {
-          deepseek: makeSnapshot('deepseek', {
-            'deepseek.balance': {
-              kind: 'ok',
-              fetchedAt: 'x',
-              data: { entries: [{ currency: 'CNY', total: 10 }] },
-            },
-            'deepseek.usageAmount': {
-              kind: 'failed',
-              error: { kind: 'unknown', message: 'error.unknown' },
-            },
-            'deepseek.usageCost': {
-              kind: 'failed',
-              error: { kind: 'unknown', message: 'error.unknown' },
-            },
-            'deepseek.accountSummary': {
-              kind: 'ok',
-              fetchedAt: 'x',
-              data: { totals: [], source: 'summary', keyCount: 0 },
             },
           }),
         },
       }),
     );
     const provider = model.providers[0]!;
-    expect(provider.capabilities[1]!.message).toContain('Web Session');
-    expect(provider.capabilities[1]!.message).toContain('Cookie');
-    expect(provider.capabilities.filter((capability) => capability.message !== null)).toHaveLength(1);
-    expect(provider.message).toBeNull();
+    expect(provider.state).toBe('ok');
+    expect(provider.capabilities.map((capability) => capability.id)).toEqual(['deepseek.balance']);
+    expect(provider.note).toContain('platform.deepseek.com');
   });
 
   it('marks all-unconfigured capabilities as not configured', () => {
@@ -164,7 +79,7 @@ describe('buildDashboardModel', () => {
     expect(model.providers[0]!.state).toBe('not-configured');
   });
 
-  it('does not show the DeepSeek session hint on MiniMax capabilities', () => {
+  it('does not show provider-specific guidance on MiniMax capabilities', () => {
     const model = buildDashboardModel(
       options({
         order: ['minimax-cn'],
@@ -482,6 +397,9 @@ describe('buildDashboardModel', () => {
     expect(model.providers[0]!.balance).toBe('¥-12.34');
     expect(model.providers[0]!.capabilities[0]!.state).toBe('ok');
     expect(model.providers[0]!.capabilities[1]!.state).toBe('unsupported');
+    expect(model.providers[0]!.capabilities[1]!.message).toContain('Model Studio console');
+    expect(model.providers[0]!.capabilities[1]!.message).toContain('Alibaba Cloud Billing');
+    expect(model.providers[0]!.capabilities[2]!.message).toBeNull();
     expect('qwen' in model).toBe(false);
   });
 

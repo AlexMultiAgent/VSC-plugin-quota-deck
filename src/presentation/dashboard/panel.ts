@@ -150,6 +150,7 @@ body[data-loading="true"] #app { opacity: 0.55; transition: opacity 120ms ease-o
 .provider-capability.is-warning dd { color: var(--vscode-editorWarning-foreground); }
 .provider-capability.is-critical dd { color: var(--vscode-errorForeground); }
 .provider-capability-message { color: var(--vscode-descriptionForeground); font-size: 11px; margin: -1px 0 3px; }
+.provider-note { color: var(--vscode-descriptionForeground); font-size: 11px; margin: 8px 0 0; }
 .provider-range-usage { align-items: baseline; display: flex; gap: 6px; margin-top: 8px; }
 .provider-range-label { color: var(--vscode-descriptionForeground); font-size: 12px; }
 .provider-range-value { font-variant-numeric: tabular-nums; }

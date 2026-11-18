@@ -3,7 +3,6 @@
     "minimax-cn": "https://www.minimaxi.com",
     "minimax-global": "https://www.minimax.io",
     "deepseek-api": "https://api.deepseek.com",
-    "deepseek-platform": "https://platform.deepseek.com",
     "qwen-api": "https://business.aliyuncs.com"
   },
   "endpoints": {
@@ -11,10 +10,7 @@
     "minimax.subscription": "/v1/api/openplatform/charge/combo/cycle_audio_resource_package?biz_line=2&cycle_type=1&resource_package_type=7",
     "minimax.tokenUsage": "/account/amount?page=1&limit=100&aggregate=false",
     "minimax.points": "/backend/account/token_plan_credit",
-    "deepseek.balance": "/user/balance",
-    "deepseek.usageAmount": "/api/v0/usage/by_api_key/amount",
-    "deepseek.usageCost": "/api/v0/usage/by_api_key/cost",
-    "deepseek.accountSummary": "/api/v0/users/get_user_summary"
+    "deepseek.balance": "/user/balance"
   },
   "credentials": {
     "minimax-cn": {
@@ -26,9 +22,7 @@
       "cookieEnv": "MINIMAX_GLOBAL_WEB_COOKIE"
     },
     "deepseek": {
-      "apiKeyEnv": "DEEPSEEK_API_KEY",
-      "sessionTokenEnv": "DEEPSEEK_SESSION_TOKEN",
-      "cookieEnv": "DEEPSEEK_COOKIE"
+      "apiKeyEnv": "DEEPSEEK_API_KEY"
     }
   }
 }

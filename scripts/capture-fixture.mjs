@@ -23,16 +23,13 @@ function minimaxEndpoints(provider, capability) {
 function deepseekEndpoints(capability) {
   const path = endpoints[capability];
   if (path === undefined) throw new Error(`unknown DeepSeek capability: ${capability}`);
-  const { apiKeyEnv, sessionTokenEnv, cookieEnv } = credentials.deepseek;
-  if (capability === 'deepseek.balance') {
-    return [{ url: `${origins['deepseek-api']}${path}`, auth: { kind: 'bearer', env: apiKeyEnv } }];
+  if (capability !== 'deepseek.balance') {
+    throw new Error(`unsupported DeepSeek capability: ${capability}`);
   }
-  return [
-    {
-      url: `${origins['deepseek-platform']}${path}`,
-      auth: { kind: 'session', env: sessionTokenEnv, cookieEnv },
-    },
-  ];
+  return [{
+    url: `${origins['deepseek-api']}${path}`,
+    auth: { kind: 'bearer', env: credentials.deepseek.apiKeyEnv },
+  }];
 }
 
 function specsFor(provider, capability) {
@@ -54,15 +51,7 @@ function headersFor(spec) {
     if (!cookie) throw new Error(`missing environment variable ${spec.auth.env}`);
     headers.Cookie = cookie;
   } else {
-    const token = process.env[spec.auth.env];
-    const cookie = process.env[spec.auth.cookieEnv];
-    if (!token) throw new Error(`missing environment variable ${spec.auth.env}`);
-    if (!cookie) throw new Error(`missing environment variable ${spec.auth.cookieEnv}`);
-    headers.Authorization = `Bearer ${token}`;
-    headers.Cookie = cookie;
-    headers['x-client-locale'] = 'zh_CN';
-    headers['x-client-platform'] = 'web';
-    headers.Referer = 'https://platform.deepseek.com/usage';
+    throw new Error(`unsupported auth kind: ${spec.auth.kind}`);
   }
   return headers;
 }

@@ -10,10 +10,10 @@
 - 单击状态栏打开仪表盘时会立即重新获取数据，并同步刷新状态栏、悬浮详情和仪表盘。
 - MiniMax 状态栏优先显示 5 小时窗口；额度按剩余比例使用绿色、黄色、橙色、红色四阶段文字，仅剩余 5% 及以下使用红色警示背景。
 - 历史用量区间与实时额度窗口分开展示，MiniMax 卡片显示所选区间的 Token 用量。
-- 悬停提示展示完整摘要，并区分账户数据与 Web Session。
-- 可选仪表盘：时间范围切换、图表、模型明细、Qwen 账户余额与表格视图。
+- 悬停提示展示完整摘要，并区分账户数据与凭据类型。
+- 可选仪表盘：时间范围切换、账户余额、能力状态与表格视图。
 - MiniMax 国内版与国际版账号独立配置。
-- DeepSeek 官方余额与平台用量统计。
+- DeepSeek 官方余额查询；详细用量与账单请前往 DeepSeek 官网。
 - 取数失败时保留上一次的数据并标注“数据已过期”，而不是显示为未配置。
 - 凭据只保存在 VS Code Secret Storage。
 - 简体中文与英文界面。
@@ -25,7 +25,8 @@
 - 不把本地估算当成账户余额或官方额度。
 - 不自动提取浏览器 Cookie。
 - 不做货币换算，也不合并不同币种的金额。
-- 不提供百炼免费额度或模型剩余额度的查询；目前没有公开接口可稳定取得这些数据。
+- 不提供 DeepSeek 平台详细用量、费用或账户汇总；这部分请前往 `https://platform.deepseek.com` 查看。
+- 当前不提供百炼模型级免费额度或剩余额度的查询。
 
 ## Install
 
@@ -45,15 +46,10 @@ code --install-extension quota-deck-<version>.vsix
 DeepSeek 凭据获取方式：
 
 - **API 密钥**：登录 `https://platform.deepseek.com`，进入 `API Keys` 创建并复制。
-- **平台会话令牌**：登录后按 `F12` 打开开发者工具，进入 `Network → Fetch/XHR`，
-  打开用量页面，在发往 `platform.deepseek.com/api/v0/...` 的请求头中复制
-  `Authorization: Bearer` 后面的值。
-- **平台 Cookie**：在同一请求头的 `Cookie` 中复制完整值。Cookie 必须与会话令牌同时配置。
 
-余额只需 API 密钥。会话令牌与 Cookie 用于详细用量和账户汇总，属于可选项。
-已有凭据会以掩码形式预填；直接按 `Enter` 保留，按 `Ctrl+A` 后可重新输入并替换。
-DeepSeek 当前的 `aws-waf-token`、`HWWAFSESID`、`HWWAFSESTIME` 会按白名单转发，
-偏好、缓存等无关 Cookie 不会发送。
+只配置 API 密钥即可查询余额。插件不再请求 DeepSeek 平台会话令牌或 Cookie，
+详细用量、费用和账户汇总请前往 DeepSeek 官网查看。已有凭据会以掩码形式预填；
+直接按 `Enter` 保留，按 `Ctrl+A` 后可重新输入并替换。
 
 DeepSeek 忙时/闲时按官方规则判断：
 
@@ -64,11 +60,15 @@ DeepSeek 忙时/闲时按官方规则判断：
 
 Qwen / 百炼余额获取方式：
 
-- 在阿里云 RAM 控制台创建专用 RAM 用户，并只授予 `bss:DescribeAcccount` 权限。
-- 创建该 RAM 用户的 AccessKey，配置时分别填写 AccessKey ID 和 Secret。
+- 在 [阿里云 RAM 控制台](https://ram.console.aliyun.com/manage/ak) 创建专用 RAM 用户，
+  并只授予 `bss:QueryAccountBalance` 权限。
+- 创建该 RAM 用户的 AccessKey，用途选择“本地开发环境中使用”，配置时分别填写
+  AccessKey ID 和 Secret。
 - 这里需要阿里云费用与成本 OpenAPI 的 AccessKey，不是百炼 API Key。
 - 扩展调用账户级 `QueryAccountBalance`，显示可用余额、现金余额、信控额度和额度上限。
-- 百炼免费额度和单个模型的剩余额度暂无公开查询接口，扩展不会用本地估算值代替。
+- 模型额度应在百炼控制台查看；消费明细应在阿里云费用与成本中查看。
+- 当前版本未接入模型级额度接口。消费账单需要单独的 BSS 账单 API、额外权限和分页处理，
+  因此不会用账户余额或本地估算值代替。
 
 警告阈值可在 VS Code 设置中搜索 `QuotaDeck warning threshold`，或直接设置
 `quotaDeck.statusBar.warningThresholdPercent`。默认值为 `20`，支持 `11` 到 `99`；
@@ -80,7 +80,7 @@ Qwen / 百炼余额获取方式：
 | 服务商 | 必需凭据 | 可选凭据 |
 |---|---|---|
 | MiniMax CN / Global | Token Plan Key | Web Session Cookie（用于积分） |
-| DeepSeek | API Key | Platform Session Token、Platform Cookie（用于用量明细） |
+| DeepSeek | API Key | — |
 | Qwen / 百炼 | Alibaba Cloud AccessKey ID、Secret | — |
 
 凭据通过密码输入框填写，不会回显，也不会写入 settings、全局状态或日志。
@@ -94,7 +94,6 @@ Qwen / 百炼余额获取方式：
 | `www.minimaxi.com` | MiniMax 国内账户 |
 | `www.minimax.io` | MiniMax 国际账户 |
 | `api.deepseek.com` | DeepSeek 余额 |
-| `platform.deepseek.com` | DeepSeek 用量明细 |
 | `business.aliyuncs.com` | 阿里云账户余额（Qwen / 百炼） |
 
 Cookie 只发送到对应厂商域名，并按各适配器声明的最小 Cookie 名称集合筛选。账户响应进入展示层前会被规范化和 HTML 转义；提交后的 fixture 还会经过凭据形状与财务金额匿名化检查。
@@ -114,10 +113,9 @@ Cookie 只发送到对应厂商域名，并按各适配器声明的最小 Cookie
 
 ## Known limitations
 
-- MiniMax 与 DeepSeek 的部分账户接口不是稳定的公共开发者 API，平台调整后可能暂时返回“不支持”或“获取失败”。
-- MiniMax 和 DeepSeek 详细用量仍需使用自己的账户运行 `docs/contracts` 中的验证流程。
-- DeepSeek 余额可用但详细接口未配置时，仪表盘会显示“部分可用”，并列出四项能力状态。
-- Qwen 余额来自阿里云账户级接口；模型额度和消费明细会明确显示“不支持”，不会显示伪造额度。
+- MiniMax 的部分账户接口不是稳定的公共开发者 API，平台调整后可能暂时返回“不支持”或“获取失败”。
+- DeepSeek 仅提供账户余额；详细用量与账单需前往 DeepSeek 官网。
+- Qwen 余额来自阿里云账户级接口；模型额度与消费明细会明确显示“不支持”，不会显示伪造额度。
 - DeepSeek 节假日日历目前覆盖至 `2026-12-31`，超出覆盖范围时显示“时段未知”。
 
 ## License

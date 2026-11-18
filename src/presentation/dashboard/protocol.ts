@@ -146,6 +146,7 @@ function isDashboardModel(value: unknown): value is DashboardModel {
       isStringOrNull(provider.balance) && isProviderRangeUsage(provider.rangeUsage) &&
       isStringOrNull(provider.hoursLabel) &&
       isProviderCapabilities(provider.capabilities) &&
+      isStringOrNull(provider.note) &&
       isStringOrNull(provider.message) && isStringOrNull(provider.fetchedAt),
   )) return false;
   if (!isRecord(value.usage)) return false;

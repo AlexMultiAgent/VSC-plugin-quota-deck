@@ -32,7 +32,7 @@ const REGION: Record<ProviderId, string> = {
 const SESSION_BADGE: Record<ProviderId, MessageKey> = {
   'minimax-cn': 'session.apiKey',
   'minimax-global': 'session.apiKey',
-  deepseek: 'session.webSession',
+  deepseek: 'session.apiKey',
   qwen: 'session.accessKey',
 };
 
@@ -140,6 +140,7 @@ function costTotals(costs: readonly UsageCost[]): Map<string, number> {
 }
 
 function usageRows(snapshot: ProviderSnapshot | undefined, t: Translator, timeZone: string): string {
+  if (snapshot?.providerId === 'deepseek') return '';
   const state = snapshot?.capabilities['deepseek.usageAmount'];
   if (state === undefined) return '';
   if (state.kind === 'failed') {

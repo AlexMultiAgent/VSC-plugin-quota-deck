@@ -27,7 +27,13 @@ describe('provider endpoints', () => {
     expect(ORIGINS['minimax-cn']).toMatch(/^https:\/\//);
     expect(ORIGINS['minimax-global']).toMatch(/^https:\/\//);
     expect(ORIGINS['deepseek-api']).toMatch(/^https:\/\//);
-    expect(ORIGINS['deepseek-platform']).toMatch(/^https:\/\//);
+    expect(ORIGINS).not.toHaveProperty('deepseek-platform');
+  });
+
+  it('does not retain DeepSeek platform detail endpoints', () => {
+    expect(ENDPOINTS).not.toHaveProperty('deepseek.usageAmount');
+    expect(ENDPOINTS).not.toHaveProperty('deepseek.usageCost');
+    expect(ENDPOINTS).not.toHaveProperty('deepseek.accountSummary');
   });
 
   it('keeps every endpoint a path on its origin', () => {

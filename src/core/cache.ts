@@ -9,6 +9,11 @@ export interface StorageBackend {
 const KEY_PREFIX = 'quotaDeck.snapshot';
 const SENSITIVE_KEY =
   /^(?:authorization|cookie|set-cookie|api[-_]?key|access[-_]?token|refresh[-_]?token|session[-_]?token|token[-_]?plan[-_]?key|web[-_]?cookie|password|secret|csrf[-_]?token)$/i;
+const RETIRED_DEEPSEEK_CAPABILITIES = new Set([
+  'deepseek.usageAmount',
+  'deepseek.usageCost',
+  'deepseek.accountSummary',
+]);
 
 function isSnapshot(value: unknown): value is ProviderSnapshot {
   if (typeof value !== 'object' || value === null) return false;
@@ -31,12 +36,22 @@ function stripSensitive(value: unknown): unknown {
   return output;
 }
 
+function withoutRetiredCapabilities(snapshot: ProviderSnapshot): ProviderSnapshot {
+  if (snapshot.providerId !== 'deepseek') return snapshot;
+  const entries = Object.entries(snapshot.capabilities).filter(
+    ([capability]) => !RETIRED_DEEPSEEK_CAPABILITIES.has(capability),
+  );
+  return entries.length === Object.keys(snapshot.capabilities).length
+    ? snapshot
+    : { ...snapshot, capabilities: Object.fromEntries(entries) };
+}
+
 export class SnapshotCache {
   constructor(private readonly storage: StorageBackend) {}
 
   async load(providerId: ProviderId, range: RangeId): Promise<ProviderSnapshot | undefined> {
     const raw = this.storage.get(this.key(providerId, range));
-    return isSnapshot(raw) ? raw : undefined;
+    return isSnapshot(raw) ? withoutRetiredCapabilities(raw) : undefined;
   }
 
   async save(snapshot: ProviderSnapshot, range: RangeId): Promise<void> {
