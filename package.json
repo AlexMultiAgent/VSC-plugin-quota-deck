@@ -47,12 +47,14 @@
       {
         "command": "quotaDeck.openDashboard",
         "title": "%command.openDashboard.title%",
-        "category": "QuotaDeck CN"
+        "category": "QuotaDeck CN",
+        "icon": "$(open-preview)"
       },
       {
         "command": "quotaDeck.refresh",
         "title": "%command.refresh.title%",
-        "category": "QuotaDeck CN"
+        "category": "QuotaDeck CN",
+        "icon": "$(refresh)"
       },
       {
         "command": "quotaDeck.switchProvider",
@@ -83,8 +85,31 @@
         "command": "quotaDeck.showHelp",
         "title": "%command.showHelp.title%",
         "category": "QuotaDeck CN"
+      },
+      {
+        "command": "quotaDeck.openSettings",
+        "title": "%command.openSettings.title%",
+        "category": "QuotaDeck CN",
+        "icon": "$(gear)"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "quotaDeck",
+          "title": "%viewsContainer.quotaDeck.title%",
+          "icon": "media/activity-bar.svg"
+        }
+      ]
+    },
+    "views": {
+      "quotaDeck": [
+        {
+          "id": "quotaDeck.overview",
+          "name": "%view.quotaDeck.overview.name%"
+        }
+      ]
+    },
     "configuration": {
       "title": "QuotaDeck CN",
       "properties": {
@@ -162,6 +187,27 @@
         {
           "command": "quotaDeck.configureQwen",
           "when": "true"
+        },
+        {
+          "command": "quotaDeck.openSettings",
+          "when": "true"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "quotaDeck.refresh",
+          "when": "view == quotaDeck.overview",
+          "group": "navigation@1"
+        },
+        {
+          "command": "quotaDeck.openDashboard",
+          "when": "view == quotaDeck.overview",
+          "group": "navigation@2"
+        },
+        {
+          "command": "quotaDeck.openSettings",
+          "when": "view == quotaDeck.overview",
+          "group": "navigation@3"
         }
       ]
     }
