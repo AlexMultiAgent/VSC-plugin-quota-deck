@@ -61,6 +61,13 @@ all render the *same* coordinator snapshot. `refreshAll()` in `src/extension.ts`
 that pushes a snapshot into a surface — a new surface added without a line there shows data that no
 other surface contradicts, so it looks right until it is stale.
 
+`src/core/cache.ts` persists the **parsed** snapshot in `globalState`, not the raw provider payload.
+Changing how a provider parses a field therefore changes the meaning of every snapshot already on
+disk, and the cache is painted at startup before the first refresh lands. The cache drops what it no
+longer trusts — `withoutRetiredCapabilities()` for retired DeepSeek capabilities,
+`withoutLegacyMiniMaxPlan()` for a plan cached under the old count rule — so a parsing change needs
+its own rule there, or a stale number reaches the UI before the first refresh replaces it.
+
 `src/providers/shape.ts` holds the vendor-neutral parsing primitives. Use `requireNumber` when the
 provider must have supplied a number (a missing one is contract drift and throws) and
 `numberOrNull` when the provider may legitimately omit it. Never substitute `0` for a missing
@@ -144,6 +151,11 @@ These are product and security rules, not implementation details — do not trad
   subscription and usage calls are now verified (`docs/contracts/minimax.md`), but the points
   endpoint and the global host are not. Treat an unexpected response shape as contract drift to
   investigate, not something to paper over.
+- **Never invent a provider payload.** A hand-written test payload only encodes the guess it was
+  written from, so it cannot catch a misread field — the MiniMax video quota stayed inverted
+  through several releases because the fixture that "proved" it was invented the same way. Capture
+  the real response with `scripts/capture-fixture.mjs`, keep the confirmed semantics in
+  `docs/contracts/`, and read that contract before trusting or changing a parser.
 - **`current_interval_usage_count` is the count still left, not the count spent.** MiniMax
   reports the remaining count beside `current_interval_remaining_percent` in the same record, so
   a video allowance of 3 with a usage count of 3 is 3 remaining, not 3 spent. `readQuota()` in
@@ -195,7 +207,9 @@ Credentials come from environment variables only (`DEEPSEEK_API_KEY`, `MINIMAX_C
 file or a command-line argument.
 `scripts/capture-fixture.mjs` is dev-only and must never be imported from `src/`.
 It covers MiniMax and DeepSeek only — `specsFor()` rejects every other provider, so a Qwen fixture
-has to be written by hand.
+has to be written by hand. For MiniMax the script sends the bearer Token Plan key for
+`minimax.plan`, `minimax.subscription` and `minimax.tokenUsage`, and the web-session Cookie for
+`minimax.points`.
 
 Sanitization preserves structure but zeroes financial fields (`balance|cost|amount` → `0` / `0.00`)
 and redacts secret-shaped values. Fixtures are therefore proof of *shape*, never proof of a real
@@ -222,5 +236,5 @@ Release tags are annotated, named `vX.Y.Z`, and placed on the commit that writes
 
 - `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md` — source of truth for product intent
 - `docs/superpowers/specs/2026-11-18-quota-deck-activity-bar-design.md` — intent for the Activity Bar overview
-- `docs/contracts/` — what was actually verified against live provider endpoints
+- `docs/contracts/` — the verified response contract per provider; read it before changing a parser
 - `docs/superpowers/plans/` — the historical implementation plans (structure has since drifted)
