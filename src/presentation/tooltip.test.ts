@@ -146,6 +146,74 @@ describe('renderTooltip', () => {
     expect(html).not.toContain('>[');
   });
 
+  it('keeps provider detail rows directly inside each card table', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [{ window: 'fiveHour', remainingPercent: 100, resetAt: null, unlimited: false }],
+            models: [],
+          },
+        },
+      }),
+    };
+
+    const html = renderTooltip(snapshots, ['minimax-cn'], zh);
+
+    expect(html).not.toContain('<tr><td colspan="4"><tr>');
+  });
+
+  it('labels MiniMax remaining and used values plainly in Chinese', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 100, resetAt: null, unlimited: false },
+              { window: 'weekly', remainingPercent: 22, resetAt: null, unlimited: false },
+            ],
+            models: [{ model: 'video', remaining: 3, total: 3 }],
+          },
+        },
+      }),
+    };
+
+    const html = renderTooltip(snapshots, ['minimax-cn'], zh);
+
+    expect(html).toContain('剩余 100%');
+    expect(html).toContain('已使用 0%');
+    expect(html).toContain('剩余 22%');
+    expect(html).toContain('已使用 78%');
+    expect(html).toContain('视频');
+    expect(html).toContain('剩余 3/3 次');
+    expect(html).toContain('已使用 0 次');
+    expect(html).not.toContain('>video<');
+  });
+
+  it('shows when a MiniMax media allowance has been fully used', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [],
+            models: [{ model: 'video', remaining: 0, total: 3 }],
+          },
+        },
+      }),
+    };
+
+    const html = renderTooltip(snapshots, ['minimax-cn'], zh);
+
+    expect(html).toContain('剩余 0/3 次');
+    expect(html).toContain('已使用 3 次');
+  });
+
   it('localizes MiniMax regions, windows, reset times, and the configured time zone', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
@@ -376,6 +444,42 @@ describe('renderTooltip', () => {
     expect(html).toContain('Open the dashboard');
   });
 
+  it('puts the dashboard hint on a second footer line', () => {
+    const html = renderTooltip({}, ['qwen'], zh, '2026-11-18T10:43:00.000Z', 'Asia/Shanghai');
+
+    expect(html).toContain(
+      '<span class="t-muted">更新于 2026-11-18 18:43 · Asia/Shanghai</span>' +
+        '<br><span class="t-muted">在仪表盘中查看更多分析</span>',
+    );
+  });
+
+  it('separates configured provider cards', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: { windows: [], models: [] },
+        },
+      }),
+      deepseek: makeSnapshot('deepseek', {
+        'deepseek.balance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: { entries: [{ currency: 'CNY', total: 10, granted: 0, toppedUp: 10 }] },
+        },
+      }),
+    };
+
+    const html = renderTooltip(snapshots, ['minimax-cn', 'deepseek'], t);
+    const minimax = html.indexOf('MiniMax CN');
+    const separator = html.indexOf('class="t-provider-separator"');
+    const deepseek = html.indexOf('DeepSeek');
+
+    expect(separator).toBeGreaterThan(minimax);
+    expect(separator).toBeLessThan(deepseek);
+  });
+
   it('never renders a raw credential', () => {
     const snapshots = {
       deepseek: makeSnapshot('deepseek', {
@@ -409,7 +513,7 @@ describe('renderTooltip', () => {
       }),
     };
     const html = renderTooltip(snapshots, ['minimax-cn'], t);
-    expect(html).toContain('video');
+    expect(html).toContain('Video');
     expect(html).toContain('6,850');
     expect(html).toContain('2027-06-30');
   });

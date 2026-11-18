@@ -212,36 +212,58 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
 
   const plan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
   if (plan !== undefined) {
-    const rows = plan.windows
-      .filter((window) => window.remainingPercent !== null)
-      .map(
-        (window) =>
-          `<tr><td>${escapeHtml(
-            window.window === 'weekly'
-              ? t('tooltip.window.weekly')
-              : t('tooltip.window.fiveHour'),
-          )}</td>` +
-          `<td>${bar(window.remainingPercent ?? 0)}</td>` +
-          `<td>${Math.round(window.remainingPercent ?? 0)}%</td>` +
-          `<td class="t-muted">${escapeHtml(
-            window.resetAt === null
-              ? ''
-              : `${t('tooltip.resetAt')} ${zonedTime(new Date(window.resetAt).toISOString(), timeZone)}`,
-          )}</td></tr>`,
-      );
-    for (const model of plan.models ?? []) {
-      if (model.model === 'general' || model.total === null || model.total <= 0 || model.remaining === null) continue;
-      const percent = Math.round((model.remaining / model.total) * 100);
+    const rows: string[] = [
+      `<tr><td colspan="4"><strong>${escapeHtml(t('capability.minimax.plan'))}</strong></td></tr>`,
+    ];
+    for (const window of plan.windows) {
+      if (window.remainingPercent === null) continue;
+      const remaining = Math.round(window.remainingPercent);
+      const used = 100 - remaining;
+      const label =
+        window.window === 'weekly'
+          ? t('tooltip.window.weekly')
+          : t('tooltip.window.fiveHour');
+      const reset =
+        window.resetAt === null
+          ? ''
+          : `${t('tooltip.resetAt')} ${zonedTime(new Date(window.resetAt).toISOString(), timeZone)}`;
       rows.push(
-        `<tr><td>${escapeHtml(model.model)}</td>` +
+        `<tr><td><strong>${escapeHtml(label)}</strong></td>` +
+        `<td>${bar(window.remainingPercent)}</td>` +
+        `<td><strong>${escapeHtml(t('tooltip.remaining'))} ${remaining}%</strong>` +
+        `<br><span class="t-muted">${escapeHtml(t('tooltip.used'))} ${used}%</span></td>` +
+        `<td class="t-muted">${escapeHtml(reset)}</td></tr>`,
+      );
+    }
+    for (const model of plan.models ?? []) {
+      if (
+        model.model === 'general' ||
+        model.total === null ||
+        model.total <= 0 ||
+        model.remaining === null
+      ) {
+        continue;
+      }
+      const percent = Math.round((model.remaining / model.total) * 100);
+      const used = Math.max(0, model.total - model.remaining);
+      const label = model.model === 'video' ? t('tooltip.model.video') : model.model;
+      rows.push(
+        `<tr><td><strong>${escapeHtml(label)}</strong></td>` +
         `<td>${bar(percent)}</td>` +
-        `<td>${percent}%</td>` +
-        `<td class="t-muted">${model.remaining}/${model.total}</td></tr>`,
+        `<td><strong>${escapeHtml(t('tooltip.remaining'))} ${model.remaining}/${model.total} ` +
+        `${escapeHtml(t('tooltip.times'))}</strong>` +
+        `<br><span class="t-muted">${escapeHtml(t('tooltip.used'))} ${used} ` +
+        `${escapeHtml(t('tooltip.times'))}</span></td>` +
+        '<td></td></tr>',
       );
     }
     const points = capabilityValue<MiniMaxPoints>(snapshot, 'minimax.points');
     if (typeof points?.balance === 'number') {
-      rows.push(`<tr><td>${escapeHtml(t('capability.minimax.points'))}</td><td>${points.balance.toLocaleString('en-US')}</td><td></td><td></td></tr>`);
+      rows.push(
+        `<tr><td>${escapeHtml(t('capability.minimax.points'))}</td>` +
+        `<td>${points.balance.toLocaleString('en-US')}</td>` +
+        '<td></td><td></td></tr>',
+      );
     }
     const subscription = capabilityValue<MiniMaxSubscription>(snapshot, 'minimax.subscription');
     if (typeof subscription?.expiresAt === 'number') {
@@ -289,7 +311,7 @@ export function renderTooltip(
   timeZone: string = SHANGHAI,
   pricing: PricingState = pricingState(Date.now()),
 ): string {
-  const cards = order
+  const providerCards = order
     .filter((id) => hasUsableConfiguration(snapshots[id]))
     .map((id) => {
       const snapshot = snapshots[id];
@@ -303,10 +325,19 @@ export function renderTooltip(
         `<tr><td class="t-title">${escapeHtml(providerDisplayName(id))}</td>` +
         `<td class="t-muted">${escapeHtml(region)}</td></tr>` +
         period +
-        `<tr><td colspan="4">${providerRows(snapshot, t, timeZone)}</td></tr>` +
+        providerRows(snapshot, t, timeZone) +
         '</table>'
       );
-    })
+    });
+  const cards = providerCards
+    .map(
+      (card, index) =>
+        (index === 0
+          ? ''
+          : '<hr class="t-provider-separator" style="border:0;border-top:1px solid ' +
+            'var(--vscode-widget-border, var(--vscode-descriptionForeground, #666));' +
+            'margin:10px 0 4px;">') + card,
+    )
     .join('');
 
   const footer =
@@ -324,7 +355,7 @@ export function renderTooltip(
     `<span class="t-muted">${escapeHtml(t('statusBar.tooltip.header'))}</span></div>` +
     cards +
     `<div class="t-footer"><span class="t-muted">${escapeHtml(footerDetails)}</span>` +
-    `<span class="t-muted">${escapeHtml(t('statusBar.tooltip.footer'))}</span></div>` +
+    `<br><span class="t-muted">${escapeHtml(t('statusBar.tooltip.footer'))}</span></div>` +
     '</div>'
   );
 }
