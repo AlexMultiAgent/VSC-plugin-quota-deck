@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DESIGN_SIZE } from './make-icon.mjs';
@@ -20,10 +21,61 @@ export function checkIcon(buffer) {
   return undefined;
 }
 
+export function checkVersionConsistency({
+  version,
+  packageLockVersion,
+  changelog,
+  tagCommit,
+  headCommit,
+}) {
+  const failures = [];
+  const changelogVersion = changelog.match(
+    /^##\s+(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)/m,
+  )?.[1];
+
+  if (packageLockVersion !== version) {
+    failures.push(
+      `package-lock.json version ${packageLockVersion ?? '(missing)'} does not match ` +
+      `package.json version ${version}.`,
+    );
+  }
+  if (changelogVersion !== version) {
+    failures.push(
+      `package.json version ${version} does not match CHANGELOG.md latest release ` +
+      `${changelogVersion ?? '(missing)'}.`,
+    );
+  }
+  if (
+    tagCommit !== undefined &&
+    headCommit !== undefined &&
+    tagCommit !== headCommit
+  ) {
+    failures.push(
+      `Version ${version} is already tagged at ${tagCommit} but HEAD is ${headCommit}; ` +
+      'bump the version before packaging.',
+    );
+  }
+  return failures;
+}
+
+function gitCommit(root, ref) {
+  try {
+    return execFileSync('git', ['rev-parse', ref], {
+      cwd: root,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return undefined;
+  }
+}
+
 function main() {
   const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
   const failures = [];
   const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
+  const packageLock = JSON.parse(readFileSync(resolve(root, 'package-lock.json'), 'utf8'));
+  const changelog = readFileSync(resolve(root, 'CHANGELOG.md'), 'utf8');
   const required = [
     'name', 'displayName', 'description', 'version', 'publisher', 'license', 'engines',
     'categories', 'keywords', 'icon', 'repository', 'bugs', 'homepage', 'pricing',
@@ -33,6 +85,14 @@ function main() {
     if (manifest[key] === undefined) failures.push(`package.json is missing "${key}"`);
   }
   if (manifest.telemetry !== null) failures.push('package.json must declare "telemetry": null');
+
+  failures.push(...checkVersionConsistency({
+    version: manifest.version,
+    packageLockVersion: packageLock.version,
+    changelog,
+    tagCommit: gitCommit(root, `v${manifest.version}^{commit}`),
+    headCommit: gitCommit(root, 'HEAD'),
+  }));
 
   const settings = Object.keys(manifest.contributes?.configuration?.properties ?? {});
   const credentialSetting = /cookie|secret|password|token|apikey|session/i;
