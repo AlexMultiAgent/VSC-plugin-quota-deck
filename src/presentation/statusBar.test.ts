@@ -6,6 +6,7 @@ import { makeSnapshot } from '../test/helpers/snapshot';
 import { formatBalance, renderStatusBarText, StatusBarPresenter } from './statusBar';
 
 const t = translatorFor('en-US');
+const zh = translatorFor('zh-CN');
 
 describe('formatBalance', () => {
   it('renders CNY with the yuan symbol', () => {
@@ -103,6 +104,41 @@ describe('renderStatusBarText', () => {
     );
 
     expect(text).toBe('$(pulse) DS $(dashboard) ¥112.80 · Off-peak');
+  });
+
+  it('uses compact two-character DeepSeek periods in Chinese', () => {
+    const snapshots = {
+      deepseek: makeSnapshot('deepseek', {
+        'deepseek.balance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: { entries: [{ currency: 'CNY', total: 8.05 }] },
+        },
+      }),
+    };
+    const offPeak = renderStatusBarText(
+      snapshots,
+      ['deepseek'],
+      zh,
+      'all',
+      'minimax-cn',
+      20,
+      undefined,
+      'offPeak',
+    );
+    const peak = renderStatusBarText(
+      snapshots,
+      ['deepseek'],
+      zh,
+      'all',
+      'minimax-cn',
+      20,
+      undefined,
+      'peak',
+    );
+
+    expect(offPeak).toBe('$(pulse) DS $(dashboard) ¥8.05 · 空闲');
+    expect(peak).toBe('$(pulse) DS $(dashboard) ¥8.05 · 高峰');
   });
 
   it('shows the Qwen account balance without turning a negative value into zero', () => {

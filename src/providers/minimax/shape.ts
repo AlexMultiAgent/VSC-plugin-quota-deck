@@ -16,6 +16,7 @@ export interface MiniMaxModel {
   readonly used: number | null;
   readonly remaining: number | null;
   readonly remainingPercent: number | null;
+  readonly resetAt: number | null;
   readonly total: number | null;
 }
 
@@ -124,6 +125,7 @@ export function readMiniMaxPlan(response: unknown): MiniMaxPlan {
       used,
       remaining: total !== null && percent.value !== null ? Math.round(total * (percent.value / 100)) : null,
       remainingPercent: percent.value,
+      resetAt: asTimestamp(record.end_time),
       total,
     };
   });

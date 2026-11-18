@@ -53,6 +53,7 @@ describe('readMiniMaxPlan', () => {
       used: 0,
       remaining: 3,
       remainingPercent: 100,
+      resetAt: 1_765_018_000_000,
       total: 3,
     });
   });

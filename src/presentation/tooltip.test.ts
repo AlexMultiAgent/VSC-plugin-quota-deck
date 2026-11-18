@@ -198,7 +198,7 @@ describe('renderTooltip', () => {
     expect(html).not.toContain('<tr><td colspan="4"><tr>');
   });
 
-  it('shows only the remaining value after each MiniMax quota track', () => {
+  it('shows video remaining uses instead of trusting a contradictory percentage', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -209,7 +209,13 @@ describe('renderTooltip', () => {
               { window: 'fiveHour', remainingPercent: 100, resetAt: null, unlimited: false },
               { window: 'weekly', remainingPercent: 22, resetAt: null, unlimited: false },
             ],
-            models: [{ model: 'video', remaining: 3, total: 3 }],
+            models: [{
+              model: 'video',
+              remaining: 0,
+              remainingPercent: 0,
+              total: 3,
+              used: 0,
+            }],
           },
         },
       }),
@@ -220,15 +226,16 @@ describe('renderTooltip', () => {
 
     expect(visibleText).toContain('████████████████100%');
     expect(visibleText).toContain('████████████████22%');
+    expect(visibleText).toContain('████████████████3/3');
     expect(html).toContain('视频');
-    expect(visibleText).toContain('████████████████100%');
     expect(html).not.toContain('剩余');
     expect(html).not.toContain('已使用');
     expect(html).not.toContain('次');
     expect(html).not.toContain('>video<');
+    expect(visibleText).not.toContain('视频████████████████0%');
   });
 
-  it('shows zero percent when a MiniMax media allowance has been fully used', () => {
+  it('shows zero remaining uses when a MiniMax media allowance is fully used', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -236,7 +243,7 @@ describe('renderTooltip', () => {
           fetchedAt: 'x',
           data: {
             windows: [],
-            models: [{ model: 'video', remaining: 0, total: 3 }],
+            models: [{ model: 'video', remaining: 0, remainingPercent: 100, total: 3 }],
           },
         },
       }),
@@ -244,13 +251,36 @@ describe('renderTooltip', () => {
 
     const html = renderTooltip(snapshots, ['minimax-cn'], zh);
 
-    expect(html).toContain(
-      '<strong style="display:inline-block;vertical-align:middle;' +
-        'min-width:42px;margin-left:10px;">0%</strong>',
-    );
+    expect(html).toContain('min-width:42px;margin-left:10px;">0/3</span>');
+    expect(html).not.toContain('视频████████████████100%');
     expect(html).not.toContain('剩余');
     expect(html).not.toContain('已使用');
     expect(html).not.toContain('次');
+  });
+
+  it('shows the video reset time after its quota track', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [],
+            models: [{
+              model: 'video',
+              remaining: 3,
+              remainingPercent: 100,
+              resetAt: Date.parse('2026-11-19T00:00:00.000Z'),
+              total: 3,
+            }],
+          },
+        },
+      }),
+    };
+
+    const html = renderTooltip(snapshots, ['minimax-cn'], zh, undefined, 'Asia/Shanghai');
+
+    expect(html).toContain('title="下次重置 2026-11-19 08:00">↻ 11-19 08:00</td>');
   });
 
   it('localizes MiniMax regions, windows, reset times, and the configured time zone', () => {
@@ -298,6 +328,61 @@ describe('renderTooltip', () => {
     expect(html).not.toContain('5-hour');
     expect(html).not.toContain('Weekly');
     expect(html).not.toContain('Resets');
+  });
+
+  it('emphasizes provider names instead of MiniMax quota labels and values', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 5, resetAt: null, unlimited: false },
+            ],
+            models: [{ model: 'video', remaining: 3, total: 3 }],
+          },
+        },
+      }),
+      deepseek: makeSnapshot('deepseek', {
+        'deepseek.balance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: { entries: [{ currency: 'CNY', total: 8.05 }] },
+        },
+      }),
+      qwen: makeSnapshot('qwen', {
+        'qwen.accountBalance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            availableAmount: 0,
+            availableCashAmount: 0,
+            creditAmount: 0,
+            mybankCreditAmount: 0,
+            quotaLimit: 0,
+            currency: 'CNY',
+          },
+        },
+      }),
+    };
+
+    const html = renderTooltip(
+      snapshots,
+      ['minimax-cn', 'deepseek', 'qwen'],
+      zh,
+      undefined,
+      'Asia/Shanghai',
+      'offPeak',
+    );
+
+    expect(html).toContain('<tr><td class="t-title"><strong>MiniMax CN</strong></td>');
+    expect(html).toContain('<tr><td class="t-title"><strong>DeepSeek</strong></td>');
+    expect(html).toContain('<tr><td class="t-title"><strong>Qwen</strong></td>');
+    expect(html).not.toContain('<strong>Token Plan 额度</strong>');
+    expect(html).not.toContain('<strong>5 小时</strong>');
+    expect(html).not.toContain('<strong>视频</strong>');
+    expect(html).not.toContain('<strong style="display:inline-block;vertical-align:middle;');
   });
 
   it('labels the reset time in English', () => {
@@ -473,13 +558,47 @@ describe('renderTooltip', () => {
     );
 
     expect(peakHtml).toContain(
-      '<span style="color:var(--vscode-charts-orange, #d18616);font-weight:600;">Peak</span>',
+      '<span style="color:var(--vscode-charts-orange, #d18616);font-weight:600;">☀ Peak</span>',
     );
     expect(peakHtml).not.toContain('Off-peak');
     expect(offPeakHtml).toContain(
-      '<span style="color:var(--vscode-charts-green, #89d185);font-weight:600;">Off-peak</span>',
+      '<span style="color:var(--vscode-charts-green, #89d185);font-weight:600;">🌙 Off-peak</span>',
     );
     expect(offPeakHtml).not.toContain('>Peak<');
+  });
+
+  it('uses the official Chinese DeepSeek periods with non-color symbols', () => {
+    const snapshots = {
+      deepseek: makeSnapshot('deepseek', {
+        'deepseek.balance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: { entries: [{ currency: 'CNY', total: 8.05 }] },
+        },
+      }),
+    };
+
+    const peakHtml = renderTooltip(
+      snapshots,
+      ['deepseek'],
+      zh,
+      undefined,
+      'Asia/Shanghai',
+      'peak',
+    );
+    const offPeakHtml = renderTooltip(
+      snapshots,
+      ['deepseek'],
+      zh,
+      undefined,
+      'Asia/Shanghai',
+      'offPeak',
+    );
+
+    expect(peakHtml).toContain('☀ 高峰时段');
+    expect(peakHtml).not.toContain('忙时');
+    expect(offPeakHtml).toContain('🌙 空闲时段');
+    expect(offPeakHtml).not.toContain('>闲时<');
   });
 
   it('does not ask for a DeepSeek platform session from a legacy cache', () => {

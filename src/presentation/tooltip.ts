@@ -8,7 +8,7 @@ import type { DeepSeekBalance } from '../providers/deepseek/shape';
 import type { QwenAccountBalance } from '../providers/qwen/shape';
 import { pricingState, type PricingState } from '../providers/deepseek/pricing';
 import { formatMoney, providerDisplayName } from './display';
-import { pricingPeriodLabel, rangeLabel } from './labels';
+import { rangeLabel } from './labels';
 
 const ESCAPES: Record<string, string> = {
   '&': '&amp;',
@@ -91,16 +91,22 @@ function pricingPeriod(pricing: PricingState, t: Translator): string {
         ? 'var(--vscode-charts-green, #89d185)'
         : 'var(--vscode-descriptionForeground)';
   const weight = pricing === 'unavailable' ? '400' : '600';
+  const label =
+    pricing === 'peak'
+      ? t('hours.peakDetail')
+      : pricing === 'offPeak'
+        ? t('hours.offPeakDetail')
+        : t('hours.unavailableDetail');
   return (
     `<span style="color:${color};font-weight:${weight};">` +
-    `${escapeHtml(pricingPeriodLabel(pricing, t))}</span>`
+    `${escapeHtml(label)}</span>`
   );
 }
 
 function quotaValue(value: string): string {
   return (
-    '<strong style="display:inline-block;vertical-align:middle;' +
-    `min-width:42px;margin-left:10px;">${escapeHtml(value)}</strong>`
+    '<span style="display:inline-block;vertical-align:middle;' +
+    `min-width:42px;margin-left:10px;">${escapeHtml(value)}</span>`
   );
 }
 
@@ -116,6 +122,21 @@ function zonedTime(iso: string, timeZone: string): string {
   }).formatToParts(new Date(iso));
   const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
   return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
+}
+
+function resetCell(
+  resetAt: number | null | undefined,
+  timeZone: string,
+  t: Translator,
+): string {
+  if (resetAt == null) return '<td colspan="2"></td>';
+  const resetFull = zonedTime(new Date(resetAt).toISOString(), timeZone);
+  return (
+    '<td class="t-muted" colspan="2" ' +
+    'style="text-align:right;white-space:nowrap;"' +
+    ` title="${escapeHtml(`${t('tooltip.resetAt')} ${resetFull}`)}">` +
+    `↻ ${escapeHtml(resetFull.slice(5))}</td>`
+  );
 }
 
 function usageDate(value: string, timeZone: string): string {
@@ -236,7 +257,7 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
   const plan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
   if (plan !== undefined) {
     const rows: string[] = [
-      `<tr><td colspan="4"><strong>${escapeHtml(t('capability.minimax.plan'))}</strong></td></tr>`,
+      `<tr><td colspan="4">${escapeHtml(t('capability.minimax.plan'))}</td></tr>`,
     ];
     for (const window of plan.windows) {
       if (window.remainingPercent === null) continue;
@@ -245,22 +266,10 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
         window.window === 'weekly'
           ? t('tooltip.window.weekly')
           : t('tooltip.window.fiveHour');
-      const resetFull =
-        window.resetAt === null
-          ? ''
-          : zonedTime(new Date(window.resetAt).toISOString(), timeZone);
-      const resetTitle =
-        resetFull === '' ? '' : ` title="${escapeHtml(`${t('tooltip.resetAt')} ${resetFull}`)}"`;
-      const resetCell =
-        window.resetAt === null
-          ? '<td colspan="2"></td>'
-          : '<td class="t-muted" colspan="2" ' +
-            'style="text-align:right;white-space:nowrap;"' +
-            `${resetTitle}>↻ ${escapeHtml(resetFull.slice(5))}</td>`;
       rows.push(
-        `<tr><td><strong>${escapeHtml(label)}</strong></td>` +
+        `<tr><td>${escapeHtml(label)}</td>` +
         `<td>${bar(window.remainingPercent)}${quotaValue(`${remaining}%`)}</td>` +
-        `${resetCell}</tr>`,
+        `${resetCell(window.resetAt, timeZone, t)}</tr>`,
       );
     }
     for (const model of plan.models ?? []) {
@@ -272,20 +281,21 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
       ) {
         continue;
       }
+      const remaining =
+        model.used == null
+          ? model.remaining
+          : Math.max(0, Math.min(model.total, model.total - model.used));
       const percent = Math.round(
         Math.max(
           0,
-          Math.min(
-            100,
-            model.remainingPercent ?? (model.remaining / model.total) * 100,
-          ),
+          Math.min(100, (remaining / model.total) * 100),
         ),
       );
       const label = model.model === 'video' ? t('tooltip.model.video') : model.model;
       rows.push(
-        `<tr><td><strong>${escapeHtml(label)}</strong></td>` +
-        `<td>${bar(percent)}${quotaValue(`${percent}%`)}</td>` +
-        '<td colspan="2"></td></tr>',
+        `<tr><td>${escapeHtml(label)}</td>` +
+        `<td>${bar(percent)}${quotaValue(`${remaining}/${model.total}`)}</td>` +
+        `${resetCell(model.resetAt, timeZone, t)}</tr>`,
       );
     }
     const points = capabilityValue<MiniMaxPoints>(snapshot, 'minimax.points');
@@ -353,7 +363,7 @@ export function renderTooltip(
           : '';
       return (
         '<table class="t-card">' +
-        `<tr><td class="t-title">${escapeHtml(providerDisplayName(id))}</td>` +
+        `<tr><td class="t-title"><strong>${escapeHtml(providerDisplayName(id))}</strong></td>` +
         `<td class="t-muted">${escapeHtml(region)}</td></tr>` +
         period +
         providerRows(snapshot, t, timeZone) +
