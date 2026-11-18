@@ -8,6 +8,7 @@ import {
   COOKIE_HEADER_PATTERN,
   LOCAL_PATH_PATTERN,
 } from './secret-patterns.mjs';
+import { activityIconFailure } from './package-contents.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
@@ -66,6 +67,9 @@ for (const entry of shipped) {
   if (FORBIDDEN.some((pattern) => pattern.test(entry))) offenders.push(`${entry}: must not be shipped`);
 }
 
+const activityFailure = activityIconFailure(shipped);
+if (activityFailure !== undefined) offenders.push(activityFailure);
+
 if (offenders.length > 0) {
   console.error('Package guard failed:');
   for (const offender of offenders) console.error(`  ${offender}`);
@@ -73,3 +77,4 @@ if (offenders.length > 0) {
 }
 
 console.log(`Package guard OK: ${SCANNED.length} files scanned, ${shipped.length} entries shipped.`);
+console.log('Activity Bar icon OK: media/activity-bar.svg is shipped.');

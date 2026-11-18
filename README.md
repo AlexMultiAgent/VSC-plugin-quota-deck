@@ -1,6 +1,6 @@
 # QuotaDeck CN
 
-国产大模型额度监控 — MiniMax、DeepSeek、Qwen 的余额、用量与重置倒计时，直接显示在 VS Code 状态栏。悬停即可查看摘要，需要图表和模型明细时再打开可选仪表盘。
+国产大模型额度监控 — MiniMax、DeepSeek、Qwen 的余额、用量与重置倒计时，直接显示在 VS Code 状态栏和左侧 Activity Bar。悬停即可查看摘要，需要图表和模型明细时再打开可选仪表盘。
 
 ## Features
 
@@ -11,6 +11,7 @@
 - MiniMax 状态栏优先显示 5 小时窗口；额度按剩余比例使用绿色、黄色、橙色、红色四阶段文字，仅剩余 5% 及以下使用红色警示背景。
 - 历史用量区间与实时额度窗口分开展示，MiniMax 卡片显示所选区间的 Token 用量。
 - 悬停提示展示完整摘要，并标注账户实时数据来源；不会重复展示 API Key / AccessKey 等凭据类型。
+- 左侧 Activity Bar 提供额度概览：展开查看各服务商明细，点击服务商打开完整仪表盘；标题栏可刷新、打开仪表盘或进入插件设置。
 - 可选仪表盘：时间范围切换、账户余额、能力状态与表格视图。
 - MiniMax 国内版与国际版账号独立配置。
 - DeepSeek 官方余额查询；详细用量与账单请前往 DeepSeek 官网。
@@ -39,7 +40,7 @@ code --install-extension quota-deck-<version>.vsix
 
 ## Configure
 
-1. 点击状态栏的 QuotaDeck 图标。没有配置任何凭据时会进入配置流程；已经配置过时直接打开仪表盘。
+1. 点击左侧 Activity Bar 或状态栏的 QuotaDeck 图标。新安装可从额度概览直接进入配置流程；已配置后可展开明细或打开仪表盘。
 2. 在仪表盘点击“配置服务商”，或在命令面板搜索 `QuotaDeck CN: 配置服务商` / `Configure Providers`。
 3. 选择 MiniMax CN、MiniMax Global、DeepSeek 或 Qwen，输入对应凭据。
 4. 再次点击状态栏图标查看额度。
@@ -114,6 +115,7 @@ Cookie 只发送到对应厂商域名，并按各适配器声明的最小 Cookie
 | `QuotaDeck CN: Configure DeepSeek` | 配置 DeepSeek |
 | `QuotaDeck CN: Configure Qwen` | 配置 Qwen / 百炼的阿里云 AccessKey |
 | `QuotaDeck CN: Configure Providers` | 从仪表盘之外统一打开配置流程 |
+| `QuotaDeck CN: Extension Settings` | 打开本插件的原生设置页 |
 | `QuotaDeck CN: Show Help` | 查看帮助 |
 
 ## Known limitations
