@@ -47,6 +47,16 @@ describe('readMiniMaxPlan', () => {
     expect(plan.windows[0]?.remainingPercentSource).toBe('computed');
   });
 
+  it('keeps zero video usage as a full remaining allowance', () => {
+    const plan = readMiniMaxPlan(planResponse);
+    expect(plan.models.find((model) => model.model === 'video')).toMatchObject({
+      used: 0,
+      remaining: 3,
+      remainingPercent: 100,
+      total: 3,
+    });
+  });
+
   it('keeps absolute reset timestamps in milliseconds', () => {
     const plan = readMiniMaxPlan(planResponse);
     expect(plan.windows[0]?.resetAt).toBe(1_765_018_000_000);

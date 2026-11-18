@@ -257,7 +257,12 @@ function miniMaxChildren(
     ) {
       continue;
     }
-    const percent = Math.round((model.remaining / model.total) * 100);
+    const percent = Math.round(
+      Math.max(
+        0,
+        Math.min(100, model.remainingPercent ?? (model.remaining / model.total) * 100),
+      ),
+    );
     const used = Math.max(0, model.total - model.remaining);
     const label = modelLabel(model.model, options.t);
     const quota = quotaRow(label, percent, options.warningThresholdPercent, options.t);

@@ -201,7 +201,10 @@ function mediaMeters(snapshot: ProviderSnapshot | undefined, warningThresholdPer
   return (capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan')?.models ?? []).flatMap((model) => {
     if (model.total === null || model.total <= 0 || model.remaining === null) return [];
     if (model.model === 'general' || model.model.includes('MiniMax-M')) return [];
-    const percent = Math.max(0, Math.min(100, (model.remaining / model.total) * 100));
+    const percent = Math.max(
+      0,
+      Math.min(100, model.remainingPercent ?? (model.remaining / model.total) * 100),
+    );
     return [{
       key: `model:${model.model}`,
       label: model.model,

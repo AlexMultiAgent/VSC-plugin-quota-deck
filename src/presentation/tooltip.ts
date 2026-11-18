@@ -74,12 +74,12 @@ function balances(snapshot: ProviderSnapshot | undefined): BalanceEntry[] {
 
 function bar(percent: number): string {
   const width = Math.min(100, Math.max(0, percent));
+  const filled = Math.round((width / 100) * 16);
   return (
-    '<span style="display:inline-block;vertical-align:middle;width:200px;' +
-    'height:12px;border-radius:6px;overflow:hidden;' +
-    'background-color:var(--vscode-descriptionForeground);">' +
-    `<span style="display:block;height:100%;width:${width}%;` +
-    'background-color:var(--vscode-charts-green);"></span></span>'
+    '<span style="color:var(--vscode-charts-green);">' +
+    `${'█'.repeat(filled)}</span>` +
+    '<span style="color:var(--vscode-descriptionForeground);">' +
+    `${'█'.repeat(16 - filled)}</span>`
   );
 }
 
@@ -258,11 +258,19 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
       ) {
         continue;
       }
-      const percent = Math.round((model.remaining / model.total) * 100);
+      const percent = Math.round(
+        Math.max(
+          0,
+          Math.min(
+            100,
+            model.remainingPercent ?? (model.remaining / model.total) * 100,
+          ),
+        ),
+      );
       const label = model.model === 'video' ? t('tooltip.model.video') : model.model;
       rows.push(
         `<tr><td><strong>${escapeHtml(label)}</strong></td>` +
-        `<td>${bar(percent)}${quotaValue(`${model.remaining}/${model.total}`)}</td>` +
+        `<td>${bar(percent)}${quotaValue(`${percent}%`)}</td>` +
         '<td colspan="2"></td></tr>',
       );
     }
@@ -362,7 +370,13 @@ export function renderTooltip(
     '<div class="t-header"><span class="t-brand">QuotaDeck CN</span>' +
     `<span class="t-badge">${escapeHtml(t('statusBar.tooltip.badge'))}</span>` +
     `<span class="t-muted">${escapeHtml(t('statusBar.tooltip.header'))}</span></div>` +
+    '<hr class="t-header-separator" style="border:0;border-top:1px solid ' +
+    'var(--vscode-widget-border, var(--vscode-descriptionForeground, #666));' +
+    'margin:8px 0 6px;">' +
     cards +
+    '<hr class="t-footer-separator" style="border:0;border-top:1px solid ' +
+    'var(--vscode-widget-border, var(--vscode-descriptionForeground, #666));' +
+    'margin:10px 0 6px;">' +
     `<div class="t-footer"><span class="t-muted">${escapeHtml(footerDetails)}</span>` +
     `<br><span class="t-muted">${escapeHtml(t('statusBar.tooltip.footer'))}</span></div>` +
     '</div>'

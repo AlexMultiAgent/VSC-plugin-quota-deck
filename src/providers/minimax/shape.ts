@@ -13,7 +13,9 @@ export interface MiniMaxWindow {
 
 export interface MiniMaxModel {
   readonly model: string;
+  readonly used: number | null;
   readonly remaining: number | null;
+  readonly remainingPercent: number | null;
   readonly total: number | null;
 }
 
@@ -119,7 +121,9 @@ export function readMiniMaxPlan(response: unknown): MiniMaxPlan {
     const percent = percentFrom(total, used, numberOrNull(record.current_interval_remaining_percent));
     return {
       model: String(record.model_name ?? ''),
+      used,
       remaining: total !== null && percent.value !== null ? Math.round(total * (percent.value / 100)) : null,
+      remainingPercent: percent.value,
       total,
     };
   });

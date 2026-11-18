@@ -103,7 +103,7 @@ describe('renderTooltip', () => {
     expect(html).not.toContain('AccessKey');
   });
 
-  it('renders a thick, long block track without bracket characters', () => {
+  it('renders a thick, long text block track without bracket characters', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -115,12 +115,10 @@ describe('renderTooltip', () => {
     };
     const html = renderTooltip(snapshots, ['minimax-cn'], t);
     expect(html).toContain(
-      '<span style="display:inline-block;vertical-align:middle;width:200px;' +
-        'height:12px;border-radius:6px;overflow:hidden;' +
-        'background-color:var(--vscode-descriptionForeground);">' +
-        '<span style="display:block;height:100%;width:60%;' +
-        'background-color:var(--vscode-charts-green);"></span></span>',
+      '<span style="color:var(--vscode-charts-green);">██████████</span>' +
+        '<span style="color:var(--vscode-descriptionForeground);">██████</span>',
     );
+    expect(html).not.toContain('░');
     expect(html).not.toContain('[██████');
     expect(html).not.toContain('<code>');
   });
@@ -142,11 +140,43 @@ describe('renderTooltip', () => {
       }),
     };
     const html = renderTooltip(snapshots, ['minimax-cn'], t);
-    const tracks = [...html.matchAll(/width:200px;height:12px/g)];
+    const tracks = [
+      ...html.matchAll(
+        />([█]*)<\/span><span style="color:var\(--vscode-descriptionForeground\);">([█]*)<\/span>/g,
+      ),
+    ].map((match) => `${match[1]}${match[2]}`);
 
     expect(tracks).toHaveLength(3);
+    expect(tracks.every((track) => track.length === 16)).toBe(true);
+    expect(html).not.toContain('░');
     expect(html).not.toMatch(/[━─]/);
     expect(html).not.toContain('>[');
+  });
+
+  it('keeps quota bars visible when VS Code strips inline styles', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 93, resetAt: null, unlimited: false },
+              { window: 'weekly', remainingPercent: 21, resetAt: null, unlimited: false },
+            ],
+            models: [{ model: 'video', remaining: 3, total: 3 }],
+          },
+        },
+      }),
+    };
+    const html = renderTooltip(snapshots, ['minimax-cn'], zh);
+    const visibleText = html
+      .replace(/\sstyle="[^"]*"/g, '')
+      .replace(/<[^>]+>/g, '');
+
+    expect(visibleText).toContain('████████████████');
+    expect(visibleText).toContain('████████████████');
+    expect(visibleText).toContain('████████████████');
   });
 
   it('keeps provider detail rows directly inside each card table', () => {
@@ -186,30 +216,19 @@ describe('renderTooltip', () => {
     };
 
     const html = renderTooltip(snapshots, ['minimax-cn'], zh);
+    const visibleText = html.replace(/<[^>]+>/g, '');
 
-    expect(html).toContain(
-      'background-color:var(--vscode-charts-green);"></span></span>' +
-        '<strong style="display:inline-block;vertical-align:middle;' +
-        'min-width:42px;margin-left:10px;">100%</strong>',
-    );
-    expect(html).toContain(
-      'background-color:var(--vscode-charts-green);"></span></span>' +
-        '<strong style="display:inline-block;vertical-align:middle;' +
-        'min-width:42px;margin-left:10px;">22%</strong>',
-    );
+    expect(visibleText).toContain('████████████████100%');
+    expect(visibleText).toContain('████████████████22%');
     expect(html).toContain('视频');
-    expect(html).toContain(
-      'background-color:var(--vscode-charts-green);"></span></span>' +
-        '<strong style="display:inline-block;vertical-align:middle;' +
-        'min-width:42px;margin-left:10px;">3/3</strong>',
-    );
+    expect(visibleText).toContain('████████████████100%');
     expect(html).not.toContain('剩余');
     expect(html).not.toContain('已使用');
     expect(html).not.toContain('次');
     expect(html).not.toContain('>video<');
   });
 
-  it('shows when a MiniMax media allowance has been fully used', () => {
+  it('shows zero percent when a MiniMax media allowance has been fully used', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -227,7 +246,7 @@ describe('renderTooltip', () => {
 
     expect(html).toContain(
       '<strong style="display:inline-block;vertical-align:middle;' +
-        'min-width:42px;margin-left:10px;">0/3</strong>',
+        'min-width:42px;margin-left:10px;">0%</strong>',
     );
     expect(html).not.toContain('剩余');
     expect(html).not.toContain('已使用');
@@ -499,6 +518,34 @@ describe('renderTooltip', () => {
 
     expect(separator).toBeGreaterThan(minimax);
     expect(separator).toBeLessThan(deepseek);
+  });
+
+  it('separates the header and last two footer lines', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: { windows: [], models: [] },
+        },
+      }),
+    };
+
+    const html = renderTooltip(
+      snapshots,
+      ['minimax-cn'],
+      zh,
+      '2026-11-18T14:31:00.000Z',
+      'Asia/Shanghai',
+    );
+    const headerSeparator = html.indexOf('class="t-header-separator"');
+    const provider = html.indexOf('MiniMax CN');
+    const footerSeparator = html.indexOf('class="t-footer-separator"');
+    const footer = html.indexOf('账户实时数据');
+
+    expect(headerSeparator).toBeLessThan(provider);
+    expect(footerSeparator).toBeGreaterThan(provider);
+    expect(footerSeparator).toBeLessThan(footer);
   });
 
   it('never renders a raw credential', () => {
