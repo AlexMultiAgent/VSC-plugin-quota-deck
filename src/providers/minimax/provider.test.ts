@@ -12,6 +12,25 @@ function httpClient(result: JsonResult): HttpClient {
 }
 
 describe('MiniMaxProvider', () => {
+  it('reports a rejected credential as an auth failure, not a malformed response', async () => {
+    const provider = new MiniMaxProvider(
+      'minimax-cn',
+      'https://www.minimaxi.com',
+      httpClient({
+        ok: true,
+        body: { base_resp: { status_code: 1004, status_msg: 'cookie is missing, log in again' } },
+      }),
+    );
+    await provider.connect(secretReader({ 'minimax-cn:token-plan-key': 'token' }));
+
+    const snapshot = await provider.fetchSnapshot(new AbortController().signal);
+
+    expect(snapshot.capabilities['minimax.plan']).toEqual({
+      kind: 'failed',
+      error: { kind: 'auth', message: 'error.auth' },
+    });
+  });
+
   it('declares the four MiniMax capabilities', () => {
     const provider = new MiniMaxProvider('minimax-cn', 'https://www.minimaxi.com', httpClient({ ok: false, error: { kind: 'unknown', message: 'error.unknown' } }));
     const ids = provider.getCapabilities().capabilities.map((capability) => capability.id);

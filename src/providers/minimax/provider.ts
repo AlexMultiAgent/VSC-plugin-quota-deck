@@ -4,6 +4,7 @@ import type {
   CapabilityDescriptor,
   CapabilityState,
   ConnectionState,
+  NormalizedError,
   ProviderCapabilities,
   ProviderId,
   ProviderSnapshot,
@@ -12,6 +13,7 @@ import type {
 } from '../../core/types';
 import { parseCookieHeader, selectAllowedCookies } from '../cookies';
 import { ENDPOINTS } from '../endpoints';
+import { numberOrNull } from '../shape';
 import {
   readMiniMaxPlan,
   readMiniMaxPoints,
@@ -25,6 +27,21 @@ const CAPABILITIES: readonly CapabilityDescriptor[] = [
   { id: 'minimax.tokenUsage', titleKey: 'capability.minimax.tokenUsage', credential: 'token-plan-key', required: true },
   { id: 'minimax.points', titleKey: 'capability.minimax.points', credential: 'web-cookie', required: false },
 ];
+
+/**
+ * MiniMax answers HTTP 200 even when it rejects the credential and reports the
+ * refusal in `base_resp.status_code` instead — an invalid key comes back as
+ * `1004 cookie is missing, log in again`. Without this check a rejected
+ * credential looks like an unexpected response shape.
+ */
+function credentialRejection(body: unknown): NormalizedError | undefined {
+  if (typeof body !== 'object' || body === null) return undefined;
+  const baseResp = (body as { base_resp?: unknown }).base_resp;
+  if (typeof baseResp !== 'object' || baseResp === null) return undefined;
+  const statusCode = numberOrNull((baseResp as { status_code?: unknown }).status_code);
+  if (statusCode === null || statusCode === 0) return undefined;
+  return { kind: 'auth', message: 'error.auth' };
+}
 
 /**
  * MiniMax's account UI uses a cookie-authenticated points endpoint. These names
@@ -114,6 +131,8 @@ export class MiniMaxProvider implements QuotaProvider {
       signal,
     });
     if (!result.ok) return { kind: 'failed', error: result.error };
+    const rejection = credentialRejection(result.body);
+    if (rejection !== undefined) return { kind: 'failed', error: rejection };
     try {
       return { kind: 'ok', fetchedAt, data: readMiniMaxPlan(result.body) };
     } catch {
@@ -134,6 +153,8 @@ export class MiniMaxProvider implements QuotaProvider {
       signal,
     });
     if (!result.ok) return { kind: 'failed', error: result.error };
+    const rejection = credentialRejection(result.body);
+    if (rejection !== undefined) return { kind: 'failed', error: rejection };
     try {
       return { kind: 'ok', fetchedAt, data: read(result.body) };
     } catch {
@@ -152,6 +173,8 @@ export class MiniMaxProvider implements QuotaProvider {
       signal,
     });
     if (!result.ok) return { kind: 'failed', error: result.error };
+    const rejection = credentialRejection(result.body);
+    if (rejection !== undefined) return { kind: 'failed', error: rejection };
     try {
       return { kind: 'ok', fetchedAt, data: readMiniMaxPoints(result.body) };
     } catch {

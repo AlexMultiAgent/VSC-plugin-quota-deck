@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { translatorFor } from '../../localization';
+import { readMiniMaxPlan } from '../../providers/minimax/shape';
+import { loadFixture } from '../../test/helpers/fixture';
 import { makeSnapshot } from '../../test/helpers/snapshot';
 import { buildOverviewItems } from './model';
 
@@ -19,7 +21,7 @@ describe('buildOverviewItems', () => {
                 { window: 'fiveHour', remainingPercent: 100, resetAt: null, unlimited: false },
                 { window: 'weekly', remainingPercent: 22, resetAt: null, unlimited: false },
               ],
-              models: [{ model: 'video', remaining: 3, total: 3 }],
+              models: [{ model: 'video', remaining: 3, total: 3, used: 0 }],
             },
           },
           'minimax.points': {
@@ -55,6 +57,33 @@ describe('buildOverviewItems', () => {
     expect(items[0]?.children[0]?.description).toBe('剩余 100% · 已使用 0%');
     expect(items[0]?.children[1]?.description).toBe('剩余 22% · 已使用 78%');
     expect(items[0]?.children[2]?.description).toBe('剩余 3/3 次 · 已使用 0 次');
+  });
+
+  it('renders the captured MiniMax video quota as three of three remaining', () => {
+    const fixture = loadFixture('minimax-cn', 'minimax.plan', 'standard') as {
+      response: unknown;
+    };
+    const items = buildOverviewItems({
+      snapshots: {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.plan': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: readMiniMaxPlan(fixture.response),
+          },
+        }),
+      },
+      configured: { 'minimax-cn': true },
+      order: ['minimax-cn'],
+      t: zh,
+      pricing: 'offPeak',
+      timeZone: 'Asia/Shanghai',
+      warningThresholdPercent: 20,
+    });
+
+    const video = items[0]?.children.find((child) => child.label === '视频');
+    expect(video?.description).toBe('剩余 3/3 次 · 已使用 0 次');
+    expect(video?.state).toBe('positive');
   });
 
   it('preserves provider order and separate DeepSeek currency balances', () => {

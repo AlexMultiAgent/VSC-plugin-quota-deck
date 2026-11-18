@@ -1,0 +1,489 @@
+{
+  "capturedAt": "2026-11-18T16:57:05.352Z",
+  "provider": "minimax-cn",
+  "capability": "minimax.subscription",
+  "case": "standard",
+  "sourceHost": "www.minimaxi.com",
+  "sourceUrls": [
+    "https://www.minimaxi.com/v1/api/openplatform/charge/combo/cycle_audio_resource_package?biz_line=2&cycle_type=1&resource_package_type=7"
+  ],
+  "response": {
+    "cycle_resource_packages": [
+      {
+        "title": "Go",
+        "price_data": {
+          "price_tag": "49",
+          "original_price_tag": "49",
+          "unit": "",
+          "renew_price_tag": "49"
+        },
+        "instruction": "¥49",
+        "button_text": "立即订阅",
+        "credit_benefit": [],
+        "feature_title": "",
+        "feature_benefit": [
+          "文本模型，如 M3.1 Flash",
+          "多模态生成（图像、声音）",
+          "联网搜索与多模态理解",
+          "MiniMax Code 网页端、桌面端、TUI、iOS 和 Android",
+          "API Key 接入 AI Agent 和编程工具"
+        ],
+        "currency": "",
+        "combo_id": "320001",
+        "combo_type": 106001,
+        "cycle_type": 1,
+        "visible": true,
+        "end_time": 1817481600000,
+        "feature_benefit_items": [
+          {
+            "display_text": "更多用量",
+            "icon": " https://filecdn.minimax.chat/public/001eee74-3a6b-4fdc-a14e-d358c395cc84.svg",
+            "bold": true
+          },
+          {
+            "display_text": "文本模型，如 M3.1 Flash",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/b6c37e36-c7db-4fe0-80ec-6c5491e00ba4.svg"
+          },
+          {
+            "display_text": "多模态生成（图像、声音）",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/92280a3c-4020-4a5e-94be-6d49aac7ecef.svg"
+          },
+          {
+            "display_text": "联网搜索与多模态理解",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/a1f74bd4-5f54-4172-8fa8-d88b887d5ecc.svg"
+          },
+          {
+            "display_text": "MiniMax Code 网页端、桌面端、TUI、iOS 和 Android",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/2b1e3575-839f-42fb-9cd1-e59063b5b025.svg"
+          },
+          {
+            "display_text": "API Key 接入 AI Agent 和编程工具",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/9718a6ed-8550-44c8-abd3-763443948450.svg"
+          }
+        ],
+        "token_usage_multiplier": "<redacted>",
+        "recommend_subtitle": "轻松上手",
+        "can_purchase": true
+      },
+      {
+        "title": "Explore",
+        "price_data": {
+          "price_tag": "119",
+          "original_price_tag": "119",
+          "unit": "",
+          "renew_price_tag": "119"
+        },
+        "instruction": "¥119",
+        "button_text": "立即订阅",
+        "credit_benefit": [],
+        "feature_title": "",
+        "feature_benefit": [
+          "文本模型，如 M3.1 Flash",
+          "多模态生成（视频、图像、声音）",
+          "联网搜索与多模态理解",
+          "MiniMax Code 网页端、桌面端、TUI、iOS 和 Android",
+          "API Key 接入 AI Agent 和编程工具"
+        ],
+        "currency": "",
+        "combo_id": "320002",
+        "combo_type": 106002,
+        "cycle_type": 1,
+        "visible": true,
+        "end_time": 1797609600000,
+        "feature_benefit_items": [
+          {
+            "display_text": "Go 的 3 倍用量",
+            "icon": "https://filecdn.minimax.chat/public/001eee74-3a6b-4fdc-a14e-d358c395cc84.svg",
+            "bold": true
+          },
+          {
+            "display_text": "文本模型，如 M3.1 Flash",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/b6c37e36-c7db-4fe0-80ec-6c5491e00ba4.svg"
+          },
+          {
+            "display_text": "多模态生成（视频、图像、声音）",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/e1c2aeaf-4973-4568-850d-04e264779bb0.svg"
+          },
+          {
+            "display_text": "联网搜索与多模态理解",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/a1f74bd4-5f54-4172-8fa8-d88b887d5ecc.svg"
+          },
+          {
+            "display_text": "MiniMax Code 网页端、桌面端、TUI、iOS 和 Android",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/2b1e3575-839f-42fb-9cd1-e59063b5b025.svg"
+          },
+          {
+            "display_text": "API Key 接入 AI Agent 和编程工具",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/9718a6ed-8550-44c8-abd3-763443948450.svg"
+          }
+        ],
+        "token_usage_multiplier": "<redacted>",
+        "recommend_subtitle": "日常使用",
+        "can_purchase": true
+      },
+      {
+        "title": "Build",
+        "price_data": {
+          "price_tag": "469",
+          "original_price_tag": "469",
+          "unit": "",
+          "renew_price_tag": "469"
+        },
+        "instruction": "¥469",
+        "button_text": "立即订阅",
+        "credit_benefit": [],
+        "feature_title": "",
+        "feature_benefit": [
+          "文本模型，如 M3.1 Flash",
+          "多模态生成（视频、图像、声音）",
+          "联网搜索与多模态理解",
+          "MiniMax Code 网页端、桌面端、TUI、iOS 和 Android",
+          "MiniMax Code CLI",
+          "API Key 接入 AI Agent 和编程工具",
+          "高峰时段优先通行",
+          "抢先体验新功能"
+        ],
+        "currency": "",
+        "combo_id": "320003",
+        "combo_type": 106003,
+        "cycle_type": 1,
+        "visible": true,
+        "end_time": 1797609600000,
+        "feature_benefit_items": [
+          {
+            "display_text": "Go 的 12 倍用量",
+            "icon": "https://filecdn.minimax.chat/public/001eee74-3a6b-4fdc-a14e-d358c395cc84.svg",
+            "bold": true
+          },
+          {
+            "display_text": "文本模型，如 M3.1 Flash",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/b6c37e36-c7db-4fe0-80ec-6c5491e00ba4.svg"
+          },
+          {
+            "display_text": "多模态生成（视频、图像、声音）",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/e1c2aeaf-4973-4568-850d-04e264779bb0.svg"
+          },
+          {
+            "display_text": "联网搜索与多模态理解",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/a1f74bd4-5f54-4172-8fa8-d88b887d5ecc.svg"
+          },
+          {
+            "display_text": "MiniMax Code 网页端、桌面端、TUI、iOS 和 Android",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/2b1e3575-839f-42fb-9cd1-e59063b5b025.svg"
+          },
+          {
+            "display_text": "API Key 接入 AI Agent 和编程工具",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/9718a6ed-8550-44c8-abd3-763443948450.svg"
+          },
+          {
+            "display_text": "高峰时段优先通行",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/d1a7a0c3-239c-43aa-a815-b9f6bc42d3f6.svg"
+          },
+          {
+            "display_text": "抢先体验新功能",
+            "icon": "https://cdn.hailuoai.com/hailuo-video-web/public_assets/9f9ced0b-4cc1-4503-bc2e-704716aeb05e.svg"
+          }
+        ],
+        "token_usage_multiplier": "<redacted>",
+        "recommend_subtitle": "全力创造",
+        "can_purchase": true
+      },
+      {
+        "title": "Plus",
+        "price_data": {
+          "price_tag": "49",
+          "original_price_tag": "49",
+          "unit": "",
+          "renew_price_tag": "49"
+        },
+        "instruction": "¥49元/月",
+        "button_text": "立即订阅",
+        "credit_benefit": [
+          "月度约 6 亿+ token M3 用量"
+        ],
+        "feature_title": "",
+        "feature_benefit": [
+          "支持 MiniMax 旗舰模型（M3.1 Flash／图像／语音）",
+          "可同时支持 3-4 个 Agent 并发运行",
+          "支持主流的编程工具，并持续扩展中",
+          "1M 长上下文，适合处理长文档 / 大型代码库",
+          "M3 原生多模态理解：图像 / 视频输入",
+          "文本 / 图像 / 语音 共享同一额度"
+        ],
+        "currency": "",
+        "combo_id": "310002",
+        "combo_type": 25,
+        "cycle_type": 1,
+        "visible": false,
+        "end_time": 1817481600000,
+        "token_usage_multiplier": "<redacted>",
+        "recommend_subtitle": "",
+        "can_purchase": true
+      },
+      {
+        "title": "Max",
+        "price_data": {
+          "price_tag": "119",
+          "original_price_tag": "119",
+          "unit": "",
+          "renew_price_tag": "119"
+        },
+        "instruction": "¥119元/月",
+        "button_text": "立即订阅",
+        "credit_benefit": [
+          "月度约 18 亿+ token M3 用量"
+        ],
+        "feature_title": "",
+        "feature_benefit": [
+          "支持 MiniMax 旗舰模型（M3.1 Flash／图像／语音）",
+          "可同时支持 4-5 个 Agent 并发运行",
+          "支持主流的编程工具，并持续扩展中",
+          "1M 长上下文，适合处理长文档 / 大型代码库",
+          "M3 原生多模态理解：图像 / 视频输入",
+          "文本 / 图像 / 语音 共享同一额度",
+          "支持 Hailuo2.3视频生成，3条 / 日"
+        ],
+        "currency": "",
+        "combo_id": "310003",
+        "combo_type": 26,
+        "cycle_type": 1,
+        "visible": false,
+        "token_usage_multiplier": "<redacted>",
+        "recommend_subtitle": "",
+        "can_purchase": true
+      },
+      {
+        "title": "Ultra",
+        "price_data": {
+          "price_tag": "469",
+          "original_price_tag": "469",
+          "unit": "",
+          "renew_price_tag": "469"
+        },
+        "instruction": "¥469",
+        "button_text": "立即订阅",
+        "credit_benefit": [
+          "月度约 71 亿+ token M3 用量"
+        ],
+        "feature_title": "",
+        "feature_benefit": [
+          "支持 MiniMax 旗舰模型（M3.1 Flash／图像／语音）",
+          "可同时支持 6-7 个 Agent 并发运行",
+          "支持主流的编程工具，并持续扩展中",
+          "1M 长上下文，适合处理长文档 / 大型代码库",
+          "M3 原生多模态理解：图像 / 视频输入",
+          "文本 / 图像 / 语音 共享同一额度",
+          "支持 Hailuo2.3视频生成，5条 / 日"
+        ],
+        "currency": "",
+        "combo_id": "310009",
+        "combo_type": 101005,
+        "cycle_type": 1,
+        "visible": false,
+        "end_time": 1797609600000,
+        "token_usage_multiplier": "<redacted>",
+        "recommend_subtitle": "",
+        "can_purchase": true
+      },
+      {
+        "title": "Plus-极速版",
+        "price_data": {
+          "price_tag": "98",
+          "original_price_tag": "98",
+          "unit": "",
+          "renew_price_tag": "98"
+        },
+        "instruction": "¥98",
+        "button_text": "立即订阅",
+        "credit_benefit": [
+          "月度约 12 亿+ token M3 用量（极速档）"
+        ],
+        "feature_title": "",
+        "feature_benefit": [
+          "支持 MiniMax 旗舰模型（M3.1 Flash／图像／语音）",
+          "可同时支持 3-4 个 Agent 并发运行",
+          "支持主流的编程工具，并持续扩展中",
+          "1M 长上下文，适合处理长文档 / 大型代码库",
+          "M3 原生多模态理解：图像 / 视频输入",
+          "文本 / 图像 / 语音 共享同一额度"
+        ],
+        "currency": "",
+        "combo_id": "310005",
+        "combo_type": 101002,
+        "cycle_type": 1,
+        "visible": false,
+        "end_time": 1817481600000,
+        "token_usage_multiplier": "<redacted>",
+        "recommend_subtitle": "",
+        "can_purchase": true
+      },
+      {
+        "title": "Max-极速版",
+        "price_data": {
+          "price_tag": "199",
+          "original_price_tag": "199",
+          "unit": "",
+          "renew_price_tag": "199"
+        },
+        "instruction": "¥199",
+        "button_text": "立即订阅",
+        "credit_benefit": [
+          "4500次模型调用 / 5 小时"
+        ],
+        "feature_title": "",
+        "feature_benefit": [
+          "支持最新MiniMax-M2.7-highspeed，约100 TPS 极速推理，同类产品3倍生成速度",
+          "7.5 倍 Starter 套餐用量",
+          "约支持2~3个OpenClaw agent",
+          "支持主流的编程工具，并持续扩展中",
+          "支持图像理解、联网搜索 MCP",
+          "生成图片、语音、音乐和视频",
+          "每周可使用额度为「每5 小时额度」的 10 倍"
+        ],
+        "currency": "",
+        "combo_id": "310006",
+        "combo_type": 101003,
+        "cycle_type": 1,
+        "visible": false,
+        "end_time": 1797609600000,
+        "token_usage_multiplier": "<redacted>",
+        "recommend_subtitle": "",
+        "can_purchase": true
+      },
+      {
+        "title": "Ultra-极速版",
+        "price_data": {
+          "price_tag": "899",
+          "original_price_tag": "899",
+          "unit": "",
+          "renew_price_tag": "899"
+        },
+        "instruction": "",
+        "button_text": "立即订阅",
+        "credit_benefit": [
+          "30000次模型调用 / 5 小时"
+        ],
+        "feature_title": "",
+        "feature_benefit": [
+          "支持最新MiniMax-M2.7-highspeed，约100 TPS 极速推理，同类产品3倍生成速度",
+          "50 倍 Starter 套餐用量",
+          "约支持4~5个OpenClaw agent",
+          "支持主流的编程工具，并持续扩展中",
+          "支持图像理解、联网搜索 MCP",
+          "生成图片、语音、音乐和视频",
+          "每周可使用额度为「每5 小时额度」的 10 倍"
+        ],
+        "currency": "",
+        "combo_id": "310007",
+        "combo_type": 101004,
+        "cycle_type": 1,
+        "visible": false,
+        "end_time": 1797609600000,
+        "token_usage_multiplier": "<redacted>",
+        "recommend_subtitle": "",
+        "can_purchase": true
+      },
+      {
+        "title": "Starter",
+        "price_data": {
+          "price_tag": "29",
+          "original_price_tag": "29",
+          "unit": "",
+          "renew_price_tag": "29"
+        },
+        "instruction": "¥29元/月",
+        "button_text": "立即订阅",
+        "credit_benefit": [
+          "月度约 3 亿+ token M3 用量"
+        ],
+        "feature_title": "",
+        "feature_benefit": [
+          "支持 MiniMax 旗舰模型（M3.1 Flash／图像／语音）",
+          "可同时支持 1-2 个 Agent 并发运行",
+          "支持主流的编程工具，并持续扩展中",
+          "1M 长上下文，适合处理长文档 / 大型代码库",
+          "M3 原生多模态理解：图像 / 视频输入",
+          "文本 / 图像 / 语音 共享同一额度"
+        ],
+        "currency": "",
+        "combo_id": "310001",
+        "combo_type": 24,
+        "cycle_type": 1,
+        "visible": false,
+        "end_time": 1817481600000,
+        "token_usage_multiplier": "<redacted>",
+        "recommend_subtitle": "",
+        "can_purchase": true
+      }
+    ],
+    "current_subscribe": {
+      "manage_channel": 1,
+      "button_text": "",
+      "current_subscribe_title": "TokenPlanMax-年度会员",
+      "current_subscribe_price": "",
+      "current_subscribe_credit": 0,
+      "current_subscribe_end_time": "07/06/2027",
+      "current_subscribe_combo_type": 26,
+      "curr_subscribe_combo_id": "311003",
+      "current_subscribe_cycle_type": 3,
+      "current_credit_reload_time": "07/06/2027",
+      "next_subscribe_title": "",
+      "renewal_date": "",
+      "next_subscribe_combo_type": 0,
+      "renewal_state": 0,
+      "nxt_subscribe_combo_id": "",
+      "next_subscribe_cycle_type": 0,
+      "current_subscribe_end_time_ts": 1814803200000,
+      "purchase_source": 0,
+      "current_subscribe_purchase_id": "2073408871321314103",
+      "refundable": true,
+      "last_expired_at": 1783353600000
+    },
+    "invoice_info": {
+      "invoice_amount": "0.00"
+    },
+    "voice_slot_info": {
+      "voice_slot_total": 0,
+      "voice_slot_used": 0
+    },
+    "credit_info": {
+      "total_credit": "0.00"
+    },
+    "current_combo_card": {
+      "title": "Max",
+      "price_data": {
+        "price_tag": "1190",
+        "original_price_tag": "1428",
+        "unit": "",
+        "renew_price_tag": "1190"
+      },
+      "instruction": "¥1190",
+      "button_text": "续订套餐",
+      "credit_benefit": [
+        "月度约 18 亿+ token M3 用量"
+      ],
+      "feature_title": "",
+      "feature_benefit": [
+        "支持 MiniMax 旗舰模型（M3.1 Flash／图像／语音）",
+        "可同时支持 4-5 个 Agent 并发运行",
+        "支持主流的编程工具，并持续扩展中",
+        "1M 长上下文，适合处理长文档 / 大型代码库",
+        "M3 原生多模态理解：图像 / 视频输入",
+        "文本 / 图像 / 语音 共享同一额度",
+        "支持 Hailuo2.3视频生成，3条 / 日"
+      ],
+      "currency": "",
+      "combo_id": "311003",
+      "combo_type": 26,
+      "cycle_type": 3,
+      "visible": true,
+      "token_usage_multiplier": "<redacted>",
+      "recommend_subtitle": "",
+      "can_purchase": true
+    },
+    "base_resp": {
+      "status_code": 0,
+      "status_msg": "success"
+    }
+  }
+}

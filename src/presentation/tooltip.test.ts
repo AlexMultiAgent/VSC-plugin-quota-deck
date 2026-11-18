@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { escapeHtml, renderTooltip } from './tooltip';
 import { translatorFor } from '../localization';
+import { readMiniMaxPlan, readMiniMaxSubscription } from '../providers/minimax/shape';
+import { loadFixture } from '../test/helpers/fixture';
 import { makeSnapshot } from '../test/helpers/snapshot';
 
 const t = translatorFor('en-US');
@@ -198,7 +200,7 @@ describe('renderTooltip', () => {
     expect(html).not.toContain('<tr><td colspan="4"><tr>');
   });
 
-  it('shows video remaining uses instead of trusting a contradictory percentage', () => {
+  it('shows the video remaining count the provider parsed', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -211,8 +213,8 @@ describe('renderTooltip', () => {
             ],
             models: [{
               model: 'video',
-              remaining: 0,
-              remainingPercent: 0,
+              remaining: 3,
+              remainingPercent: 100,
               total: 3,
               used: 0,
             }],
@@ -243,7 +245,13 @@ describe('renderTooltip', () => {
           fetchedAt: 'x',
           data: {
             windows: [],
-            models: [{ model: 'video', remaining: 0, remainingPercent: 100, total: 3 }],
+            models: [{
+              model: 'video',
+              remaining: 0,
+              remainingPercent: 0,
+              total: 3,
+              used: 3,
+            }],
           },
         },
       }),
@@ -256,6 +264,29 @@ describe('renderTooltip', () => {
     expect(html).not.toContain('剩余');
     expect(html).not.toContain('已使用');
     expect(html).not.toContain('次');
+  });
+
+  it('renders the captured MiniMax video quota as three of three remaining', () => {
+    const fixture = loadFixture('minimax-cn', 'minimax.plan', 'standard') as {
+      response: unknown;
+    };
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: readMiniMaxPlan(fixture.response),
+        },
+      }),
+    };
+
+    const html = renderTooltip(snapshots, ['minimax-cn'], zh);
+    const visibleText = html.replace(/<[^>]+>/g, '');
+
+    expect(visibleText).toContain('3/3');
+    expect(visibleText).not.toContain('0/3');
+    expect(visibleText).toContain('90%');
+    expect(visibleText).toContain('14%');
   });
 
   it('shows the video reset time after its quota track', () => {
@@ -717,5 +748,30 @@ describe('renderTooltip', () => {
     expect(html).toContain('Video');
     expect(html).toContain('6,850');
     expect(html).toContain('2027-06-30');
+  });
+
+  it('shows the MiniMax expiry in the configured time zone', () => {
+    const fixture = loadFixture('minimax-cn', 'minimax.subscription', 'standard') as {
+      response: unknown;
+    };
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: { windows: [], models: [] },
+        },
+        'minimax.subscription': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: readMiniMaxSubscription(fixture.response),
+        },
+      }),
+    };
+
+    const html = renderTooltip(snapshots, ['minimax-cn'], zh, undefined, 'Asia/Shanghai');
+
+    expect(html).toContain('2027-07-06 00:00');
+    expect(html).not.toContain('2027-07-05');
   });
 });

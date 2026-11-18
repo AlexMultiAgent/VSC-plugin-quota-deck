@@ -275,26 +275,22 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
     for (const model of plan.models ?? []) {
       if (
         model.model === 'general' ||
-        model.total === null ||
+        model.total == null ||
         model.total <= 0 ||
-        model.remaining === null
+        model.remaining == null
       ) {
         continue;
       }
-      const remaining =
-        model.used == null
-          ? model.remaining
-          : Math.max(0, Math.min(model.total, model.total - model.used));
       const percent = Math.round(
         Math.max(
           0,
-          Math.min(100, (remaining / model.total) * 100),
+          Math.min(100, model.remainingPercent ?? (model.remaining / model.total) * 100),
         ),
       );
       const label = model.model === 'video' ? t('tooltip.model.video') : model.model;
       rows.push(
         `<tr><td>${escapeHtml(label)}</td>` +
-        `<td>${bar(percent)}${quotaValue(`${remaining}/${model.total}`)}</td>` +
+        `<td>${bar(percent)}${quotaValue(`${model.remaining}/${model.total}`)}</td>` +
         `${resetCell(model.resetAt, timeZone, t)}</tr>`,
       );
     }
@@ -310,7 +306,7 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
     if (typeof subscription?.expiresAt === 'number') {
       rows.push(
         `<tr><td>${escapeHtml(t('tooltip.expires'))}</td>` +
-        `<td>${new Date(subscription.expiresAt).toISOString().slice(0, 10)}</td>` +
+        `<td>${escapeHtml(zonedTime(new Date(subscription.expiresAt).toISOString(), timeZone))}</td>` +
         '<td></td><td></td></tr>',
       );
     }

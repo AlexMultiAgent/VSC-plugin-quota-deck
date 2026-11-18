@@ -3,8 +3,6 @@ import { asRecord, numberOrNull } from '../shape';
 
 export interface MiniMaxWindow {
   readonly window: 'fiveHour' | 'weekly';
-  readonly total: number | null;
-  readonly used: number | null;
   readonly remainingPercent: number | null;
   readonly remainingPercentSource: 'computed' | 'field' | null;
   readonly resetAt: number | null;
@@ -13,11 +11,11 @@ export interface MiniMaxWindow {
 
 export interface MiniMaxModel {
   readonly model: string;
-  readonly used: number | null;
+  readonly total: number | null;
   readonly remaining: number | null;
+  readonly used: number | null;
   readonly remainingPercent: number | null;
   readonly resetAt: number | null;
-  readonly total: number | null;
 }
 
 export interface MiniMaxPlan {
@@ -54,17 +52,45 @@ function asTimestamp(value: unknown): number | null {
   return null;
 }
 
-function percentFrom(total: number | null, used: number | null, field: number | null) {
-  if (total !== null && total > 0 && used !== null) {
+interface Quota {
+  readonly total: number | null;
+  readonly remaining: number | null;
+  readonly used: number | null;
+  readonly remainingPercent: number | null;
+  readonly remainingPercentSource: 'computed' | 'field' | null;
+}
+
+/**
+ * MiniMax reports `current_interval_usage_count` as the count still *left*, not
+ * the count already spent — the same record carries
+ * `current_interval_remaining_percent` next to it, so a video allowance of 3
+ * with a usage count of 3 means 3 remaining, not 3 spent. A Token Plan key
+ * exposes no counts at all: `current_interval_total_count` is 0 and only the
+ * percentage fields carry the quota.
+ */
+function readQuota(
+  total: number | null,
+  remainingCount: number | null,
+  remainingPercent: number | null,
+): Quota {
+  if (total !== null && total > 0 && remainingCount !== null) {
+    const remaining = Math.max(0, Math.min(total, remainingCount));
     return {
-      value: Math.max(0, Math.min(100, 100 * ((total - used) / total))),
-      source: 'computed' as const,
+      total,
+      remaining,
+      used: total - remaining,
+      remainingPercent: (remaining / total) * 100,
+      remainingPercentSource: 'computed',
     };
   }
-  if (field !== null) {
-    return { value: Math.max(0, Math.min(100, field)), source: 'field' as const };
-  }
-  return { value: null, source: null };
+  return {
+    total,
+    remaining: null,
+    used: null,
+    remainingPercent:
+      remainingPercent === null ? null : Math.max(0, Math.min(100, remainingPercent)),
+    remainingPercentSource: remainingPercent === null ? null : 'field',
+  };
 }
 
 export function readMiniMaxPlan(response: unknown): MiniMaxPlan {
@@ -77,56 +103,54 @@ export function readMiniMaxPlan(response: unknown): MiniMaxPlan {
   const records = rows.map((row) => asRecord(row, 'model_remains[]'));
   const general =
     records.find((row) => String(row.model_name ?? '') === 'general') ?? records[0]!;
-  const fiveHourTotal = numberOrNull(general.current_interval_total_count);
-  const fiveHourUsed = numberOrNull(general.current_interval_usage_count);
-  const fiveHourField = numberOrNull(general.current_interval_remaining_percent);
-  const fiveHourPercent = percentFrom(fiveHourTotal, fiveHourUsed, fiveHourField);
-
-  const weeklyTotal = numberOrNull(general.current_weekly_total_count);
-  const weeklyUsed = numberOrNull(general.current_weekly_usage_count);
-  const weeklyField = numberOrNull(general.current_weekly_remaining_percent);
-  const weeklyPercent = percentFrom(weeklyTotal, weeklyUsed, weeklyField);
+  const interval = readQuota(
+    numberOrNull(general.current_interval_total_count),
+    numberOrNull(general.current_interval_usage_count),
+    numberOrNull(general.current_interval_remaining_percent),
+  );
+  const weekly = readQuota(
+    numberOrNull(general.current_weekly_total_count),
+    numberOrNull(general.current_weekly_usage_count),
+    numberOrNull(general.current_weekly_remaining_percent),
+  );
 
   const windows: MiniMaxWindow[] = [
     {
       window: 'fiveHour',
-      total: fiveHourTotal,
-      used: fiveHourUsed,
-      remainingPercent: fiveHourPercent.value,
-      remainingPercentSource: fiveHourPercent.source,
+      remainingPercent: interval.remainingPercent,
+      remainingPercentSource: interval.remainingPercentSource,
       resetAt: asTimestamp(general.end_time),
       unlimited: false,
     },
   ];
 
   if (
-    weeklyTotal !== null ||
-    weeklyUsed !== null ||
-    weeklyField !== null ||
+    weekly.total !== null ||
+    weekly.remainingPercent !== null ||
     general.weekly_unlimited === true
   ) {
     windows.push({
       window: 'weekly',
-      total: weeklyTotal,
-      used: weeklyUsed,
-      remainingPercent: weeklyPercent.value,
-      remainingPercentSource: weeklyPercent.source,
+      remainingPercent: weekly.remainingPercent,
+      remainingPercentSource: weekly.remainingPercentSource,
       resetAt: asTimestamp(general.weekly_end_time),
       unlimited: general.weekly_unlimited === true,
     });
   }
 
   const models: MiniMaxModel[] = records.map((record) => {
-    const total = numberOrNull(record.current_interval_total_count);
-    const used = numberOrNull(record.current_interval_usage_count);
-    const percent = percentFrom(total, used, numberOrNull(record.current_interval_remaining_percent));
+    const quota = readQuota(
+      numberOrNull(record.current_interval_total_count),
+      numberOrNull(record.current_interval_usage_count),
+      numberOrNull(record.current_interval_remaining_percent),
+    );
     return {
       model: String(record.model_name ?? ''),
-      used,
-      remaining: total !== null && percent.value !== null ? Math.round(total * (percent.value / 100)) : null,
-      remainingPercent: percent.value,
+      total: quota.total,
+      remaining: quota.remaining,
+      used: quota.used,
+      remainingPercent: quota.remainingPercent,
       resetAt: asTimestamp(record.end_time),
-      total,
     };
   });
 
@@ -139,8 +163,13 @@ export function readMiniMaxSubscription(response: unknown): MiniMaxSubscription 
     typeof root.current_subscribe === 'object' && root.current_subscribe !== null
       ? (root.current_subscribe as Record<string, unknown>)
       : root;
+  // `current_subscribe_end_time` is a locale date string such as "07/06/2027";
+  // parsing it yields local midnight, so the epoch field wins when present.
+  const expiresAt =
+    asTimestamp(current.current_subscribe_end_time_ts) ??
+    asTimestamp(current.current_subscribe_end_time ?? current.end_time);
   return {
-    expiresAt: asTimestamp(current.current_subscribe_end_time ?? current.end_time),
+    expiresAt,
     planName:
       typeof (current.combo_name ?? current.plan_name) === 'string'
         ? String(current.combo_name ?? current.plan_name)

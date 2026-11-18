@@ -1,0 +1,53 @@
+{
+  "capturedAt": "2026-11-18T16:41:03.261Z",
+  "provider": "minimax-cn",
+  "capability": "minimax.plan",
+  "case": "standard",
+  "sourceHost": "www.minimaxi.com",
+  "sourceUrls": [
+    "https://www.minimaxi.com/v1/api/openplatform/coding_plan/remains"
+  ],
+  "response": {
+    "model_remains": [
+      {
+        "start_time": 1795017600000,
+        "end_time": 1795035600000,
+        "remains_time": 15536556,
+        "current_interval_total_count": 0,
+        "current_interval_usage_count": 0,
+        "model_name": "general",
+        "current_weekly_total_count": 0,
+        "current_weekly_usage_count": 0,
+        "weekly_start_time": 1794758400000,
+        "weekly_end_time": 1795363200000,
+        "weekly_remains_time": 343136556,
+        "current_interval_status": 1,
+        "current_interval_remaining_percent": 90,
+        "current_weekly_status": 1,
+        "current_weekly_remaining_percent": 14,
+        "weekly_boost_permille": 1500
+      },
+      {
+        "start_time": 1795017600000,
+        "end_time": 1795104000000,
+        "remains_time": 83936556,
+        "current_interval_total_count": 3,
+        "current_interval_usage_count": 3,
+        "model_name": "video",
+        "current_weekly_total_count": 21,
+        "current_weekly_usage_count": 21,
+        "weekly_start_time": 1794758400000,
+        "weekly_end_time": 1795363200000,
+        "weekly_remains_time": 343136556,
+        "current_interval_status": 1,
+        "current_interval_remaining_percent": 100,
+        "current_weekly_status": 1,
+        "current_weekly_remaining_percent": 100
+      }
+    ],
+    "base_resp": {
+      "status_code": 0,
+      "status_msg": "success"
+    }
+  }
+}

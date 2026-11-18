@@ -53,6 +53,94 @@ describe('SnapshotCache', () => {
     expect(await cache.load('deepseek', 'last7')).toEqual(snapshot);
   });
 
+  it('drops a MiniMax plan cached under the inverted count rule', async () => {
+    const storage = new Map<string, unknown>([[
+      'quotaDeck.snapshot.minimax-cn.last7',
+      {
+        providerId: 'minimax-cn',
+        fetchedAt: '2026-11-16T00:00:00.000Z',
+        capabilities: {
+          'minimax.plan': {
+            kind: 'ok',
+            fetchedAt: '2026-11-16T00:00:00.000Z',
+            data: {
+              windows: [
+                {
+                  window: 'fiveHour',
+                  total: 0,
+                  used: 0,
+                  remainingPercent: 90,
+                  remainingPercentSource: 'field',
+                  resetAt: null,
+                  unlimited: false,
+                },
+              ],
+              models: [
+                {
+                  model: 'video',
+                  total: 3,
+                  used: 3,
+                  remaining: 0,
+                  remainingPercent: 0,
+                  resetAt: null,
+                },
+              ],
+            },
+          },
+        },
+      },
+    ]]);
+    const cache = new SnapshotCache(storage);
+
+    expect(await cache.load('minimax-cn', 'last7')).toEqual({
+      providerId: 'minimax-cn',
+      fetchedAt: '2026-11-16T00:00:00.000Z',
+      capabilities: {},
+    });
+  });
+
+  it('keeps a MiniMax plan cached under the current count rule', async () => {
+    const storage = new Map<string, unknown>();
+    const cache = new SnapshotCache(storage);
+    await cache.save(
+      {
+        providerId: 'minimax-cn',
+        fetchedAt: '2026-11-16T00:00:00.000Z',
+        capabilities: {
+          'minimax.plan': {
+            kind: 'ok',
+            fetchedAt: '2026-11-16T00:00:00.000Z',
+            data: {
+              windows: [
+                {
+                  window: 'fiveHour',
+                  remainingPercent: 90,
+                  remainingPercentSource: 'field',
+                  resetAt: null,
+                  unlimited: false,
+                },
+              ],
+              models: [
+                {
+                  model: 'video',
+                  total: 3,
+                  remaining: 3,
+                  used: 0,
+                  remainingPercent: 100,
+                  resetAt: null,
+                },
+              ],
+            },
+          },
+        },
+      },
+      'last7',
+    );
+
+    const loaded = await cache.load('minimax-cn', 'last7');
+    expect(loaded?.capabilities['minimax.plan']).toBeDefined();
+  });
+
   it('strips credential fields before persisting a snapshot', async () => {
     const storage = new Map<string, unknown>();
     const cache = new SnapshotCache(storage);

@@ -251,9 +251,10 @@ function miniMaxChildren(
   for (const model of plan?.models ?? []) {
     if (
       model.model === 'general' ||
-      model.total === null ||
+      model.total == null ||
       model.total <= 0 ||
-      model.remaining === null
+      model.remaining == null ||
+      model.used == null
     ) {
       continue;
     }
@@ -263,7 +264,6 @@ function miniMaxChildren(
         Math.min(100, model.remainingPercent ?? (model.remaining / model.total) * 100),
       ),
     );
-    const used = Math.max(0, model.total - model.remaining);
     const label = modelLabel(model.model, options.t);
     const quota = quotaRow(label, percent, options.warningThresholdPercent, options.t);
     children.push({
@@ -272,12 +272,12 @@ function miniMaxChildren(
       description:
         `${options.t('tooltip.remaining')} ${model.remaining}/${model.total} ` +
         `${options.t('tooltip.times')} · ` +
-        `${options.t('tooltip.used')} ${used} ${options.t('tooltip.times')}`,
+        `${options.t('tooltip.used')} ${model.used} ${options.t('tooltip.times')}`,
       tooltip: detailTooltip(
         label,
         `${options.t('tooltip.remaining')} ${model.remaining}/${model.total} ` +
           `${options.t('tooltip.times')} · ` +
-          `${options.t('tooltip.used')} ${used} ${options.t('tooltip.times')}`,
+          `${options.t('tooltip.used')} ${model.used} ${options.t('tooltip.times')}`,
       ),
       state: quota.state,
       stateLabel: quota.stateLabel,

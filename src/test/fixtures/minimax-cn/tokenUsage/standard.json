@@ -1,0 +1,73 @@
+{
+  "capturedAt": "2026-11-18T16:57:05.798Z",
+  "provider": "minimax-cn",
+  "capability": "minimax.tokenUsage",
+  "case": "standard",
+  "sourceHost": "www.minimaxi.com",
+  "sourceUrls": [
+    "https://www.minimaxi.com/account/amount?page=1&limit=100&aggregate=false"
+  ],
+  "response": {
+    "charge_records": [
+      {
+        "method": "openplatform_purchase",
+        "consume_cash": "0.0000",
+        "consume_token": "<redacted>",
+        "created_at": 1794848400,
+        "status": "SUCCESS",
+        "model": "token_credit",
+        "mail": "主账号",
+        "creator_id": "",
+        "api_token_name": "<redacted>",
+        "group_id": "2061400965755446114",
+        "creator_name": "主账号",
+        "ymd": "",
+        "consume_time": "2026-11-17 01:00-02:00",
+        "consume_cash_after_voucher": "0.0000",
+        "api_key_id": "<redacted>"
+      },
+      {
+        "method": "openplatform_purchase",
+        "consume_cash": "0.0000",
+        "consume_token": "<redacted>",
+        "created_at": 1794819600,
+        "status": "SUCCESS",
+        "model": "token_credit",
+        "mail": "主账号",
+        "creator_id": "",
+        "api_token_name": "<redacted>",
+        "group_id": "2061400965755446114",
+        "creator_name": "主账号",
+        "ymd": "",
+        "consume_time": "2026-11-16 17:00-18:00",
+        "consume_cash_after_voucher": "0.0000",
+        "api_key_id": "<redacted>"
+      },
+      {
+        "method": "code_plan_purchase",
+        "consume_cash": "0.0000",
+        "consume_token": "<redacted>",
+        "created_at": 1783314000,
+        "status": "SUCCESS",
+        "model": "subscribe",
+        "mail": "主账号",
+        "creator_id": "",
+        "api_token_name": "<redacted>",
+        "group_id": "2061400965755446114",
+        "creator_name": "主账号",
+        "ymd": "",
+        "consume_time": "2026-07-06 13:00-14:00",
+        "consume_cash_after_voucher": "0.0000",
+        "api_key_id": "<redacted>"
+      }
+    ],
+    "total_cnt": 3,
+    "consume_cash_sum": "0.0000",
+    "consume_token_sum": "<redacted>",
+    "consume_cash_after_voucher_sum": "0.0000",
+    "base_resp": {
+      "status_code": 0,
+      "status_msg": "success"
+    }
+  }
+}

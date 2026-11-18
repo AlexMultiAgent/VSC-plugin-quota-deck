@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { loadFixture } from '../../test/helpers/fixture';
 import {
   readMiniMaxPlan,
   readMiniMaxPoints,
@@ -6,61 +7,63 @@ import {
   readMiniMaxTokenUsage,
 } from './shape';
 
-const planResponse = {
-  base_resp: { status_code: 0 },
-  model_remains: [
-    {
-      model_name: 'general',
-      start_time: 1_765_000_000_000,
-      end_time: 1_765_018_000_000,
-      remains_time: 18_000_000,
-      current_interval_total_count: 100,
-      current_interval_usage_count: 25,
-      current_interval_remaining_percent: 75,
-      weekly_start_time: 1_765_000_000_000,
-      weekly_end_time: 1_765_600_000_000,
-      weekly_remains_time: 600_000_000,
-      current_weekly_total_count: 1_000,
-      current_weekly_usage_count: 220,
-      current_weekly_remaining_percent: 78,
-    },
-    {
-      model_name: 'video',
-      end_time: 1_765_018_000_000,
-      current_interval_total_count: 3,
-      current_interval_usage_count: 0,
-      current_interval_remaining_percent: 100,
-    },
-  ],
+const capturedPlan = loadFixture('minimax-cn', 'minimax.plan', 'standard') as {
+  response: unknown;
 };
 
 describe('readMiniMaxPlan', () => {
   it('reads the current model_remains envelope and general windows', () => {
-    const plan = readMiniMaxPlan(planResponse);
+    const plan = readMiniMaxPlan(capturedPlan.response);
     expect(plan.models.map((model) => model.model)).toEqual(['general', 'video']);
     expect(plan.windows.map((window) => window.window)).toEqual(['fiveHour', 'weekly']);
   });
 
-  it('computes remaining percentages from counts when both are available', () => {
-    const plan = readMiniMaxPlan(planResponse);
-    expect(plan.windows[0]?.remainingPercent).toBe(75);
-    expect(plan.windows[0]?.remainingPercentSource).toBe('computed');
+  it('reads the Token Plan percentage shape when the counts are zero', () => {
+    const plan = readMiniMaxPlan(capturedPlan.response);
+    expect(
+      plan.windows.map((window) => [
+        window.window,
+        window.remainingPercent,
+        window.remainingPercentSource,
+      ]),
+    ).toEqual([
+      ['fiveHour', 90, 'field'],
+      ['weekly', 14, 'field'],
+    ]);
   });
 
-  it('keeps zero video usage as a full remaining allowance', () => {
-    const plan = readMiniMaxPlan(planResponse);
+  it('reads a video count as the number of uses still left', () => {
+    const plan = readMiniMaxPlan(capturedPlan.response);
     expect(plan.models.find((model) => model.model === 'video')).toMatchObject({
-      used: 0,
-      remaining: 3,
-      remainingPercent: 100,
-      resetAt: 1_765_018_000_000,
       total: 3,
+      remaining: 3,
+      used: 0,
+      remainingPercent: 100,
+      resetAt: 1795104000000,
     });
   });
 
   it('keeps absolute reset timestamps in milliseconds', () => {
-    const plan = readMiniMaxPlan(planResponse);
-    expect(plan.windows[0]?.resetAt).toBe(1_765_018_000_000);
+    const plan = readMiniMaxPlan(capturedPlan.response);
+    expect(plan.windows[0]?.resetAt).toBe(1795035600000);
+  });
+
+  it('derives remaining percentages from a count shape', () => {
+    const plan = readMiniMaxPlan({
+      model_remains: [
+        {
+          model_name: 'video',
+          current_interval_total_count: 10,
+          current_interval_usage_count: 4,
+        },
+      ],
+    });
+    expect(plan.models[0]).toMatchObject({
+      total: 10,
+      remaining: 4,
+      used: 6,
+      remainingPercent: 40,
+    });
   });
 
   it('does not invent a percentage for an unknown shape', () => {
@@ -78,6 +81,21 @@ describe('readMiniMaxSubscription', () => {
     });
     expect(subscription.planName).toBe('Token Plan Pro');
     expect(subscription.expiresAt).toBe(Date.parse('2027-03-01T00:00:00Z'));
+  });
+
+  it('reads the expiry from the epoch field regardless of the machine time zone', () => {
+    const fixture = loadFixture('minimax-cn', 'minimax.subscription', 'standard') as {
+      response: unknown;
+    };
+    const originalTimeZone = process.env.TZ;
+    try {
+      for (const timeZone of ['UTC', 'America/New_York', 'Asia/Shanghai']) {
+        process.env.TZ = timeZone;
+        expect(readMiniMaxSubscription(fixture.response).expiresAt).toBe(1814803200000);
+      }
+    } finally {
+      process.env.TZ = originalTimeZone;
+    }
   });
 });
 

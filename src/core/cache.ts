@@ -1,5 +1,5 @@
 import type { RangeId } from './time';
-import type { ProviderId, ProviderSnapshot } from './types';
+import type { CapabilityState, ProviderId, ProviderSnapshot } from './types';
 
 export interface StorageBackend {
   get(key: string): unknown;
@@ -46,12 +46,44 @@ function withoutRetiredCapabilities(snapshot: ProviderSnapshot): ProviderSnapsho
     : { ...snapshot, capabilities: Object.fromEntries(entries) };
 }
 
+/**
+ * The MiniMax plan used to be parsed with `current_interval_usage_count` read
+ * as "already spent", so a plan cached under that rule renders the video
+ * allowance inverted. The current window shape carries no `total` key, so a
+ * cached plan that still has one predates the fix and must not be shown.
+ */
+function isLegacyMiniMaxPlan(state: CapabilityState | undefined): boolean {
+  if (state === undefined || (state.kind !== 'ok' && state.kind !== 'stale')) return false;
+  const data: unknown = state.data;
+  if (typeof data !== 'object' || data === null) return false;
+  const windows = (data as { windows?: unknown }).windows;
+  if (!Array.isArray(windows)) return false;
+  return windows.some(
+    (window) => typeof window === 'object' && window !== null && 'total' in window,
+  );
+}
+
+function withoutLegacyMiniMaxPlan(snapshot: ProviderSnapshot): ProviderSnapshot {
+  if (snapshot.providerId !== 'minimax-cn' && snapshot.providerId !== 'minimax-global') {
+    return snapshot;
+  }
+  const entries = Object.entries(snapshot.capabilities).filter(
+    ([capability, state]) =>
+      capability !== 'minimax.plan' || !isLegacyMiniMaxPlan(state),
+  );
+  return entries.length === Object.keys(snapshot.capabilities).length
+    ? snapshot
+    : { ...snapshot, capabilities: Object.fromEntries(entries) };
+}
+
 export class SnapshotCache {
   constructor(private readonly storage: StorageBackend) {}
 
   async load(providerId: ProviderId, range: RangeId): Promise<ProviderSnapshot | undefined> {
     const raw = this.storage.get(this.key(providerId, range));
-    return isSnapshot(raw) ? withoutRetiredCapabilities(raw) : undefined;
+    return isSnapshot(raw)
+      ? withoutLegacyMiniMaxPlan(withoutRetiredCapabilities(raw))
+      : undefined;
   }
 
   async save(snapshot: ProviderSnapshot, range: RangeId): Promise<void> {
