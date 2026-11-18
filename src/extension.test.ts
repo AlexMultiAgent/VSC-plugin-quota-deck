@@ -72,3 +72,35 @@ describe('opening the dashboard', () => {
     for (const subscription of ctx.subscriptions) subscription.dispose();
   });
 });
+
+describe('Activity Bar overview', () => {
+  beforeEach(() => __reset());
+
+  it('creates the overview tree and updates it with the cached snapshot state', async () => {
+    const ctx = context();
+    await activate(ctx as never);
+    const view = state.treeViews.find((entry) => entry.viewId === 'quotaDeck.overview');
+    expect(view).toBeDefined();
+    expect(view?.options.showCollapseAll).toBe(true);
+    expect(view?.options.canSelectMany).toBe(false);
+    const provider = view?.treeDataProvider as {
+      getChildren(): unknown[];
+    };
+    expect(provider.getChildren()).toHaveLength(1);
+  });
+
+  it('opens the extension-scoped Settings editor', async () => {
+    const vscodeModule = await import('vscode');
+    const execute = vi.spyOn(vscodeModule.commands, 'executeCommand')
+      .mockResolvedValue(undefined);
+    const ctx = context();
+    await activate(ctx as never);
+
+    await state.registeredCommands.get('quotaDeck.openSettings')!();
+
+    expect(execute).toHaveBeenCalledWith(
+      'workbench.action.openSettings',
+      '@ext:alexmultiagent.quota-deck',
+    );
+  });
+});

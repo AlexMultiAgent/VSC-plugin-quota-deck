@@ -15,6 +15,7 @@ describe('registerCommands', () => {
       configureQwen: async () => undefined,
       configureProviders: async () => undefined,
       showHelp: async () => undefined,
+      openSettings: async () => undefined,
     });
     expect([...state.registeredCommands.keys()].sort()).toEqual([
       'quotaDeck.configureDeepSeek',
@@ -22,9 +23,31 @@ describe('registerCommands', () => {
       'quotaDeck.configureProviders',
       'quotaDeck.configureQwen',
       'quotaDeck.openDashboard',
+      'quotaDeck.openSettings',
       'quotaDeck.refresh',
       'quotaDeck.showHelp',
       'quotaDeck.switchProvider',
     ]);
+  });
+
+  it('registers the settings handler', async () => {
+    let calls = 0;
+    registerCommands({
+      refresh: async () => undefined,
+      openDashboard: async () => undefined,
+      switchProvider: async () => undefined,
+      configureMiniMax: async () => undefined,
+      configureDeepSeek: async () => undefined,
+      configureQwen: async () => undefined,
+      configureProviders: async () => undefined,
+      showHelp: async () => undefined,
+      openSettings: async () => {
+        calls += 1;
+      },
+    });
+
+    await state.registeredCommands.get('quotaDeck.openSettings')!();
+
+    expect(calls).toBe(1);
   });
 });

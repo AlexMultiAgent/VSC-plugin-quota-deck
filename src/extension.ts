@@ -20,6 +20,8 @@ import {
 import { DashboardPanel } from './presentation/dashboard/panel';
 import { buildDashboardModel, type DashboardModel } from './presentation/dashboard/viewModel';
 import { runOnboarding } from './presentation/onboarding';
+import { buildOverviewItems } from './presentation/overview/model';
+import { QuotaOverviewProvider } from './presentation/overview/provider';
 import { buildFallbackItems } from './presentation/quickPickFallback';
 import { StatusBarPresenter } from './presentation/statusBar';
 import { buildSwitcherItems } from './presentation/switcher';
@@ -35,6 +37,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const http = new HttpClient({ timeoutMs: 15_000, maxAttempts: 3 });
   const providers = buildProviders(http);
   const statusBar = new StatusBarPresenter(t);
+  const overview = new QuotaOverviewProvider();
+  const overviewView = vscode.window.createTreeView('quotaDeck.overview', {
+    treeDataProvider: overview,
+    canSelectMany: false,
+    showCollapseAll: true,
+  });
   const scheduler = new Scheduler({
     refreshIntervalMinutes: settings.refreshIntervalMinutes,
     pauseWhenUnfocused: settings.pauseWhenUnfocused,
@@ -101,6 +109,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     statusBar.setTooltip(markdown);
   }
 
+  function updateOverview(
+    snapshots = coordinator.getLast(),
+    pricing: PricingState = pricingState(Date.now()),
+  ): void {
+    overview.update(buildOverviewItems({
+      snapshots,
+      configured: configuredProviders(),
+      order: settings.providerOrder,
+      t,
+      pricing,
+      timeZone: settings.timeZone,
+      warningThresholdPercent: settings.warningThresholdPercent,
+      lastRefreshIso,
+    }));
+  }
+
   async function refreshAll(): Promise<void> {
     const snapshots = await coordinator.refreshAll(range);
     const pricing = pricingState(Date.now());
@@ -116,6 +140,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     );
     dashboard.update(currentModel(snapshots, pricing));
     refreshTooltip(pricing);
+    updateOverview(snapshots, pricing);
   }
 
   async function selectRange(next: RangeId): Promise<void> {
@@ -155,6 +180,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     statusBar,
     dashboard,
+    overview,
+    overviewView,
     { dispose: () => scheduler.stop() },
     { dispose: () => coordinator.dispose() },
     ...registerCommands({
@@ -208,6 +235,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       showHelp: async () => {
         await vscode.window.showInformationMessage(t('command.showHelp.message'));
       },
+      openSettings: async () => {
+        await vscode.commands.executeCommand(
+          'workbench.action.openSettings',
+          '@ext:alexmultiagent.quota-deck',
+        );
+      },
     }),
   );
 
@@ -258,6 +291,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   dashboard.update(currentModel(cached, pricing));
   refreshTooltip(pricing);
+  updateOverview(cached, pricing);
   void refreshAll();
 }
 
