@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.9 — 2026-11-18
 
 - 新增 Qwen / 百炼阿里云账户余额查询，显示可用余额、现金、信控额度和额度上限。
 - Qwen 使用专用 RAM AccessKey 与 `bss:DescribeAcccount` 权限，不使用百炼 API Key。
