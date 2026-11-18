@@ -67,6 +67,12 @@ interface UsageSummary {
   readonly cacheHitRate: number | null;
 }
 
+function hasUsableConfiguration(snapshot: ProviderSnapshot | undefined): snapshot is ProviderSnapshot {
+  return snapshot !== undefined && Object.values(snapshot.capabilities).some(
+    (state) => state.kind !== 'unconfigured' && state.kind !== 'unsupported',
+  );
+}
+
 function balances(snapshot: ProviderSnapshot | undefined): BalanceEntry[] {
   return capabilityValue<DeepSeekBalance>(snapshot, 'deepseek.balance')?.entries ?? [];
 }
@@ -239,6 +245,7 @@ export function renderTooltip(
   timeZone: string = SHANGHAI,
 ): string {
   const cards = order
+    .filter((id) => hasUsableConfiguration(snapshots[id]))
     .map((id) => {
       const snapshot = snapshots[id];
       const sourceBadge = snapshot === undefined ? '—' : t('source.account');

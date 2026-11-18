@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { makeSnapshot } from '../../test/helpers/snapshot';
 import { translatorFor } from '../../localization';
-import { buildDashboardModel, type DashboardOptions } from './viewModel';
+import { buildDashboardModel, groupStatTiles, type DashboardOptions } from './viewModel';
 
 const t = translatorFor('en-US');
 
@@ -115,6 +115,41 @@ describe('buildDashboardModel', () => {
     expect(model.providers[0]!.capabilities[1]!.message).toMatch(/complete Cookie/i);
   });
 
+  it('prompts for DeepSeek Web Session setup when a detail request fails', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['deepseek'],
+        snapshots: {
+          deepseek: makeSnapshot('deepseek', {
+            'deepseek.balance': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: { entries: [{ currency: 'CNY', total: 10 }] },
+            },
+            'deepseek.usageAmount': {
+              kind: 'failed',
+              error: { kind: 'unknown', message: 'error.unknown' },
+            },
+            'deepseek.usageCost': {
+              kind: 'failed',
+              error: { kind: 'unknown', message: 'error.unknown' },
+            },
+            'deepseek.accountSummary': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: { totals: [], source: 'summary', keyCount: 0 },
+            },
+          }),
+        },
+      }),
+    );
+    const provider = model.providers[0]!;
+    expect(provider.capabilities[1]!.message).toContain('Web Session');
+    expect(provider.capabilities[1]!.message).toContain('Cookie');
+    expect(provider.capabilities.filter((capability) => capability.message !== null)).toHaveLength(1);
+    expect(provider.message).toBeNull();
+  });
+
   it('marks all-unconfigured capabilities as not configured', () => {
     const model = buildDashboardModel(
       options({
@@ -160,6 +195,32 @@ describe('buildDashboardModel', () => {
     );
     expect(model.hero.value).toBe('42%');
     expect(model.hero.label).toBe('Lowest remaining quota');
+  });
+
+  it('labels the lowest live quota without treating media inventory as the account minimum', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['minimax-cn'],
+        snapshots: {
+          'minimax-cn': makeSnapshot('minimax-cn', {
+            'minimax.plan': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: {
+                windows: [
+                  { window: 'fiveHour', remainingPercent: 88, resetAt: null, unlimited: false },
+                  { window: 'weekly', remainingPercent: 34, resetAt: null, unlimited: false },
+                ],
+                models: [{ model: 'video', remaining: 0, total: 3 }],
+              },
+            },
+          }),
+        },
+      }),
+    );
+
+    expect(model.hero.value).toBe('34%');
+    expect(model.hero.sourceLabel).toBe('MiniMax CN · Weekly');
   });
 
   it('uses the configured warning threshold for quota meters', () => {
@@ -251,6 +312,25 @@ describe('buildDashboardModel', () => {
     expect(model.usage.cost).toEqual([]);
   });
 
+  it('does not fill the summary with blank DeepSeek metrics when it is unconfigured', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['deepseek'],
+        snapshots: {
+          deepseek: makeSnapshot('deepseek', {
+            'deepseek.balance': { kind: 'unconfigured', reason: 'missing api key' },
+            'deepseek.usageAmount': { kind: 'unconfigured', reason: 'missing platform session' },
+            'deepseek.usageCost': { kind: 'unconfigured', reason: 'missing platform session' },
+            'deepseek.accountSummary': { kind: 'unconfigured', reason: 'missing platform session' },
+          }),
+        },
+      }),
+    );
+
+    expect(model.providers[0]!.state).toBe('not-configured');
+    expect(model.tiles.filter((tile) => tile.scope === 'DeepSeek')).toEqual([]);
+  });
+
   it('sums token and cost tiles over the loaded range', () => {
     const model = buildDashboardModel(
       options({
@@ -281,6 +361,79 @@ describe('buildDashboardModel', () => {
     );
     expect(model.tiles.find((tile) => tile.key === 'tokens')!.value).toBe('500');
     expect(model.tiles.find((tile) => tile.key === 'cost')!.value).toBe('¥2.00');
+  });
+
+  it('does not present the account summary as the selected range cost', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['deepseek'],
+        snapshots: {
+          deepseek: makeSnapshot('deepseek', {
+            'deepseek.usageAmount': {
+              kind: 'failed',
+              error: { kind: 'unknown', message: 'error.unknown' },
+            },
+            'deepseek.accountSummary': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: { totals: [{ currency: 'CNY', amount: 821.92 }], source: 'summary', keyCount: 0 },
+            },
+          }),
+        },
+      }),
+    );
+
+    expect(model.tiles.find((tile) => tile.key === 'cost')).toBeUndefined();
+    expect(model.accountTotals).toEqual([{ currency: 'CNY', amount: 821.92 }]);
+  });
+
+  it('attributes summary tiles to the provider that supplied them', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['minimax-cn', 'deepseek'],
+        snapshots: {
+          'minimax-cn': makeSnapshot('minimax-cn', {
+            'minimax.points': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: { balance: 6850, expiresAt: null },
+            },
+            'minimax.tokenUsage': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: { rangeId: 'last7', tokens: 12345, currency: 'CNY' },
+            },
+          }),
+          deepseek: makeSnapshot('deepseek', {
+            'deepseek.balance': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: { entries: [{ currency: 'CNY', total: 10 }] },
+            },
+            'deepseek.usageAmount': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: {
+                rangeId: 'last7',
+                points: [],
+                costs: [],
+                byModel: [],
+                modelCosts: [],
+                currencies: [],
+              },
+            },
+          }),
+        },
+      }),
+    );
+
+    expect(model.tiles.map((tile) => [tile.key, tile.scope])).toEqual([
+      ['balance', 'DeepSeek'],
+      ['tokens', 'DeepSeek'],
+      ['cost', 'DeepSeek'],
+      ['points', 'MiniMax CN'],
+      ['minimaxTokens', 'MiniMax CN'],
+    ]);
   });
 
   it('never adds different currencies in the balance tile', () => {
@@ -420,5 +573,29 @@ describe('buildDashboardModel', () => {
       label: 'Last 30 days · Tokens',
       value: '12,345',
     });
+  });
+});
+
+describe('groupStatTiles', () => {
+  it('keeps each provider summary together in first-seen order', () => {
+    expect(groupStatTiles([
+      { key: 'balance', label: 'Balance', value: '1', tone: 'neutral', scope: 'DeepSeek' },
+      { key: 'points', label: 'Points', value: '2', tone: 'neutral', scope: 'MiniMax CN' },
+      { key: 'cost', label: 'Cost', value: '3', tone: 'neutral', scope: 'DeepSeek' },
+    ])).toEqual([
+      {
+        scope: 'DeepSeek',
+        tiles: [
+          { key: 'balance', label: 'Balance', value: '1', tone: 'neutral', scope: 'DeepSeek' },
+          { key: 'cost', label: 'Cost', value: '3', tone: 'neutral', scope: 'DeepSeek' },
+        ],
+      },
+      {
+        scope: 'MiniMax CN',
+        tiles: [
+          { key: 'points', label: 'Points', value: '2', tone: 'neutral', scope: 'MiniMax CN' },
+        ],
+      },
+    ]);
   });
 });

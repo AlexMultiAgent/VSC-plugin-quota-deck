@@ -124,12 +124,18 @@ function isLabels(value: unknown): boolean {
 
 function isDashboardModel(value: unknown): value is DashboardModel {
   if (!isRecord(value)) return false;
-  if (!isRecord(value.hero) || typeof value.hero.label !== 'string' || typeof value.hero.value !== 'string') {
+  if (
+    !isRecord(value.hero) ||
+    typeof value.hero.label !== 'string' ||
+    typeof value.hero.value !== 'string' ||
+    !isStringOrNull(value.hero.sourceLabel)
+  ) {
     return false;
   }
   if (!Array.isArray(value.tiles) || !value.tiles.every(
     (tile) => isRecord(tile) && typeof tile.key === 'string' && typeof tile.label === 'string' &&
-      typeof tile.value === 'string' && typeof tile.tone === 'string',
+      typeof tile.value === 'string' && typeof tile.tone === 'string' &&
+      typeof tile.scope === 'string',
   )) return false;
   if (!Array.isArray(value.providers) || !value.providers.every(
     (provider) => isRecord(provider) && typeof provider.id === 'string' &&

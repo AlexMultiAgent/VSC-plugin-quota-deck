@@ -25,9 +25,57 @@ describe('renderTooltip', () => {
   });
 
   it('lists providers in the given order', () => {
-    const html = renderTooltip({}, ['minimax-cn', 'deepseek', 'qwen'], t);
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok' as const,
+          fetchedAt: '2026-11-16T00:00:00.000Z',
+          data: { windows: [] },
+        },
+      }),
+      deepseek: makeSnapshot('deepseek', {
+        'deepseek.balance': {
+          kind: 'ok' as const,
+          fetchedAt: '2026-11-16T00:00:00.000Z',
+          data: { entries: [] },
+        },
+      }),
+      qwen: makeSnapshot('qwen', {
+        'qwen.accountBalance': { kind: 'unsupported' as const, reason: 'not available' },
+      }),
+    };
+    const html = renderTooltip(snapshots, ['minimax-cn', 'deepseek', 'qwen'], t);
     expect(html.indexOf('MiniMax CN')).toBeLessThan(html.indexOf('DeepSeek'));
-    expect(html.indexOf('DeepSeek')).toBeLessThan(html.indexOf('Qwen'));
+    expect(html).not.toContain('Qwen');
+  });
+
+  it('hides providers that have no usable configuration from hover details', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok' as const,
+          fetchedAt: '2026-11-16T00:00:00.000Z',
+          data: { windows: [{ window: 'fiveHour', remainingPercent: 88, resetAt: null, unlimited: false }] },
+        },
+      }),
+      'minimax-global': makeSnapshot('minimax-global', {
+        'minimax.plan': { kind: 'unconfigured' as const, reason: 'missing token plan key' },
+      }),
+      deepseek: makeSnapshot('deepseek', {
+        'deepseek.balance': { kind: 'unconfigured' as const, reason: 'missing api key' },
+      }),
+    };
+
+    const html = renderTooltip(
+      snapshots,
+      ['minimax-cn', 'minimax-global', 'deepseek', 'qwen'],
+      t,
+    );
+
+    expect(html).toContain('MiniMax CN');
+    expect(html).not.toContain('MiniMax Global');
+    expect(html).not.toContain('DeepSeek');
+    expect(html).not.toContain('Qwen');
   });
 
   it('shows source and session badges separately', () => {
@@ -46,7 +94,16 @@ describe('renderTooltip', () => {
   });
 
   it('marks the MiniMax plan as an API-key session', () => {
-    expect(renderTooltip({}, ['minimax-cn'], t)).toContain('API Key');
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok' as const,
+          fetchedAt: '2026-11-16T00:00:00.000Z',
+          data: { windows: [{ window: 'fiveHour', remainingPercent: 60, resetAt: null, unlimited: false }] },
+        },
+      }),
+    };
+    expect(renderTooltip(snapshots, ['minimax-cn'], t)).toContain('API Key');
   });
 
   it('shows a block-character progress bar', () => {

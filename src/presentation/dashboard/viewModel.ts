@@ -19,11 +19,13 @@ export interface StatTile {
   readonly label: string;
   readonly value: string;
   readonly tone: 'neutral' | 'positive' | 'warning' | 'critical';
+  readonly scope: string;
 }
 
 export interface HeroFigure {
   readonly label: string;
   readonly value: string;
+  readonly sourceLabel: string | null;
 }
 
 export interface QuotaMeter {
@@ -114,7 +116,9 @@ export interface DashboardLabels {
   readonly configureProviders: string;
   readonly refreshNow: string;
   readonly accountBalance: string;
+  readonly accountUsageSummary: string;
   readonly historyRange: string;
+  readonly deepseekUsage: string;
   readonly liveQuotaNote: string;
   readonly cost: string;
   readonly requests: string;
@@ -165,6 +169,21 @@ export interface DashboardOptions {
   readonly warningThresholdPercent?: number;
 }
 
+export interface StatTileGroup {
+  readonly scope: string;
+  readonly tiles: StatTile[];
+}
+
+export function groupStatTiles(tiles: readonly StatTile[]): StatTileGroup[] {
+  const groups = new Map<string, StatTile[]>();
+  for (const tile of tiles) {
+    const entries = groups.get(tile.scope) ?? [];
+    entries.push(tile);
+    groups.set(tile.scope, entries);
+  }
+  return [...groups.entries()].map(([scope, entries]) => ({ scope, tiles: entries }));
+}
+
 const ACCENT: Record<ProviderId, ProviderAccent> = {
   'minimax-cn': { light: '#1baf7a', dark: '#199e70' },
   'minimax-global': { light: '#1baf7a', dark: '#199e70' },
@@ -206,18 +225,26 @@ function mediaMeters(snapshot: ProviderSnapshot | undefined, warningThresholdPer
   });
 }
 
-function pointsBalance(snapshots: Partial<Record<ProviderId, ProviderSnapshot>>): number | null {
+function pointsBalance(
+  snapshots: Partial<Record<ProviderId, ProviderSnapshot>>,
+): { value: number; providerName: string } | null {
   for (const id of ['minimax-cn', 'minimax-global'] as const) {
     const balance = capabilityValue<MiniMaxPoints>(snapshots[id], 'minimax.points')?.balance;
-    if (typeof balance === 'number') return balance;
+    if (typeof balance === 'number') {
+      return { value: balance, providerName: providerDisplayName(id) };
+    }
   }
   return null;
 }
 
-function tokenUsage(snapshots: Partial<Record<ProviderId, ProviderSnapshot>>): number | null {
+function tokenUsage(
+  snapshots: Partial<Record<ProviderId, ProviderSnapshot>>,
+): { value: number; providerName: string } | null {
   for (const id of ['minimax-cn', 'minimax-global'] as const) {
     const tokens = capabilityValue<MiniMaxTokenUsage>(snapshots[id], 'minimax.tokenUsage')?.tokens;
-    if (typeof tokens === 'number') return tokens;
+    if (typeof tokens === 'number') {
+      return { value: tokens, providerName: providerDisplayName(id) };
+    }
   }
   return null;
 }
@@ -341,7 +368,7 @@ function providerCapabilities(
   t: Translator,
 ): ProviderCapabilityView[] {
   if (snapshot === undefined) return [];
-  return Object.entries(snapshot.capabilities).map(([id, state]) => ({
+  const capabilities = Object.entries(snapshot.capabilities).map(([id, state]) => ({
     id,
     label: capabilityLabel(id, t),
     state: state.kind,
@@ -349,7 +376,13 @@ function providerCapabilities(
     tone: capabilityTone(state.kind),
     message:
       state.kind === 'failed'
-        ? t(state.error.message)
+        ? snapshot.providerId === 'deepseek' && id !== 'deepseek.balance'
+          ? state.error.kind === 'auth'
+            ? t('dashboard.deepseek.sessionExpired')
+            : state.error.kind === 'malformed' || state.error.kind === 'unknown'
+              ? t('dashboard.deepseek.usageFailed')
+              : t(state.error.message)
+          : t(state.error.message)
         : state.kind === 'unconfigured' &&
             snapshot.providerId === 'deepseek' &&
             id !== 'deepseek.balance'
@@ -358,6 +391,14 @@ function providerCapabilities(
             : t('dashboard.deepseek.missingSession')
           : null,
   }));
+  const shownMessages = new Set<string>();
+  return capabilities.map((capability) => {
+    if (capability.message === null || !shownMessages.has(capability.message)) {
+      if (capability.message !== null) shownMessages.add(capability.message);
+      return capability;
+    }
+    return { ...capability, message: null };
+  });
 }
 
 function providerBalance(snapshot: ProviderSnapshot | undefined): string | null {
@@ -408,6 +449,9 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
     const stale = snapshot === undefined
       ? undefined
       : Object.values(snapshot.capabilities).find((entry) => entry.kind === 'stale');
+    const capabilities = providerCapabilities(snapshot, t);
+    const hasDeepSeekCapabilityMessage =
+      id === 'deepseek' && capabilities.some((capability) => capability.message !== null);
     return {
       id,
       name: providerDisplayName(id),
@@ -417,9 +461,9 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       meters,
       balance: id === 'deepseek' ? providerBalance(snapshot) : null,
       rangeUsage: providerRangeUsage(id, snapshot, t),
-      capabilities: providerCapabilities(snapshot, t),
+      capabilities,
       message:
-        failed !== undefined && failed.kind === 'failed'
+        failed !== undefined && failed.kind === 'failed' && !hasDeepSeekCapabilityMessage
           ? t(failed.error.message)
           : stale !== undefined && stale.kind === 'stale'
             ? t('state.stale')
@@ -428,11 +472,19 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
     };
   });
 
-  const percents = providers
-    .flatMap((provider) => provider.meters)
-    .map((meter) => meter.percent)
-    .filter((percent): percent is number => percent !== null);
-  const lowest = percents.length > 0 ? Math.min(...percents) : null;
+  const liveQuotas = providers.flatMap((provider) =>
+    provider.meters
+      .filter((meter) => !meter.key.startsWith('model:') && meter.percent !== null)
+      .map((meter) => ({
+        percent: meter.percent as number,
+        providerName: provider.name,
+        meterLabel: meter.label,
+      })),
+  );
+  const lowestQuota = liveQuotas.reduce<(typeof liveQuotas)[number] | null>(
+    (lowest, candidate) => lowest === null || candidate.percent < lowest.percent ? candidate : lowest,
+    null,
+  );
   const { points, costs, byModel } = usageData(snapshots['deepseek']);
   const costTotals = currencyTotals(costs);
 
@@ -460,30 +512,46 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       ? balances[0]
       : balances.find((entry) => entry.currency === balanceCurrency);
   const totalTokens = points.reduce((sum, point) => sum + point.totalTokens, 0);
-  const headlineCost = account.totals[0] ?? costTotals[0];
-
-  const tiles: StatTile[] = [
-    {
+  const rangeCost = costTotals[0];
+  const usageState = snapshots['deepseek']?.capabilities['deepseek.usageAmount'];
+  const hasLoadedUsage = usageState?.kind === 'ok' || usageState?.kind === 'stale';
+  const deepseekScope = providerDisplayName('deepseek');
+  const tiles: StatTile[] = [];
+  if (primaryBalance !== undefined) {
+    tiles.push({
       key: 'balance',
       label: t('dashboard.accountBalance'),
-      value: primaryBalance === undefined ? '—' : formatMoney(primaryBalance.total, primaryBalance.currency),
+      value: formatMoney(primaryBalance.total, primaryBalance.currency),
       tone: 'neutral',
-    },
-    { key: 'tokens', label: t('dashboard.tokens'), value: String(totalTokens), tone: 'neutral' },
-    {
-      key: 'cost',
-      label: t('dashboard.cost'),
-      value: headlineCost === undefined ? '—' : formatMoney(headlineCost.amount, headlineCost.currency),
-      tone: 'neutral',
-    },
-  ];
+      scope: deepseekScope,
+    });
+  }
+  if (hasLoadedUsage) {
+    tiles.push(
+      {
+        key: 'tokens',
+        label: t('dashboard.tokens'),
+        value: String(totalTokens),
+        tone: 'neutral',
+        scope: deepseekScope,
+      },
+      {
+        key: 'cost',
+        label: t('dashboard.cost'),
+        value: rangeCost === undefined ? '—' : formatMoney(rangeCost.amount, rangeCost.currency),
+        tone: 'neutral',
+        scope: deepseekScope,
+      },
+    );
+  }
   const pointsTileValue = pointsBalance(snapshots);
   if (pointsTileValue !== null) {
     tiles.push({
       key: 'points',
       label: t('capability.minimax.points'),
-      value: pointsTileValue.toLocaleString('en-US'),
+      value: pointsTileValue.value.toLocaleString('en-US'),
       tone: 'neutral',
+      scope: pointsTileValue.providerName,
     });
   }
   const tokenUsageValue = tokenUsage(snapshots);
@@ -491,8 +559,9 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
     tiles.push({
       key: 'minimaxTokens',
       label: t('capability.minimax.tokenUsage'),
-      value: tokenUsageValue.toLocaleString('en-US'),
+      value: tokenUsageValue.value.toLocaleString('en-US'),
       tone: 'neutral',
+      scope: tokenUsageValue.providerName,
     });
   }
 
@@ -500,7 +569,9 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
     configureProviders: t('dashboard.configureProviders'),
     refreshNow: t('dashboard.refreshNow'),
     accountBalance: t('dashboard.accountBalance'),
+    accountUsageSummary: t('dashboard.accountUsageSummary'),
     historyRange: t('dashboard.historyRange'),
+    deepseekUsage: t('dashboard.deepseekUsage'),
     liveQuotaNote: t('dashboard.liveQuotaNote'),
     cost: t('dashboard.chart.cost'),
     requests: t('dashboard.chart.requests'),
@@ -534,7 +605,13 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
         : t('dashboard.pricingUnavailable');
 
   return {
-    hero: { label: t('dashboard.lowestRemaining'), value: lowest === null ? '—' : `${Math.round(lowest)}%` },
+    hero: {
+      label: t('dashboard.lowestRemaining'),
+      value: lowestQuota === null ? '—' : `${Math.round(lowestQuota.percent)}%`,
+      sourceLabel: lowestQuota === null
+        ? null
+        : `${lowestQuota.providerName} · ${lowestQuota.meterLabel}`,
+    },
     tiles,
     providers,
     usage,

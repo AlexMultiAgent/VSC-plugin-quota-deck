@@ -115,6 +115,7 @@ body[data-loading="true"] #app { opacity: 0.55; transition: opacity 120ms ease-o
 .webview-status { color: var(--vscode-descriptionForeground); margin: 24px 0 12px; }
 .hero { font-size: 48px; font-weight: 600; line-height: 1.1; }
 .hero-label { color: var(--vscode-descriptionForeground); font-size: 13px; }
+.hero-source { color: var(--vscode-foreground); font-size: 13px; font-weight: 600; margin-top: 4px; }
 .hero-section { margin-bottom: 16px; }
 .action-row { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 12px; }
 .action-button { background: var(--vscode-button-background); border: 1px solid var(--vscode-button-border, transparent); border-radius: 4px; color: var(--vscode-button-foreground); cursor: pointer; font: inherit; padding: 5px 12px; }
@@ -124,6 +125,11 @@ body[data-loading="true"] #app { opacity: 0.55; transition: opacity 120ms ease-o
 .tile { border: 1px solid var(--vscode-panel-border); border-radius: 6px; padding: 12px; }
 .tile-label { color: var(--vscode-descriptionForeground); font-size: 12px; }
 .tile-value { font-size: 24px; font-weight: 600; }
+.summary-section { margin-bottom: 20px; }
+.summary-title { font-size: 15px; margin: 0 0 10px; }
+.summary-group { border: 1px solid var(--vscode-panel-border); border-radius: 6px; margin-bottom: 10px; padding: 12px; }
+.summary-group-title { color: var(--vscode-descriptionForeground); font-size: 12px; font-weight: 600; margin: 0 0 8px; }
+.summary-group .tiles { margin-bottom: 0; }
 .filter-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
 .filter-button { background: transparent; border: 1px solid var(--vscode-panel-border); border-radius: 4px; color: var(--vscode-foreground); cursor: pointer; font: inherit; padding: 4px 10px; }
 .filter-button.is-selected { border-color: var(--vscode-focusBorder); background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }

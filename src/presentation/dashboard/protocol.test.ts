@@ -4,7 +4,7 @@ import type { DashboardModel } from './viewModel';
 
 function emptyModel(): DashboardModel {
   return {
-    hero: { label: 'x', value: '1' },
+    hero: { label: 'x', value: '1', sourceLabel: null },
     tiles: [],
     providers: [],
     usage: { available: false, currency: null, categories: [], cost: [], requests: [], tokens: [], tokenSeries: [], byModel: [], costTotals: [] },
@@ -20,7 +20,9 @@ function emptyModel(): DashboardModel {
       configureProviders: 'Configure providers',
       refreshNow: 'Refresh now',
       accountBalance: 'Account balance',
+      accountUsageSummary: 'Account and usage',
       historyRange: 'History usage range',
+      deepseekUsage: 'DeepSeek usage analysis',
       liveQuotaNote: '5-hour and Weekly quota windows are live.',
       cost: 'Cost', requests: 'Requests', tokens: 'Tokens', cache: 'Cache', usageTable: 'Usage',
       modelTable: 'Models', balanceTable: 'Balances', costTable: 'Costs', accountTotalTable: 'Account totals',

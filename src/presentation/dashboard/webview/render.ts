@@ -1,4 +1,4 @@
-import type { DashboardModel } from '../viewModel';
+import { groupStatTiles, type DashboardModel } from '../viewModel';
 import type { RangeId } from '../../../core/time';
 import { lineChartSvg, stackedBarSvg } from '../charts';
 
@@ -120,17 +120,11 @@ export function renderDashboard(
   const hero = element('section', 'hero-section');
   hero.appendChild(element('div', 'hero-label', model.hero.label));
   hero.appendChild(element('div', 'hero', model.hero.value));
-  hero.appendChild(element('div', 'provider-state', model.pricingLabel));
-  container.appendChild(hero);
-
-  const tiles = element('section', 'tiles');
-  for (const tile of model.tiles) {
-    const card = element('div', 'tile');
-    card.appendChild(element('div', 'tile-label', tile.label));
-    card.appendChild(element('div', 'tile-value', tile.value));
-    tiles.appendChild(card);
+  if (model.hero.sourceLabel !== null) {
+    hero.appendChild(element('div', 'hero-source', model.hero.sourceLabel));
   }
-  container.appendChild(tiles);
+  hero.appendChild(element('div', 'provider-state', `DeepSeek · ${model.pricingLabel}`));
+  container.appendChild(hero);
 
   const providers = element('section', 'providers');
   for (const provider of model.providers) {
@@ -186,8 +180,29 @@ export function renderDashboard(
   }
   container.appendChild(providers);
 
+  if (model.tiles.length > 0) {
+    const summary = element('section', 'summary-section');
+    summary.appendChild(element('h2', 'summary-title', model.labels.accountUsageSummary));
+    for (const group of groupStatTiles(model.tiles)) {
+      const groupNode = element('section', 'summary-group');
+      groupNode.appendChild(
+        element('h3', 'summary-group-title', `${group.scope} · ${model.rangeLabel}`),
+      );
+      const tiles = element('div', 'tiles');
+      for (const tile of group.tiles) {
+        const card = element('div', 'tile');
+        card.appendChild(element('div', 'tile-label', tile.label));
+        card.appendChild(element('div', 'tile-value', tile.value));
+        tiles.appendChild(card);
+      }
+      groupNode.appendChild(tiles);
+      summary.appendChild(groupNode);
+    }
+    container.appendChild(summary);
+  }
+
   const history = element('section', 'history-controls');
-  history.appendChild(element('h2', 'history-title', model.labels.historyRange));
+  history.appendChild(element('h2', 'history-title', model.labels.deepseekUsage));
   const filters = element('nav', 'filter-row');
   filters.setAttribute('aria-label', model.labels.historyRange);
   for (const option of model.ranges) {
