@@ -107,7 +107,7 @@ describe('renderTooltip', () => {
     expect(renderTooltip(snapshots, ['minimax-cn'], t)).toContain('API Key');
   });
 
-  it('shows a block-character progress bar', () => {
+  it('shows a fixed-width battery track with solid remaining quota', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -117,7 +117,35 @@ describe('renderTooltip', () => {
         },
       }),
     };
-    expect(renderTooltip(snapshots, ['minimax-cn'], t)).toContain('██████░░░░');
+    expect(renderTooltip(snapshots, ['minimax-cn'], t)).toContain(
+      '<code>[██████\u00a0\u00a0\u00a0\u00a0]</code>',
+    );
+  });
+
+  it('renders every MiniMax quota track at the same width', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 69, resetAt: null, unlimited: false },
+              { window: 'weekly', remainingPercent: 26, resetAt: null, unlimited: false },
+            ],
+            models: [{ model: 'video', remaining: 0, total: 3 }],
+          },
+        },
+      }),
+    };
+    const html = renderTooltip(snapshots, ['minimax-cn'], t);
+    const tracks = [...html.matchAll(/<code>([^<]+)<\/code>/g)].map((match) => match[1]!);
+
+    expect(tracks).toHaveLength(3);
+    expect(new Set(tracks.map((track) => [...track].length))).toEqual(new Set([12]));
+    expect(tracks.every((track) => track.startsWith('[') && track.endsWith(']'))).toBe(true);
+    expect(tracks[0]).toContain('█');
+    expect(tracks[2]).not.toContain('█');
   });
 
   it('escapes provider-controlled strings', () => {

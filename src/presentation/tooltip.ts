@@ -210,14 +210,19 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
       .map(
         (window) =>
           `<tr><td>${escapeHtml(window.window === 'weekly' ? 'Weekly' : '5-hour')}</td>` +
-          `<td>${bar(window.remainingPercent ?? 0)} ${Math.round(window.remainingPercent ?? 0)}%</td>` +
-          `<td class="t-muted">${window.resetAt === null ? '' : new Date(window.resetAt).toISOString().slice(11, 16)}</td>` +
-          '<td></td></tr>',
+          `<td><code>${bar(window.remainingPercent ?? 0)}</code></td>` +
+          `<td>${Math.round(window.remainingPercent ?? 0)}%</td>` +
+          `<td class="t-muted">${window.resetAt === null ? '' : new Date(window.resetAt).toISOString().slice(11, 16)}</td></tr>`,
       );
     for (const model of plan.models ?? []) {
       if (model.model === 'general' || model.total === null || model.total <= 0 || model.remaining === null) continue;
       const percent = Math.round((model.remaining / model.total) * 100);
-      rows.push(`<tr><td>${escapeHtml(model.model)}</td><td>${bar(percent)} ${percent}%</td><td class="t-muted">${model.remaining}/${model.total}</td><td></td></tr>`);
+      rows.push(
+        `<tr><td>${escapeHtml(model.model)}</td>` +
+        `<td><code>${bar(percent)}</code></td>` +
+        `<td>${percent}%</td>` +
+        `<td class="t-muted">${model.remaining}/${model.total}</td></tr>`,
+      );
     }
     const points = capabilityValue<MiniMaxPoints>(snapshot, 'minimax.points');
     if (typeof points?.balance === 'number') {

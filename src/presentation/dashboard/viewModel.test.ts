@@ -370,6 +370,26 @@ describe('buildDashboardModel', () => {
     expect(model.balances).toHaveLength(2);
   });
 
+  it('omits the balance table when one currency duplicates the balance tile', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['deepseek'],
+        snapshots: {
+          deepseek: makeSnapshot('deepseek', {
+            'deepseek.balance': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: { entries: [{ currency: 'CNY', total: 10 }] },
+            },
+          }),
+        },
+      }),
+    );
+
+    expect(model.tiles.find((tile) => tile.key === 'balance')!.value).toBe('¥10.00');
+    expect(model.balances).toEqual([]);
+  });
+
   it('shows the Qwen account balance on its provider card', () => {
     const model = buildDashboardModel(
       options({

@@ -596,7 +596,7 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
     tiles,
     providers,
     usage,
-    balances,
+    balances: balances.length > 1 ? balances : [],
     accountTotals: account.totals,
     accountTotalSource: account.source,
     range,
