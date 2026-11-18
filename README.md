@@ -26,7 +26,8 @@
 - 不自动提取浏览器 Cookie。
 - 不做货币换算，也不合并不同币种的金额。
 - 不提供 DeepSeek 平台详细用量、费用或账户汇总；这部分请前往 `https://platform.deepseek.com` 查看。
-- 当前不提供百炼模型级免费额度或剩余额度的查询。
+- 当前不接入百炼公开 Usage API（`/usage/summary`、`/usage/trend`）和
+  `bl quota show` CLI，因此不提供百炼模型级用量趋势或额度查询。
 
 ## Install
 
@@ -69,6 +70,10 @@ Qwen / 百炼余额获取方式：
 - 模型额度应在百炼控制台查看；消费明细应在阿里云费用与成本中查看。
 - 当前版本未接入模型级额度接口。消费账单需要单独的 BSS 账单 API、额外权限和分页处理，
   因此不会用账户余额或本地估算值代替。
+- 百炼还提供公开 Usage API（`/usage/summary`、`/usage/trend`）和
+  `bl quota show` CLI。它们比当前仅查询账户余额的能力更强，已登记为候选数据源，
+  但尚未完成鉴权、响应字段和分页契约验证；详见
+  [Qwen / Model Studio contract inventory](docs/contracts/qwen.md)。
 
 警告阈值可在 VS Code 设置中搜索 `QuotaDeck warning threshold`，或直接设置
 `quotaDeck.statusBar.warningThresholdPercent`。默认值为 `20`，支持 `11` 到 `99`；
@@ -115,7 +120,8 @@ Cookie 只发送到对应厂商域名，并按各适配器声明的最小 Cookie
 
 - MiniMax 的部分账户接口不是稳定的公共开发者 API，平台调整后可能暂时返回“不支持”或“获取失败”。
 - DeepSeek 仅提供账户余额；详细用量与账单需前往 DeepSeek 官网。
-- Qwen 余额来自阿里云账户级接口；模型额度与消费明细会明确显示“不支持”，不会显示伪造额度。
+- Qwen 余额来自阿里云账户级接口；公开 Usage API 与 `bl quota show` 已列入候选数据源，
+  但在契约验证完成前不会发起请求或显示伪造的模型用量与额度。
 - DeepSeek 节假日日历目前覆盖至 `2026-12-31`，超出覆盖范围时显示“时段未知”。
 
 ## License

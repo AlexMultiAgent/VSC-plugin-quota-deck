@@ -6,6 +6,8 @@ not tested because no test credential was available.
 
 - [MiniMax](minimax.md): unavailable in the current implementation environment.
 - [DeepSeek](deepseek.md): balance verified; detailed usage and billing stay on the official website.
+- [Qwen / Model Studio](qwen.md): account balance integrated; public usage APIs
+  and `bl quota show` recorded as stronger candidate sources.
 
 Fixtures under `src/test/fixtures/` are sanitized, anonymized, and guarded
 against credential-shaped values and non-zero financial values. Re-run
