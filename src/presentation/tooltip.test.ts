@@ -4,6 +4,7 @@ import { translatorFor } from '../localization';
 import { makeSnapshot } from '../test/helpers/snapshot';
 
 const t = translatorFor('en-US');
+const zh = translatorFor('zh-CN');
 
 describe('escapeHtml', () => {
   it('escapes the characters that could break out of markup', () => {
@@ -78,8 +79,15 @@ describe('renderTooltip', () => {
     expect(html).not.toContain('Qwen');
   });
 
-  it('shows source and session badges separately', () => {
+  it('shows account provenance once instead of repeating provider badges', () => {
     const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: '2026-11-16T00:00:00.000Z',
+          data: { windows: [{ window: 'fiveHour', remainingPercent: 60, resetAt: null, unlimited: false }] },
+        },
+      }),
       deepseek: makeSnapshot('deepseek', {
         'deepseek.balance': {
           kind: 'ok',
@@ -88,26 +96,14 @@ describe('renderTooltip', () => {
         },
       }),
     };
-    const html = renderTooltip(snapshots, ['deepseek'], t);
-    expect(html).toContain('Account');
-    expect(html).toContain('API Key');
-    expect(html).not.toContain('Web Session');
+    const html = renderTooltip(snapshots, ['minimax-cn', 'deepseek'], t);
+    expect(html.match(/Live account data/g)).toHaveLength(1);
+    expect(html).not.toContain('>Account<');
+    expect(html).not.toContain('API Key');
+    expect(html).not.toContain('AccessKey');
   });
 
-  it('marks the MiniMax plan as an API-key session', () => {
-    const snapshots = {
-      'minimax-cn': makeSnapshot('minimax-cn', {
-        'minimax.plan': {
-          kind: 'ok' as const,
-          fetchedAt: '2026-11-16T00:00:00.000Z',
-          data: { windows: [{ window: 'fiveHour', remainingPercent: 60, resetAt: null, unlimited: false }] },
-        },
-      }),
-    };
-    expect(renderTooltip(snapshots, ['minimax-cn'], t)).toContain('API Key');
-  });
-
-  it('shows a fixed-width battery track with solid remaining quota', () => {
+  it('shows a fixed-width colored line track without bracket characters', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -117,9 +113,13 @@ describe('renderTooltip', () => {
         },
       }),
     };
-    expect(renderTooltip(snapshots, ['minimax-cn'], t)).toContain(
-      '<code>[██████\u00a0\u00a0\u00a0\u00a0]</code>',
+    const html = renderTooltip(snapshots, ['minimax-cn'], t);
+    expect(html).toContain(
+      '<span style="color:var(--vscode-charts-green);">━━━━━━</span>' +
+        '<span style="color:var(--vscode-descriptionForeground);">────</span>',
     );
+    expect(html).not.toContain('[██████');
+    expect(html).not.toContain('<code>');
   });
 
   it('renders every MiniMax quota track at the same width', () => {
@@ -139,13 +139,80 @@ describe('renderTooltip', () => {
       }),
     };
     const html = renderTooltip(snapshots, ['minimax-cn'], t);
-    const tracks = [...html.matchAll(/<code>([^<]+)<\/code>/g)].map((match) => match[1]!);
+    const trackSegments = [...html.matchAll(/>([━─]+)<\/span>/g)].map((match) => match[1]!);
 
-    expect(tracks).toHaveLength(3);
-    expect(new Set(tracks.map((track) => [...track].length))).toEqual(new Set([12]));
-    expect(tracks.every((track) => track.startsWith('[') && track.endsWith(']'))).toBe(true);
-    expect(tracks[0]).toContain('█');
-    expect(tracks[2]).not.toContain('█');
+    expect(trackSegments.filter((segment) => segment.includes('━'))).toHaveLength(2);
+    expect(trackSegments.filter((segment) => segment.includes('─'))).toHaveLength(3);
+    expect(html).not.toContain('>[');
+  });
+
+  it('localizes MiniMax regions, windows, reset times, and the configured time zone', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: '2026-11-16T04:00:00.000Z',
+          data: {
+            windows: [
+              {
+                window: 'fiveHour',
+                remainingPercent: 35,
+                resetAt: Date.parse('2026-11-16T04:00:00.000Z'),
+                unlimited: false,
+              },
+              {
+                window: 'weekly',
+                remainingPercent: 24,
+                resetAt: Date.parse('2026-11-16T08:00:00.000Z'),
+                unlimited: false,
+              },
+            ],
+          },
+        },
+      }),
+    };
+
+    const html = renderTooltip(
+      snapshots,
+      ['minimax-cn'],
+      zh,
+      '2026-11-16T04:00:00.000Z',
+      'Asia/Shanghai',
+    );
+
+    expect(html).toContain('国内版');
+    expect(html).toContain('5 小时');
+    expect(html).toContain('每周');
+    expect(html).toContain('重置于 2026-11-16 12:00');
+    expect(html).toContain('重置于 2026-11-16 16:00');
+    expect(html).toContain('Asia/Shanghai');
+    expect(html).not.toContain('Domestic');
+    expect(html).not.toContain('5-hour');
+    expect(html).not.toContain('Weekly');
+    expect(html).not.toContain('Resets');
+  });
+
+  it('labels the reset time in English', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: '2026-11-16T04:00:00.000Z',
+          data: {
+            windows: [{
+              window: 'fiveHour',
+              remainingPercent: 35,
+              resetAt: Date.parse('2026-11-16T04:00:00.000Z'),
+              unlimited: false,
+            }],
+          },
+        },
+      }),
+    };
+
+    expect(renderTooltip(snapshots, ['minimax-cn'], t, undefined, 'Asia/Shanghai')).toContain(
+      'Resets 2026-11-16 12:00',
+    );
   });
 
   it('escapes provider-controlled strings', () => {
@@ -176,6 +243,40 @@ describe('renderTooltip', () => {
     const html = renderTooltip(snapshots, ['deepseek'], t);
     expect(html).toContain('CNY');
     expect(html).toContain('112.80');
+  });
+
+  it('localizes balance and subscription expiry labels', () => {
+    const deepseek = {
+      deepseek: makeSnapshot('deepseek', {
+        'deepseek.balance': {
+          kind: 'ok' as const,
+          fetchedAt: '2026-11-16T00:00:00.000Z',
+          data: { entries: [{ currency: 'CNY', total: 112.8 }] },
+        },
+      }),
+    };
+    const minimax = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok' as const,
+          fetchedAt: '2026-11-16T00:00:00.000Z',
+          data: { windows: [] },
+        },
+        'minimax.subscription': {
+          kind: 'ok' as const,
+          fetchedAt: '2026-11-16T00:00:00.000Z',
+          data: { expiresAt: Date.parse('2027-06-30T00:00:00.000Z'), planName: null },
+        },
+      }),
+    };
+
+    const balanceHtml = renderTooltip(deepseek, ['deepseek'], zh);
+    const expiryHtml = renderTooltip(minimax, ['minimax-cn'], zh);
+
+    expect(balanceHtml).toContain('余额');
+    expect(balanceHtml).not.toContain('>balance<');
+    expect(expiryHtml).toContain('到期');
+    expect(expiryHtml).not.toContain('Expires');
   });
 
   it('does not show DeepSeek detailed usage retained in a legacy cache', () => {
@@ -232,7 +333,7 @@ describe('renderTooltip', () => {
     expect(html).toContain('¥-18.34');
     expect(html).toContain('Credit');
     expect(html).toContain('¥5.00');
-    expect(html).toContain('AccessKey');
+    expect(html).not.toContain('AccessKey');
   });
 
   it('shows the DeepSeek peak or off-peak period in hover details', () => {
@@ -271,6 +372,7 @@ describe('renderTooltip', () => {
   it('shows the last refresh time and dashboard hint', () => {
     const html = renderTooltip({}, ['qwen'], t, '2026-11-16T04:00:00.000Z');
     expect(html).toContain('2026-11-16 12:00');
+    expect(html).toContain('Asia/Shanghai');
     expect(html).toContain('Open the dashboard');
   });
 

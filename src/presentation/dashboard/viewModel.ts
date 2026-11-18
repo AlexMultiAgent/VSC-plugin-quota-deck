@@ -136,6 +136,7 @@ export interface DashboardLabels {
   readonly columnCost: string;
   readonly columnCurrency: string;
   readonly columnTotal: string;
+  readonly tableView: string;
 }
 
 export interface DashboardModel {
@@ -417,7 +418,9 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
         percent === null ? 'muted' : quotaTone(percent, warningThresholdPercent);
       return {
         key: String(window.window),
-        label: window.window === 'weekly' ? 'Weekly' : '5-hour',
+        label: window.window === 'weekly'
+          ? t('tooltip.window.weekly')
+          : t('tooltip.window.fiveHour'),
         percent,
         resetLabel: window.resetAt === null ? null : new Date(window.resetAt).toISOString(),
         tone: meterTone,
@@ -576,6 +579,7 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
     columnCost: t('dashboard.column.cost'),
     columnCurrency: t('dashboard.column.currency'),
     columnTotal: t('dashboard.column.total'),
+    tableView: t('dashboard.tableView'),
   };
 
   const pricingLabel =

@@ -22,18 +22,11 @@ export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => ESCAPES[character] ?? character);
 }
 
-const REGION: Record<ProviderId, string> = {
-  'minimax-cn': 'Domestic',
-  'minimax-global': 'International',
-  deepseek: '—',
-  qwen: '—',
-};
-
-const SESSION_BADGE: Record<ProviderId, MessageKey> = {
-  'minimax-cn': 'session.apiKey',
-  'minimax-global': 'session.apiKey',
-  deepseek: 'session.apiKey',
-  qwen: 'session.accessKey',
+const REGION: Record<ProviderId, MessageKey | ''> = {
+  'minimax-cn': 'tooltip.region.domestic',
+  'minimax-global': 'tooltip.region.international',
+  deepseek: '',
+  qwen: '',
 };
 
 interface WindowView {
@@ -80,7 +73,12 @@ function balances(snapshot: ProviderSnapshot | undefined): BalanceEntry[] {
 }
 
 function bar(percent: number): string {
-  return remainingBar(percent);
+  const track = remainingBar(percent);
+  const filled = [...track].filter((segment) => segment === '━').length;
+  return (
+    `<span style="color:var(--vscode-charts-green);">${'━'.repeat(filled)}</span>` +
+    `<span style="color:var(--vscode-descriptionForeground);">${'─'.repeat(track.length - filled)}</span>`
+  );
 }
 
 function zonedTime(iso: string, timeZone: string): string {
@@ -121,12 +119,21 @@ function summarize(points: readonly UsagePoint[]): UsageSummary {
   };
 }
 
-function usageRow(label: string, summary: UsageSummary, cost: number, currency: string): string {
-  const cache = summary.cacheHitRate === null ? '' : `cache ${Math.round(summary.cacheHitRate * 100)}%`;
+function usageRow(
+  label: string,
+  summary: UsageSummary,
+  cost: number,
+  currency: string,
+  t: Translator,
+): string {
+  const cache = summary.cacheHitRate === null
+    ? ''
+    : `${t('dashboard.cacheHit')} ${Math.round(summary.cacheHitRate * 100)}%`;
   return (
     `<tr><td>${escapeHtml(label)}</td>` +
     `<td>${escapeHtml(formatMoney(cost, currency))}</td>` +
-    `<td>${summary.requests} req · ${summary.tokens} tok</td>` +
+    `<td>${summary.requests} ${escapeHtml(t('tooltip.requestsShort'))} · ` +
+    `${summary.tokens} ${escapeHtml(t('tooltip.tokensShort'))}</td>` +
     `<td class="t-muted">${escapeHtml(cache)}</td></tr>`
   );
 }
@@ -163,11 +170,11 @@ function usageRows(snapshot: ProviderSnapshot | undefined, t: Translator, timeZo
     const summary = summarize(subset);
     const totals = costTotals(costs.filter((row) => subset.some((point) => point.date === row.date)));
     if (totals.size === 0) {
-      rows.push(usageRow(label, summary, 0, 'CNY'));
+      rows.push(usageRow(label, summary, 0, 'CNY', t));
       return;
     }
     for (const [currency, total] of totals) {
-      rows.push(usageRow(label, summary, total, currency));
+      rows.push(usageRow(label, summary, total, currency, t));
     }
   };
   if (rangeId === 'last7') {
@@ -209,17 +216,25 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
       .filter((window) => window.remainingPercent !== null)
       .map(
         (window) =>
-          `<tr><td>${escapeHtml(window.window === 'weekly' ? 'Weekly' : '5-hour')}</td>` +
-          `<td><code>${bar(window.remainingPercent ?? 0)}</code></td>` +
+          `<tr><td>${escapeHtml(
+            window.window === 'weekly'
+              ? t('tooltip.window.weekly')
+              : t('tooltip.window.fiveHour'),
+          )}</td>` +
+          `<td>${bar(window.remainingPercent ?? 0)}</td>` +
           `<td>${Math.round(window.remainingPercent ?? 0)}%</td>` +
-          `<td class="t-muted">${window.resetAt === null ? '' : new Date(window.resetAt).toISOString().slice(11, 16)}</td></tr>`,
+          `<td class="t-muted">${escapeHtml(
+            window.resetAt === null
+              ? ''
+              : `${t('tooltip.resetAt')} ${zonedTime(new Date(window.resetAt).toISOString(), timeZone)}`,
+          )}</td></tr>`,
       );
     for (const model of plan.models ?? []) {
       if (model.model === 'general' || model.total === null || model.total <= 0 || model.remaining === null) continue;
       const percent = Math.round((model.remaining / model.total) * 100);
       rows.push(
         `<tr><td>${escapeHtml(model.model)}</td>` +
-        `<td><code>${bar(percent)}</code></td>` +
+        `<td>${bar(percent)}</td>` +
         `<td>${percent}%</td>` +
         `<td class="t-muted">${model.remaining}/${model.total}</td></tr>`,
       );
@@ -230,7 +245,11 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
     }
     const subscription = capabilityValue<MiniMaxSubscription>(snapshot, 'minimax.subscription');
     if (typeof subscription?.expiresAt === 'number') {
-      rows.push(`<tr><td>Expires</td><td>${new Date(subscription.expiresAt).toISOString().slice(0, 10)}</td><td></td><td></td></tr>`);
+      rows.push(
+        `<tr><td>${escapeHtml(t('tooltip.expires'))}</td>` +
+        `<td>${new Date(subscription.expiresAt).toISOString().slice(0, 10)}</td>` +
+        '<td></td><td></td></tr>',
+      );
     }
     if (rows.length > 0) return rows.join('');
   }
@@ -242,7 +261,7 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
         (entry) =>
           `<tr><td>${escapeHtml(entry.currency)}</td>` +
           `<td>${escapeHtml(formatMoney(entry.total, entry.currency))}</td>` +
-          '<td class="t-muted">balance</td><td></td></tr>',
+          `<td class="t-muted">${escapeHtml(t('tooltip.balance'))}</td><td></td></tr>`,
       )
       .join('');
     return rows + usageRows(snapshot, t, timeZone);
@@ -274,8 +293,7 @@ export function renderTooltip(
     .filter((id) => hasUsableConfiguration(snapshots[id]))
     .map((id) => {
       const snapshot = snapshots[id];
-      const sourceBadge = snapshot === undefined ? '—' : t('source.account');
-      const sessionBadge = t(SESSION_BADGE[id]);
+      const region = REGION[id] === '' ? '' : t(REGION[id]);
       const period =
         id === 'deepseek'
           ? `<tr><td colspan="4" class="t-muted">${escapeHtml(pricingPeriodLabel(pricing, t))}</td></tr>`
@@ -283,9 +301,7 @@ export function renderTooltip(
       return (
         '<table class="t-card">' +
         `<tr><td class="t-title">${escapeHtml(providerDisplayName(id))}</td>` +
-        `<td class="t-muted">${escapeHtml(REGION[id])}</td>` +
-        `<td class="t-badge">${escapeHtml(sourceBadge)}</td>` +
-        `<td class="t-badge">${escapeHtml(sessionBadge)}</td></tr>` +
+        `<td class="t-muted">${escapeHtml(region)}</td></tr>` +
         period +
         `<tr><td colspan="4">${providerRows(snapshot, t, timeZone)}</td></tr>` +
         '</table>'
@@ -296,7 +312,10 @@ export function renderTooltip(
   const footer =
     lastRefreshIso === undefined
       ? ''
-      : `${escapeHtml(t('tooltip.updated'))} ${escapeHtml(zonedTime(lastRefreshIso, timeZone))}`;
+      : `${escapeHtml(t('tooltip.updated'))} ${escapeHtml(zonedTime(lastRefreshIso, timeZone))}` +
+        ` · ${escapeHtml(timeZone)}`;
+  const provenance = cards === '' ? '' : t('tooltip.dataSourceAccount');
+  const footerDetails = [provenance, footer].filter((part) => part !== '').join(' · ');
 
   return (
     '<div class="t-root">' +
@@ -304,7 +323,7 @@ export function renderTooltip(
     `<span class="t-badge">${escapeHtml(t('statusBar.tooltip.badge'))}</span>` +
     `<span class="t-muted">${escapeHtml(t('statusBar.tooltip.header'))}</span></div>` +
     cards +
-    `<div class="t-footer"><span class="t-muted">${footer}</span>` +
+    `<div class="t-footer"><span class="t-muted">${escapeHtml(footerDetails)}</span>` +
     `<span class="t-muted">${escapeHtml(t('statusBar.tooltip.footer'))}</span></div>` +
     '</div>'
   );

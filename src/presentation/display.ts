@@ -44,12 +44,12 @@ export function pickTightestWindow<T extends QuotaWindowView>(
   );
 }
 
-const BAR_FILLED = '█';
-const BAR_EMPTY = '\u00a0';
+const BAR_FILLED = '━';
+const BAR_EMPTY = '─';
 const BAR_CELLS = 10;
 
 export function remainingBar(percent: number): string {
   const clamped = Math.min(100, Math.max(0, percent));
   const filled = clamped === 0 ? 0 : Math.max(1, Math.round((clamped / 100) * BAR_CELLS));
-  return `[${BAR_FILLED.repeat(filled)}${BAR_EMPTY.repeat(BAR_CELLS - filled)}]`;
+  return BAR_FILLED.repeat(filled) + BAR_EMPTY.repeat(BAR_CELLS - filled);
 }

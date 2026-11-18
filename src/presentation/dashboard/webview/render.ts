@@ -70,7 +70,12 @@ function attachCrosshair(container: HTMLElement, svg: SVGSVGElement): void {
   }
 }
 
-function chartCard(title: string, svgText: string, tableNode: HTMLElement): HTMLElement {
+function chartCard(
+  title: string,
+  svgText: string,
+  tableNode: HTMLElement,
+  tableViewLabel: string,
+): HTMLElement {
   const card = section(title);
   const chart = element('div', 'chart-body');
   chart.innerHTML = svgText;
@@ -78,7 +83,7 @@ function chartCard(title: string, svgText: string, tableNode: HTMLElement): HTML
   if (svg) attachCrosshair(chart, svg);
   card.appendChild(chart);
   const details = element('details');
-  details.appendChild(element('summary', undefined, 'Table view'));
+  details.appendChild(element('summary', undefined, tableViewLabel));
   details.appendChild(tableNode);
   card.appendChild(details);
   return card;
@@ -229,11 +234,13 @@ export function renderDashboard(
       `${model.labels.cost} · ${model.rangeLabel}`,
       lineChartSvg({ series: model.usage.cost, label: model.labels.cost, accent: isDarkTheme() ? '#3987e5' : '#2a78d6' }),
       table([model.labels.columnDate, model.labels.columnCost], model.usage.cost.map((point) => [point.x, point.y.toFixed(2)])),
+      model.labels.tableView,
     ));
     container.appendChild(chartCard(
       model.labels.tokens,
       lineChartSvg({ series: model.usage.tokens, label: model.labels.tokens, accent: isDarkTheme() ? '#199e70' : '#1baf7a' }),
       table([model.labels.columnDate, model.labels.columnTokens], model.usage.tokens.map((point) => [point.x, point.y])),
+      model.labels.tableView,
     ));
     container.appendChild(chartCard(
       model.labels.cache,
@@ -242,6 +249,7 @@ export function renderDashboard(
         [model.labels.columnDate, ...model.usage.tokenSeries.map((series) => series.label)],
         model.usage.categories.map((category, index) => [category, ...model.usage.tokenSeries.map((series) => series.values[index] ?? 0)]),
       ),
+      model.labels.tableView,
     ));
     if (model.usage.byModel.length > 0) {
       const card = section(model.labels.modelTable, 'table-card');

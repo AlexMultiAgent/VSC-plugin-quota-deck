@@ -27,7 +27,7 @@ function emptyModel(): DashboardModel {
       modelTable: 'Models', balanceTable: 'Balances', costTable: 'Costs', accountTotalTable: 'Account totals',
       accountTotalSummary: 'Summary', accountTotalAggregated: 'Aggregated', accountTotalUnavailable: 'Unavailable',
       columnDate: 'Date', columnModel: 'Model', columnRequests: 'Requests', columnTokens: 'Tokens',
-      columnCost: 'Cost', columnCurrency: 'Currency', columnTotal: 'Total',
+      columnCost: 'Cost', columnCurrency: 'Currency', columnTotal: 'Total', tableView: 'Table view',
     },
   };
 }

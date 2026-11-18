@@ -68,25 +68,25 @@ describe('pickTightestWindow', () => {
 });
 
 describe('remainingBar', () => {
-  it('fills a fixed-width battery track with solid blocks', () => {
-    expect(remainingBar(60)).toBe('[██████\u00a0\u00a0\u00a0\u00a0]');
-    expect(remainingBar(65)).toBe('[███████\u00a0\u00a0\u00a0]');
+  it('fills a fixed-width line track', () => {
+    expect(remainingBar(60)).toBe('━━━━━━────');
+    expect(remainingBar(65)).toBe('━━━━━━━───');
   });
 
-  it('keeps one solid block for a small remainder', () => {
-    expect(remainingBar(3)).toBe('[█\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0]');
+  it('keeps one filled segment for a small remainder', () => {
+    expect(remainingBar(3)).toBe('━─────────');
   });
 
-  it('renders a hollow track for zero', () => {
-    expect(remainingBar(0)).toBe('[\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0]');
+  it('renders an empty track for zero', () => {
+    expect(remainingBar(0)).toBe('──────────');
   });
 
   it('clamps a percentage above one hundred', () => {
-    expect(remainingBar(140)).toBe('[██████████]');
+    expect(remainingBar(140)).toBe('━━━━━━━━━━');
   });
 
   it('keeps every track the same rendered width', () => {
     const widths = [0, 3, 26, 69, 100].map((percent) => [...remainingBar(percent)].length);
-    expect(new Set(widths)).toEqual(new Set([12]));
+    expect(new Set(widths)).toEqual(new Set([10]));
   });
 });
