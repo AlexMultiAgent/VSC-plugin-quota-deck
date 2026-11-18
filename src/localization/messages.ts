@@ -22,6 +22,10 @@ export const MESSAGES = {
   'state.failed': '获取失败',
   'state.partial': '部分可用',
   'state.ok': '正常',
+  'overview.state.caution': '注意',
+  'overview.state.warning': '额度偏低',
+  'overview.state.critical': '额度严重不足',
+  'overview.state.loading': '正在读取',
 
   'capability.minimax.plan': 'Token Plan 额度',
   'capability.minimax.subscription': '订阅详情',
