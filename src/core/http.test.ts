@@ -41,6 +41,20 @@ describe('HttpClient', () => {
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer sk-test');
   });
 
+  it('sends a JSON body with POST and its content type', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ ok: true }));
+    globalThis.fetch = fetchMock;
+    const client = new HttpClient({ timeoutMs: 1_000, maxAttempts: 1 });
+
+    await client.postJson('https://api.example.com/v1/action', { hello: 'world' });
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://api.example.com/v1/action');
+    expect(init.method).toBe('POST');
+    expect(init.body).toBe('{"hello":"world"}');
+    expect((init.headers as Record<string, string>)['Content-Type']).toBe('application/json');
+  });
+
   it('reports a non-2xx status as an error result', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({}, { status: 401 }));
     const client = new HttpClient({ timeoutMs: 1_000, maxAttempts: 1 });

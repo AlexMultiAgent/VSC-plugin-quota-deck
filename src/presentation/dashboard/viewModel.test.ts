@@ -455,10 +455,34 @@ describe('buildDashboardModel', () => {
     expect(model.balances).toHaveLength(2);
   });
 
-  it('lists the Qwen capability matrix as unsupported', () => {
-    const model = buildDashboardModel(options({ order: ['qwen'] }));
-    expect(model.qwen.length).toBeGreaterThan(0);
-    expect(model.qwen.every((row) => row.state === 'unsupported')).toBe(true);
+  it('shows the Qwen account balance on its provider card', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['qwen'],
+        snapshots: {
+          qwen: makeSnapshot('qwen', {
+            'qwen.accountBalance': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: {
+                availableAmount: -12.34,
+                availableCashAmount: -18.34,
+                creditAmount: 5,
+                mybankCreditAmount: 6,
+                quotaLimit: 1000,
+                currency: 'CNY',
+              },
+            },
+            'qwen.modelQuota': { kind: 'unsupported', reason: 'not public' },
+            'qwen.consumption': { kind: 'unsupported', reason: 'not public' },
+          }),
+        },
+      }),
+    );
+    expect(model.providers[0]!.balance).toBe('¥-12.34');
+    expect(model.providers[0]!.capabilities[0]!.state).toBe('ok');
+    expect(model.providers[0]!.capabilities[1]!.state).toBe('unsupported');
+    expect('qwen' in model).toBe(false);
   });
 
   it('carries the selected range and all options', () => {
@@ -469,7 +493,9 @@ describe('buildDashboardModel', () => {
   });
 
   it('localizes the pricing state', () => {
-    expect(buildDashboardModel(options({ pricing: 'offPeak' })).pricingLabel).toBe('Off-peak pricing right now');
+    const offPeak = buildDashboardModel(options({ order: ['deepseek'], pricing: 'offPeak' }));
+    expect(offPeak.pricingLabel).toBe('Off-peak pricing right now');
+    expect(offPeak.providers[0]!.hoursLabel).toBe('Off-peak');
     expect(buildDashboardModel(options({ pricing: 'unavailable' })).pricingLabel).toBe('Pricing calendar unavailable');
   });
 

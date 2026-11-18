@@ -47,9 +47,33 @@ export class HttpClient {
   constructor(private readonly options: HttpOptions) {}
 
   async getJson(url: string, options: RequestOptions = {}): Promise<JsonResult> {
+    return this.requestJson('GET', url, undefined, options);
+  }
+
+  async postJson(url: string, body: unknown, options: RequestOptions = {}): Promise<JsonResult> {
+    const headers = Object.fromEntries(
+      Object.entries(options.headers ?? {}).filter(
+        ([key]) => key.toLowerCase() !== 'content-type',
+      ),
+    );
+    headers['Content-Type'] = 'application/json';
+    return this.requestJson(
+      'POST',
+      url,
+      body === undefined ? undefined : JSON.stringify(body),
+      { ...options, headers },
+    );
+  }
+
+  private async requestJson(
+    method: 'GET' | 'POST',
+    url: string,
+    body: string | undefined,
+    options: RequestOptions,
+  ): Promise<JsonResult> {
     let attempt = 0;
     for (;;) {
-      const result = await this.attempt(url, options);
+      const result = await this.attempt(method, url, body, options);
       if (result.ok) return { ok: true, body: result.body };
       if (result.externalAbort) return { ok: false, error: result.error };
       const retryable = result.error.kind === 'network' || result.error.kind === 'timeout';
@@ -63,7 +87,12 @@ export class HttpClient {
     }
   }
 
-  private async attempt(url: string, options: RequestOptions): Promise<AttemptResult | AttemptFailure> {
+  private async attempt(
+    method: 'GET' | 'POST',
+    url: string,
+    body: string | undefined,
+    options: RequestOptions,
+  ): Promise<AttemptResult | AttemptFailure> {
     if (options.signal?.aborted === true) {
       return { ok: false, error: normalizeError({ name: 'AbortError' }), externalAbort: true };
     }
@@ -81,7 +110,12 @@ export class HttpClient {
       const headers: Record<string, string> = { Accept: 'application/json', ...options.headers };
       if (options.bearer !== undefined) headers.Authorization = `Bearer ${options.bearer}`;
 
-      const response = await fetch(url, { headers, signal: controller.signal });
+      const response = await fetch(url, {
+        method,
+        headers,
+        ...(body === undefined ? {} : { body }),
+        signal: controller.signal,
+      });
 
       if (!response.ok) {
         const retry = retryAfterMs(response.headers);

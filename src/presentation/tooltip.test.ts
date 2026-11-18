@@ -175,6 +175,61 @@ describe('renderTooltip', () => {
     expect(html).toContain('cache');
   });
 
+  it('shows Qwen available, cash, and credit amounts from the account balance', () => {
+    const snapshots = {
+      qwen: makeSnapshot('qwen', {
+        'qwen.accountBalance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            availableAmount: -12.34,
+            availableCashAmount: -18.34,
+            creditAmount: 5,
+            mybankCreditAmount: 6,
+            quotaLimit: 1000,
+            currency: 'CNY',
+          },
+        },
+        'qwen.modelQuota': { kind: 'unsupported', reason: 'not public' },
+        'qwen.consumption': { kind: 'unsupported', reason: 'not public' },
+      }),
+    };
+
+    const html = renderTooltip(snapshots, ['qwen'], t);
+
+    expect(html).toContain('Available balance');
+    expect(html).toContain('¥-12.34');
+    expect(html).toContain('Available cash');
+    expect(html).toContain('¥-18.34');
+    expect(html).toContain('Credit');
+    expect(html).toContain('¥5.00');
+    expect(html).toContain('AccessKey');
+  });
+
+  it('shows the DeepSeek peak or off-peak period in hover details', () => {
+    const snapshots = {
+      deepseek: makeSnapshot('deepseek', {
+        'deepseek.balance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: { available: true, entries: [{ currency: 'CNY', total: 10, granted: 0, toppedUp: 10 }] },
+        },
+      }),
+    };
+
+    const html = renderTooltip(
+      snapshots,
+      ['deepseek'],
+      t,
+      undefined,
+      'Asia/Shanghai',
+      'peak',
+    );
+
+    expect(html).toContain('Peak');
+    expect(html).not.toContain('Off-peak');
+  });
+
   it('warns when the DeepSeek session expired', () => {
     const snapshots = {
       deepseek: makeSnapshot('deepseek', {

@@ -3,7 +3,8 @@
     "minimax-cn": "https://www.minimaxi.com",
     "minimax-global": "https://www.minimax.io",
     "deepseek-api": "https://api.deepseek.com",
-    "deepseek-platform": "https://platform.deepseek.com"
+    "deepseek-platform": "https://platform.deepseek.com",
+    "qwen-api": "https://business.aliyuncs.com"
   },
   "endpoints": {
     "minimax.plan": "/v1/api/openplatform/coding_plan/remains",

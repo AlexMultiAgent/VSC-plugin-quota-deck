@@ -9,6 +9,7 @@ function writer(): CredentialWriter {
   return {
     configureMiniMax: vi.fn().mockResolvedValue(undefined),
     configureDeepSeek: vi.fn().mockResolvedValue(undefined),
+    configureQwen: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -19,7 +20,12 @@ describe('runOnboarding', () => {
     state.quickPickResults = [undefined];
     await runOnboarding(writer(), t);
     const offered = state.quickPickOffered[0] as Array<{ label: string }>;
-    expect(offered.map((item) => item.label)).toEqual(['MiniMax CN', 'MiniMax Global', 'DeepSeek']);
+    expect(offered.map((item) => item.label)).toEqual([
+      'MiniMax CN',
+      'MiniMax Global',
+      'DeepSeek',
+      'Qwen',
+    ]);
   });
 
   it('stops cleanly when the provider picker is dismissed', async () => {
@@ -42,6 +48,14 @@ describe('runOnboarding', () => {
     await runOnboarding(target, t);
     expect(target.configureDeepSeek).toHaveBeenCalled();
     expect(target.configureMiniMax).not.toHaveBeenCalled();
+  });
+
+  it('configures Qwen when picked', async () => {
+    state.quickPickResults = ['Qwen', 'Finish'];
+    const target = writer();
+    await runOnboarding(target, t);
+    expect(target.configureQwen).toHaveBeenCalled();
+    expect(target.configureDeepSeek).not.toHaveBeenCalled();
   });
 
   it('shows the next-step summary', async () => {
@@ -72,6 +86,7 @@ describe('runOnboarding', () => {
     const target: CredentialWriter = {
       configureMiniMax: vi.fn(async () => { configured = true; }),
       configureDeepSeek: vi.fn(async () => { configured = true; }),
+      configureQwen: vi.fn(async () => { configured = true; }),
     };
     state.quickPickResults = ['MiniMax CN', 'Finish'];
     await runOnboarding(target, t, () => ({ 'minimax-cn': configured, deepseek: false }));

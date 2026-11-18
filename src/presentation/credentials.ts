@@ -100,6 +100,32 @@ export async function configureDeepSeek(store: SecretStore, t: Translator): Prom
   }
 }
 
+export async function configureQwen(store: SecretStore, t: Translator): Promise<void> {
+  const existingAccessKeyId = await store.read('qwen', 'access-key-id');
+  const existingAccessKeySecret = await store.read('qwen', 'access-key-secret');
+  const accessKeyId = await askSecret({
+    title: t('credentials.qwen.accessKeyId'),
+    placeHolder: t('credentials.qwen.accessKeyIdPlaceholder'),
+    prompt: t('credentials.qwen.accessKeyIdPrompt'),
+    ...(existingAccessKeyId !== undefined ? { existing: existingAccessKeyId } : {}),
+    validateInput: (value) =>
+      value.trim().length === 0 ? t('credentials.qwen.required') : undefined,
+  });
+  if (accessKeyId === undefined) return;
+  const accessKeySecret = await askSecret({
+    title: t('credentials.qwen.accessKeySecret'),
+    placeHolder: t('credentials.qwen.accessKeySecretPlaceholder'),
+    prompt: t('credentials.qwen.accessKeySecretPrompt'),
+    ...(existingAccessKeySecret !== undefined ? { existing: existingAccessKeySecret } : {}),
+    validateInput: (value) =>
+      value.trim().length === 0 ? t('credentials.qwen.required') : undefined,
+  });
+  if (accessKeySecret === undefined) return;
+
+  await store.write('qwen', 'access-key-id', accessKeyId.trim());
+  await store.write('qwen', 'access-key-secret', accessKeySecret.trim());
+}
+
 export async function clearCredential(
   store: SecretStore,
   providerId: ProviderId,

@@ -12,6 +12,7 @@ describe('registerCommands', () => {
       switchProvider: async () => undefined,
       configureMiniMax: async () => undefined,
       configureDeepSeek: async () => undefined,
+      configureQwen: async () => undefined,
       configureProviders: async () => undefined,
       showHelp: async () => undefined,
     });
@@ -19,6 +20,7 @@ describe('registerCommands', () => {
       'quotaDeck.configureDeepSeek',
       'quotaDeck.configureMiniMax',
       'quotaDeck.configureProviders',
+      'quotaDeck.configureQwen',
       'quotaDeck.openDashboard',
       'quotaDeck.refresh',
       'quotaDeck.showHelp',

@@ -7,9 +7,10 @@ import type { AccountTotalSource } from '../../providers/deepseek/aggregate';
 import type { DeepSeekBalance } from '../../providers/deepseek/shape';
 import type { DeepSeekUsage, UsageCost, UsagePoint } from '../../providers/deepseek/usage';
 import type { MiniMaxPlan, MiniMaxPoints, MiniMaxTokenUsage } from '../../providers/minimax/shape';
+import type { QwenAccountBalance } from '../../providers/qwen/shape';
 import type { Point, Series } from './charts';
 import { formatMoney, providerDisplayName, selectPrimaryCurrency } from '../display';
-import { capabilityLabel, rangeLabel } from '../labels';
+import { capabilityLabel, pricingPeriodLabel, rangeLabel } from '../labels';
 import { quotaTone } from '../quotaTone';
 
 export type ProviderHealth = 'ok' | 'partial' | 'failed' | 'stale' | 'not-configured' | 'unsupported';
@@ -66,6 +67,7 @@ export interface DashboardProvider {
   readonly meters: QuotaMeter[];
   readonly balance: string | null;
   readonly rangeUsage: ProviderRangeUsage | null;
+  readonly hoursLabel: string | null;
   readonly capabilities: ProviderCapabilityView[];
   readonly message: string | null;
   readonly fetchedAt: string | null;
@@ -101,12 +103,6 @@ export interface UsageModel {
   readonly costTotals: CurrencyTotalRow[];
 }
 
-export interface QwenMatrixRow {
-  readonly capability: string;
-  readonly label: string;
-  readonly state: 'unsupported';
-}
-
 export interface RangeOption {
   readonly id: RangeId;
   readonly label: string;
@@ -132,9 +128,6 @@ export interface DashboardLabels {
   readonly accountTotalSummary: string;
   readonly accountTotalAggregated: string;
   readonly accountTotalUnavailable: string;
-  readonly qwenTitle: string;
-  readonly qwenUnsupported: string;
-  readonly qwenUnavailableReason: string;
   readonly columnDate: string;
   readonly columnModel: string;
   readonly columnRequests: string;
@@ -149,7 +142,6 @@ export interface DashboardModel {
   readonly tiles: StatTile[];
   readonly providers: DashboardProvider[];
   readonly usage: UsageModel;
-  readonly qwen: QwenMatrixRow[];
   readonly balances: BalanceRow[];
   readonly accountTotals: CurrencyTotalRow[];
   readonly accountTotalSource: AccountTotalSource;
@@ -196,13 +188,6 @@ const TOKEN_SERIES_COLORS = {
   cacheMiss: { light: '#eb6834', dark: '#d95926' },
   output: { light: '#1baf7a', dark: '#199e70' },
 } as const;
-
-const QWEN_CAPABILITIES = [
-  'qwen.accountBalance',
-  'qwen.modelQuota',
-  'qwen.consumption',
-  'qwen.accessKeyValidation',
-] as const;
 
 type WindowView = MiniMaxPlan['windows'][number];
 
@@ -402,6 +387,10 @@ function providerCapabilities(
 }
 
 function providerBalance(snapshot: ProviderSnapshot | undefined): string | null {
+  const qwen = capabilityValue<QwenAccountBalance>(snapshot, 'qwen.accountBalance');
+  if (qwen !== undefined) {
+    return formatMoney(qwen.availableAmount, qwen.currency);
+  }
   const balances = balanceRows(snapshot);
   if (balances.length === 0) return null;
   const currency = selectPrimaryCurrency(balances.map((entry) => entry.currency));
@@ -459,8 +448,9 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       stateLabel: healthLabel(state, t),
       accent: ACCENT[id],
       meters,
-      balance: id === 'deepseek' ? providerBalance(snapshot) : null,
+      balance: providerBalance(snapshot),
       rangeUsage: providerRangeUsage(id, snapshot, t),
+      hoursLabel: id === 'deepseek' ? pricingPeriodLabel(pricing, t) : null,
       capabilities,
       message:
         failed !== undefined && failed.kind === 'failed' && !hasDeepSeekCapabilityMessage
@@ -585,9 +575,6 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
     accountTotalSummary: t('dashboard.accountTotal.summary'),
     accountTotalAggregated: t('dashboard.accountTotal.aggregated'),
     accountTotalUnavailable: t('dashboard.accountTotal.unavailable'),
-    qwenTitle: t('dashboard.qwenTitle'),
-    qwenUnsupported: t('dashboard.qwenUnsupported'),
-    qwenUnavailableReason: t('dashboard.qwenUnavailableReason'),
     columnDate: t('dashboard.column.date'),
     columnModel: t('dashboard.column.model'),
     columnRequests: t('dashboard.column.requests'),
@@ -615,11 +602,6 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
     tiles,
     providers,
     usage,
-    qwen: QWEN_CAPABILITIES.map((capability) => ({
-      capability,
-      label: capabilityLabel(capability, t),
-      state: 'unsupported' as const,
-    })),
     balances,
     accountTotals: account.totals,
     accountTotalSource: account.source,

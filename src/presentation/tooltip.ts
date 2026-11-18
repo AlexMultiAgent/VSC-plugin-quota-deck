@@ -5,8 +5,10 @@ import { SHANGHAI } from '../core/time';
 import { capabilityValue } from '../core/capability';
 import type { MiniMaxPlan, MiniMaxPoints, MiniMaxSubscription } from '../providers/minimax/shape';
 import type { DeepSeekBalance } from '../providers/deepseek/shape';
+import type { QwenAccountBalance } from '../providers/qwen/shape';
+import { pricingState, type PricingState } from '../providers/deepseek/pricing';
 import { formatMoney, providerDisplayName, remainingBar } from './display';
-import { rangeLabel } from './labels';
+import { pricingPeriodLabel, rangeLabel } from './labels';
 
 const ESCAPES: Record<string, string> = {
   '&': '&amp;',
@@ -31,7 +33,7 @@ const SESSION_BADGE: Record<ProviderId, MessageKey> = {
   'minimax-cn': 'session.apiKey',
   'minimax-global': 'session.apiKey',
   deepseek: 'session.webSession',
-  qwen: 'session.apiKey',
+  qwen: 'session.accessKey',
 };
 
 interface WindowView {
@@ -183,6 +185,23 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
     return `<tr><td colspan="4" class="t-muted">${escapeHtml(t('state.unconfigured'))}</td></tr>`;
   }
 
+  const qwenBalance = capabilityValue<QwenAccountBalance>(snapshot, 'qwen.accountBalance');
+  if (qwenBalance !== undefined) {
+    const row = (label: string, amount: number, suffix = '') =>
+      `<tr><td>${escapeHtml(label)}</td>` +
+      `<td>${escapeHtml(formatMoney(amount, qwenBalance.currency))}</td>` +
+      `<td class="t-muted">${escapeHtml(qwenBalance.currency)}${escapeHtml(suffix)}</td><td></td></tr>`;
+    let rows =
+      row(t('dashboard.qwen.availableBalance'), qwenBalance.availableAmount) +
+      row(t('dashboard.qwen.availableCash'), qwenBalance.availableCashAmount) +
+      row(t('dashboard.qwen.credit'), qwenBalance.creditAmount) +
+      row(t('dashboard.qwen.mybankCredit'), qwenBalance.mybankCreditAmount);
+    if (qwenBalance.quotaLimit !== null) {
+      rows += row(t('dashboard.qwen.quotaLimit'), qwenBalance.quotaLimit);
+    }
+    return rows;
+  }
+
   const plan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
   if (plan !== undefined) {
     const rows = plan.windows
@@ -243,6 +262,7 @@ export function renderTooltip(
   t: Translator,
   lastRefreshIso?: string,
   timeZone: string = SHANGHAI,
+  pricing: PricingState = pricingState(Date.now()),
 ): string {
   const cards = order
     .filter((id) => hasUsableConfiguration(snapshots[id]))
@@ -250,12 +270,17 @@ export function renderTooltip(
       const snapshot = snapshots[id];
       const sourceBadge = snapshot === undefined ? '—' : t('source.account');
       const sessionBadge = t(SESSION_BADGE[id]);
+      const period =
+        id === 'deepseek'
+          ? `<tr><td colspan="4" class="t-muted">${escapeHtml(pricingPeriodLabel(pricing, t))}</td></tr>`
+          : '';
       return (
         '<table class="t-card">' +
         `<tr><td class="t-title">${escapeHtml(providerDisplayName(id))}</td>` +
         `<td class="t-muted">${escapeHtml(REGION[id])}</td>` +
         `<td class="t-badge">${escapeHtml(sourceBadge)}</td>` +
         `<td class="t-badge">${escapeHtml(sessionBadge)}</td></tr>` +
+        period +
         `<tr><td colspan="4">${providerRows(snapshot, t, timeZone)}</td></tr>` +
         '</table>'
       );

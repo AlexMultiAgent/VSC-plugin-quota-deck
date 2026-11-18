@@ -6,12 +6,17 @@ import { Scheduler } from './core/scheduler';
 import { SecretStore } from './core/secrets';
 import { readSettings } from './core/settings';
 import type { RangeId } from './core/time';
-import type { ConnectionState, ProviderId } from './core/types';
+import type { ConnectionState, CredentialKind, ProviderId } from './core/types';
 import { resolveLanguage, translatorFor } from './localization';
-import { pricingState } from './providers/deepseek/pricing';
+import { pricingState, type PricingState } from './providers/deepseek/pricing';
 import { buildProviders } from './providers/registry';
 import { registerCommands } from './presentation/commands';
-import { clearCredential, configureDeepSeek, configureMiniMax } from './presentation/credentials';
+import {
+  clearCredential,
+  configureDeepSeek,
+  configureMiniMax,
+  configureQwen,
+} from './presentation/credentials';
 import { DashboardPanel } from './presentation/dashboard/panel';
 import { buildDashboardModel, type DashboardModel } from './presentation/dashboard/viewModel';
 import { runOnboarding } from './presentation/onboarding';
@@ -66,20 +71,30 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     return Object.values(configuredProviders()).some((value) => value === true);
   }
 
-  function currentModel(snapshots = coordinator.getLast()): DashboardModel {
+  function currentModel(
+    snapshots = coordinator.getLast(),
+    pricing: PricingState = pricingState(Date.now()),
+  ): DashboardModel {
     return buildDashboardModel({
       snapshots,
       order: settings.providerOrder,
       t,
       range,
-      pricing: pricingState(Date.now()),
+      pricing,
       warningThresholdPercent: settings.warningThresholdPercent,
     });
   }
 
-  function refreshTooltip(): void {
+  function refreshTooltip(pricing: PricingState = pricingState(Date.now())): void {
     const markdown = new vscode.MarkdownString(
-      renderTooltip(coordinator.getLast(), settings.providerOrder, t, lastRefreshIso, settings.timeZone),
+      renderTooltip(
+        coordinator.getLast(),
+        settings.providerOrder,
+        t,
+        lastRefreshIso,
+        settings.timeZone,
+        pricing,
+      ),
     );
     markdown.supportHtml = true;
     markdown.isTrusted = false;
@@ -88,6 +103,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   async function refreshAll(): Promise<void> {
     const snapshots = await coordinator.refreshAll(range);
+    const pricing = pricingState(Date.now());
     lastRefreshIso = new Date().toISOString();
     statusBar.update(
       snapshots,
@@ -96,9 +112,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       settings.primaryProvider,
       settings.warningThresholdPercent,
       configuredProviders(),
+      pricing,
     );
-    dashboard.update(currentModel(snapshots));
-    refreshTooltip();
+    dashboard.update(currentModel(snapshots, pricing));
+    refreshTooltip(pricing);
   }
 
   async function selectRange(next: RangeId): Promise<void> {
@@ -124,6 +141,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await reconnect('deepseek');
       await refreshAll();
     },
+    configureQwen: async (): Promise<void> => {
+      await configureQwen(secrets, t);
+      await reconnect('qwen');
+      await refreshAll();
+    },
   };
 
   async function configureProviders(): Promise<void> {
@@ -144,8 +166,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         }
         try {
           dashboard.show();
-          dashboard.update(currentModel());
-          refreshTooltip();
+          const pricing = pricingState(Date.now());
+          dashboard.update(currentModel(undefined, pricing));
+          refreshTooltip(pricing);
+          await refreshAll();
         } catch {
           const items = buildFallbackItems(coordinator.getLast(), settings.providerOrder, t);
           await vscode.window.showQuickPick(items, { title: 'QuotaDeck CN' });
@@ -159,6 +183,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           .getConfiguration('quotaDeck')
           .update('statusBar.primaryProvider', picked.id);
         settings = readSettings();
+        const pricing = pricingState(Date.now());
         statusBar.update(
           coordinator.getLast(),
           settings.providerOrder,
@@ -166,14 +191,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           settings.primaryProvider,
           settings.warningThresholdPercent,
           configuredProviders(),
+          pricing,
         );
-        refreshTooltip();
+        refreshTooltip(pricing);
       },
       configureMiniMax: async () => {
         await configureProviders();
       },
       configureDeepSeek: async () => {
         await writer.configureDeepSeek();
+      },
+      configureQwen: async () => {
+        await writer.configureQwen();
       },
       configureProviders,
       showHelp: async () => {
@@ -187,7 +216,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       'quotaDeck.clearCredential',
       async (
         providerId: ProviderId,
-        credential: 'api-key' | 'token-plan-key' | 'session-token' | 'web-cookie',
+        credential: CredentialKind,
       ) => {
         const cleared = await clearCredential(secrets, providerId, credential, t);
         if (!cleared) return;
@@ -217,6 +246,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   scheduler.start(refreshAll);
   const cached = await coordinator.loadCached();
   const current = readSettings();
+  const pricing = pricingState(Date.now());
   statusBar.update(
     cached,
     current.providerOrder,
@@ -224,9 +254,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     current.primaryProvider,
     current.warningThresholdPercent,
     configuredProviders(),
+    pricing,
   );
-  dashboard.update(currentModel(cached));
-  refreshTooltip();
+  dashboard.update(currentModel(cached, pricing));
+  refreshTooltip(pricing);
   void refreshAll();
 }
 

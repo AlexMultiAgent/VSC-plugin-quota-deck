@@ -8,7 +8,7 @@ dashboard. It never proxies model requests and never provides chat completion.
 
 ```bash
 npm run typecheck        # tsc --noEmit
-npm test                 # vitest run — 40 files, 317 tests
+npm test                 # vitest run
 npm run build            # esbuild → dist/extension.js + dist/webview.js
 npm run watch            # rebuild both bundles on change
 npm run icon             # regenerate media/icon.png from scripts/make-icon.mjs
@@ -37,7 +37,7 @@ The webview script is loaded via `webview.asWebviewUri()` — never a raw `file:
 src/
   core/          provider-agnostic: types, coordinator, http, cache, secrets, settings, time, errors,
                  capability (typed reader for capability data)
-  providers/     one adapter per vendor; each owns its endpoints, cookie allow-list and parsers
+  providers/     one adapter per vendor; each owns its endpoints, credentials, request signing and parsers
                  endpoints.json is the single source for every endpoint and credential env var
                  shape.ts = vendor-neutral primitives; <vendor>/shape.ts = raw payload shapes
   presentation/  statusBar, tooltip, onboarding, commands, credentials, switcher, labels, display,
@@ -90,8 +90,10 @@ These are product and security rules, not implementation details — do not trad
 - **Provenance is explicit.** Every displayed value is labelled account / local / estimated, and the
   session badge (API Key vs Web Session) is a separate axis. Never present an estimate as account
   quota.
-- **Qwen is a deliberate V1 placeholder.** It performs no network request and shows only a
-  capability matrix. Do not implement a Qwen adapter.
+- **Qwen uses the Alibaba Cloud Billing OpenAPI, not a Model Studio API Key.** The adapter calls
+  account-level `QueryAccountBalance` at `business.aliyuncs.com` with ACS3-HMAC-SHA256 signing.
+  AccessKey ID and Secret live only in Secret Storage. Free/model quota and consumption detail are
+  unsupported because no stable public API exists.
 - **Never combine DeepSeek account-summary totals with summed per-key totals.** They are
   alternative sources; `selectAccountTotals()` in `src/providers/deepseek/aggregate.ts` picks
   exactly one of them and reports which.
@@ -107,15 +109,16 @@ These are product and security rules, not implementation details — do not trad
   and must stay key-identical to each other.
 - **The DeepSeek pricing calendar expires.** `scripts/release-gate.mjs` fails the build when
   `coverageEnd` in `src/providers/deepseek/pricing-calendar.json` is under 30 days out. Extend
-  `coverageEnd` and `holidays` before it lapses.
+  `coverageEnd` and `holidays` before it lapses. Peak windows are UTC Monday–Friday
+  `01:00–04:00` and `06:00–10:00`; weekends and Chinese public holidays are entirely off-peak.
 - **The design spec's file tree is aspirational, not the layout.**
   `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md` §6 lists `providers/minimax/cn.ts`,
   `global.ts`, `cookies.ts`; the implementation uses one `provider.ts` + `shape.ts` per vendor with
   a shared `providers/cookies.ts`. Read the code, not the spec tree.
-- **Provider endpoints are undocumented web APIs.** Only the DeepSeek balance endpoint has been
-  verified against a live account. MiniMax and DeepSeek detailed usage are unverified — spec §11
-  spikes S1–S5 and open questions OQ1–OQ4 in §16 are still open. Treat an unexpected response shape
-  as contract drift to investigate, not something to paper over.
+- **Provider endpoints mix public and web APIs.** Qwen account balance uses Alibaba Cloud's public
+  Billing OpenAPI. MiniMax and DeepSeek detailed usage are undocumented web APIs and remain
+  unverified against every account type. Treat an unexpected response shape as contract drift to
+  investigate, not something to paper over.
 - **The marketplace icon is generated.** `media/icon.png` comes from `npm run icon`; never
   hand-edit the PNG. The generator is deterministic, so a regeneration that shows a diff means the
   geometry changed. The release gate rejects an icon that is not 128 × 128.
@@ -160,6 +163,15 @@ never require a live provider account — mock `fetch` and drive providers throu
 
 `tsconfig.json` is strict plus `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`; index
 access and optional-property assignment both need explicit handling.
+
+## Commits
+
+Every commit is authored by AlexMultiAgent only. Never add a `Co-Authored-By:` trailer naming
+Claude or any other assistant — GitHub parses those trailers and lists the trailer's author as a
+repository contributor.
+
+Release tags are annotated, named `vX.Y.Z`, and placed on the commit that writes that version's
+`CHANGELOG.md` section.
 
 ## Reference
 

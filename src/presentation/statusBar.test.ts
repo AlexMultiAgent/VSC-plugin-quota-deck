@@ -81,6 +81,52 @@ describe('renderStatusBarText', () => {
     expect(text).toContain(t('error.timeout'));
   });
 
+  it('shows the DeepSeek pricing period beside the balance', () => {
+    const snapshots = {
+      deepseek: makeSnapshot('deepseek', {
+        'deepseek.balance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: { available: true, entries: [{ currency: 'CNY', total: 112.8, granted: 12.8, toppedUp: 100 }] },
+        },
+      }),
+    };
+    const text = renderStatusBarText(
+      snapshots,
+      ['deepseek'],
+      t,
+      'all',
+      'minimax-cn',
+      20,
+      undefined,
+      'offPeak',
+    );
+
+    expect(text).toBe('$(pulse) DS $(dashboard) ¥112.80 · Off-peak');
+  });
+
+  it('shows the Qwen account balance without turning a negative value into zero', () => {
+    const snapshots = {
+      qwen: makeSnapshot('qwen', {
+        'qwen.accountBalance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            availableAmount: -12.34,
+            creditAmount: 5,
+            mybankCreditAmount: 6,
+            availableCashAmount: -18.34,
+            quotaLimit: 1000,
+            currency: 'CNY',
+          },
+        },
+      }),
+    };
+    const text = renderStatusBarText(snapshots, ['qwen'], t);
+
+    expect(text).toBe('$(pulse) QW $(dashboard) ¥-12.34');
+  });
+
   it('shows a stale value with a stale marker', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {

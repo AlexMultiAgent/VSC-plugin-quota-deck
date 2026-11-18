@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildProviders, MINIMAX_CN_ORIGIN, MINIMAX_GLOBAL_ORIGIN } from './registry';
 import type { MiniMaxProvider } from './minimax/provider';
+import type { QwenProvider } from './qwen/provider';
 import type { HttpClient } from '../core/http';
 
 describe('buildProviders', () => {
@@ -27,5 +28,12 @@ describe('buildProviders', () => {
   it('gives every provider a distinct id', () => {
     const providers = buildProviders({} as HttpClient);
     expect(new Set(providers.map((provider) => provider.id)).size).toBe(providers.length);
+  });
+
+  it('gives Qwen the Alibaba Cloud BSS endpoint', () => {
+    const providers = buildProviders({} as HttpClient);
+    expect((providers.find((provider) => provider.id === 'qwen') as QwenProvider).origin).toBe(
+      'https://business.aliyuncs.com',
+    );
   });
 });

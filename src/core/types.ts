@@ -8,7 +8,14 @@ export function isProviderId(value: string): value is ProviderId {
   return (PROVIDER_IDS as readonly string[]).includes(value);
 }
 
-export const CREDENTIAL_KINDS = ['token-plan-key', 'api-key', 'session-token', 'web-cookie'] as const;
+export const CREDENTIAL_KINDS = [
+  'token-plan-key',
+  'api-key',
+  'session-token',
+  'web-cookie',
+  'access-key-id',
+  'access-key-secret',
+] as const;
 export type CredentialKind = (typeof CREDENTIAL_KINDS)[number];
 
 export type CapabilityId = string;

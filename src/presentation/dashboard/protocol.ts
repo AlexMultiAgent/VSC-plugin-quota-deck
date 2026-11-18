@@ -144,6 +144,7 @@ function isDashboardModel(value: unknown): value is DashboardModel {
       isRecord(provider.accent) && typeof provider.accent.light === 'string' &&
       typeof provider.accent.dark === 'string' && isMeters(provider.meters) &&
       isStringOrNull(provider.balance) && isProviderRangeUsage(provider.rangeUsage) &&
+      isStringOrNull(provider.hoursLabel) &&
       isProviderCapabilities(provider.capabilities) &&
       isStringOrNull(provider.message) && isStringOrNull(provider.fetchedAt),
   )) return false;
@@ -160,10 +161,6 @@ function isDashboardModel(value: unknown): value is DashboardModel {
     !isModelRows(usage.byModel) ||
     !isCurrencyTotals(usage.costTotals)
   ) return false;
-  if (!Array.isArray(value.qwen) || !value.qwen.every(
-    (row) => isRecord(row) && typeof row.capability === 'string' &&
-      typeof row.label === 'string' && typeof row.state === 'string',
-  )) return false;
   if (!isBalanceRows(value.balances)) return false;
   if (!isCurrencyTotals(value.accountTotals)) return false;
   if (

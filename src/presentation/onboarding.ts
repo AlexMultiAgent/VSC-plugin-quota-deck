@@ -6,10 +6,11 @@ import { providerDisplayName } from './display';
 export interface CredentialWriter {
   configureMiniMax(providerId: 'minimax-cn' | 'minimax-global'): Promise<void>;
   configureDeepSeek(): Promise<void>;
+  configureQwen(): Promise<void>;
 }
 
 interface ProviderChoice {
-  readonly id: 'minimax-cn' | 'minimax-global' | 'deepseek';
+  readonly id: ProviderId;
   readonly label: string;
 }
 
@@ -17,9 +18,10 @@ const CHOICES: ProviderChoice[] = [
   { id: 'minimax-cn', label: providerDisplayName('minimax-cn') },
   { id: 'minimax-global', label: providerDisplayName('minimax-global') },
   { id: 'deepseek', label: providerDisplayName('deepseek') },
+  { id: 'qwen', label: providerDisplayName('qwen') },
 ];
 
-const SUMMARY_PROVIDERS: ProviderId[] = ['minimax-cn', 'minimax-global', 'deepseek'];
+const SUMMARY_PROVIDERS: ProviderId[] = ['minimax-cn', 'minimax-global', 'deepseek', 'qwen'];
 
 async function run(command: string): Promise<void> {
   try {
@@ -64,6 +66,8 @@ export async function runOnboarding(
 
   if (picked.id === 'deepseek') {
     await writer.configureDeepSeek();
+  } else if (picked.id === 'qwen') {
+    await writer.configureQwen();
   } else {
     await writer.configureMiniMax(picked.id);
   }

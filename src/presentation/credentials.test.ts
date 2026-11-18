@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { __reset, SecretStorage, state } from '../test/__mocks__/vscode';
 import { translatorFor } from '../localization';
 import { SecretStore } from '../core/secrets';
-import { clearCredential, configureDeepSeek, configureMiniMax } from './credentials';
+import {
+  clearCredential,
+  configureDeepSeek,
+  configureMiniMax,
+  configureQwen,
+} from './credentials';
 
 const t = translatorFor('en-US');
 
@@ -132,6 +137,35 @@ describe('configureDeepSeek', () => {
 
     expect(state.inputBoxOptions[2]!.validateInput?.('bare-cookie-value')).toBeDefined();
     expect(state.inputBoxOptions[2]!.validateInput?.('sessionId=abc; acw_tc=def')).toBeUndefined();
+  });
+});
+
+describe('configureQwen', () => {
+  beforeEach(() => __reset());
+
+  it('stores the AccessKey ID and secret only in SecretStorage', async () => {
+    state.inputBoxResults = ['LTAI-test-id', 'access-secret'];
+    const store = new SecretStore(SecretStorage);
+
+    await configureQwen(store, t);
+
+    expect(await store.read('qwen', 'access-key-id')).toBe('LTAI-test-id');
+    expect(await store.read('qwen', 'access-key-secret')).toBe('access-secret');
+    expect(state.output.join('\n')).not.toContain('LTAI-test-id');
+    expect(state.output.join('\n')).not.toContain('access-secret');
+  });
+
+  it('explains that both fields are required and names the BSS RAM permission', async () => {
+    state.inputBoxResults = ['LTAI-test-id', undefined];
+    const store = new SecretStore(SecretStorage);
+
+    await configureQwen(store, t);
+
+    expect(state.inputBoxOptions[0]!.validateInput?.('')).toBeDefined();
+    expect(state.inputBoxOptions[1]!.validateInput?.('')).toBeDefined();
+    expect(state.inputBoxOptions[0]!.prompt).toContain('AccessKey');
+    expect(state.inputBoxOptions[0]!.prompt).toContain('bss:DescribeAcccount');
+    expect(state.inputBoxOptions[0]!.prompt).toContain('SecretStorage');
   });
 });
 

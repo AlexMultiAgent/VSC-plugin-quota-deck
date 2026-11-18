@@ -4,6 +4,7 @@
   "command.switchProvider.title": "Switch Provider",
   "command.configureMiniMax.title": "Configure MiniMax",
   "command.configureDeepSeek.title": "Configure DeepSeek",
+  "command.configureQwen.title": "Configure Qwen",
   "command.configureProviders.title": "Configure Providers",
   "command.showHelp.title": "Show Help",
   "config.language.description": "Interface language. `auto` follows the VS Code display language.",

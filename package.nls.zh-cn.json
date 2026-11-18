@@ -4,6 +4,7 @@
   "command.switchProvider.title": "切换服务商",
   "command.configureMiniMax.title": "配置 MiniMax",
   "command.configureDeepSeek.title": "配置 DeepSeek",
+  "command.configureQwen.title": "配置 Qwen",
   "command.configureProviders.title": "配置服务商",
   "command.showHelp.title": "查看帮助",
   "config.language.description": "界面语言。`auto` 跟随 VS Code 显示语言。",

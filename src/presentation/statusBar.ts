@@ -6,7 +6,10 @@ import { formatCountdown } from '../core/time';
 import { capabilityValue } from '../core/capability';
 import type { MiniMaxPlan } from '../providers/minimax/shape';
 import type { DeepSeekBalance } from '../providers/deepseek/shape';
+import type { QwenAccountBalance } from '../providers/qwen/shape';
+import { pricingState, type PricingState } from '../providers/deepseek/pricing';
 import { formatMoney, pickTightestWindow, selectPrimaryCurrency } from './display';
+import { pricingPeriodLabel } from './labels';
 import { quotaTone, type QuotaTone } from './quotaTone';
 
 export interface BalanceView {
@@ -52,6 +55,13 @@ function deepSeekBalance(snapshot: ProviderSnapshot | undefined): BalanceView | 
   if (currency === undefined) return undefined;
   const entry = entries.find((candidate) => candidate.currency === currency);
   return entry === undefined ? undefined : { currency: entry.currency, amount: entry.total };
+}
+
+function qwenBalance(snapshot: ProviderSnapshot | undefined): BalanceView | undefined {
+  const balance = capabilityValue<QwenAccountBalance>(snapshot, 'qwen.accountBalance');
+  return balance === undefined
+    ? undefined
+    : { currency: balance.currency, amount: balance.availableAmount };
 }
 
 const MAX_STATUS_BAR_SEGMENTS = 3;
@@ -136,6 +146,7 @@ export function renderStatusBarText(
   primary: ProviderId = 'minimax-cn',
   warningThresholdPercent = 20,
   configured?: Partial<Record<ProviderId, boolean>>,
+  pricing: PricingState = pricingState(Date.now()),
 ): string {
   const visible = visibleProviderIds(order, mode, primary, configured);
   if (visible.length === 0) return `$(pulse) ${t('statusBar.noData')}`;
@@ -151,7 +162,20 @@ export function renderStatusBarText(
       const balanceState = snapshot.capabilities['deepseek.balance'];
       if (balanceState?.kind === 'ok' || balanceState?.kind === 'stale') {
         const stale = balanceState.kind === 'stale' ? ` ${t('state.stale')}` : '';
-        return `${label} ${STATUS_ICON.neutral} ${formatBalance(deepSeekBalance(snapshot))}${stale}`;
+        return (
+          `${label} ${STATUS_ICON.neutral} ${formatBalance(deepSeekBalance(snapshot))}` +
+          ` · ${pricingPeriodLabel(pricing, t)}${stale}`
+        );
+      }
+      const state = unavailableState(snapshot, t);
+      return `${label} ${state.icon} ${state.label}`;
+    }
+
+    if (id === 'qwen') {
+      const balanceState = snapshot.capabilities['qwen.accountBalance'];
+      if (balanceState?.kind === 'ok' || balanceState?.kind === 'stale') {
+        const stale = balanceState.kind === 'stale' ? ` ${t('state.stale')}` : '';
+        return `${label} ${STATUS_ICON.neutral} ${formatBalance(qwenBalance(snapshot))}${stale}`;
       }
       const state = unavailableState(snapshot, t);
       return `${label} ${state.icon} ${state.label}`;
@@ -194,6 +218,7 @@ export class StatusBarPresenter {
     primary: ProviderId = 'minimax-cn',
     warningThresholdPercent = 20,
     configured?: Partial<Record<ProviderId, boolean>>,
+    pricing: PricingState = pricingState(Date.now()),
   ): void {
     this.item.text = renderStatusBarText(
       snapshots,
@@ -203,6 +228,7 @@ export class StatusBarPresenter {
       primary,
       warningThresholdPercent,
       configured,
+      pricing,
     );
     const visible = visibleProviderIds(order, mode, primary, configured);
     const tone = visibleTone(snapshots, visible, warningThresholdPercent);

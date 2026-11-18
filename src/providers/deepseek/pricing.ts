@@ -5,12 +5,16 @@ export interface Holiday {
   readonly name: string;
 }
 
+export interface PeakWindowUtc {
+  readonly startMinute: number;
+  readonly endMinute: number;
+}
+
 export interface PricingCalendar {
   readonly version: string;
   readonly coverageStart: string;
   readonly coverageEnd: string;
-  readonly offPeakStartMinute: number;
-  readonly offPeakEndMinute: number;
+  readonly peakWindowsUtc: PeakWindowUtc[];
   readonly holidays: Holiday[];
   readonly notes: string;
 }
@@ -33,21 +37,24 @@ function shanghaiDate(instant: number): string {
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
-function shanghaiMinutes(instant: number): number {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Shanghai',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(new Date(instant));
-  const get = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
-  return get('hour') * 60 + get('minute');
+function utcMinutes(instant: number): number {
+  const date = new Date(instant);
+  return date.getUTCHours() * 60 + date.getUTCMinutes();
 }
 
 export function pricingState(instant: number): PricingState {
   if (!isCovered(shanghaiDate(instant))) return 'unavailable';
-  const minutes = shanghaiMinutes(instant);
-  const offPeak =
-    minutes >= calendar.offPeakStartMinute && minutes < calendar.offPeakEndMinute;
-  return offPeak ? 'offPeak' : 'peak';
+
+  const date = new Date(instant);
+  const weekday = date.getUTCDay();
+  if (weekday === 0 || weekday === 6) return 'offPeak';
+  if (calendar.holidays.some((holiday) => holiday.date === shanghaiDate(instant))) {
+    return 'offPeak';
+  }
+
+  const minutes = utcMinutes(instant);
+  const inPeakWindow = calendar.peakWindowsUtc.some(
+    (window) => minutes >= window.startMinute && minutes < window.endMinute,
+  );
+  return inPeakWindow ? 'peak' : 'offPeak';
 }

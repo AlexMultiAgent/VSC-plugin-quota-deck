@@ -40,12 +40,32 @@ describe('pricingState', () => {
     expect(pricingState(Date.parse('2026-06-15T06:00:00Z'))).toBe('peak');
   });
 
-  it('reports peak at 09:00 in Shanghai time, just after the off-peak window', () => {
+  it('reports peak at 09:00 in Shanghai time, the first UTC peak window', () => {
     expect(pricingState(Date.parse('2026-06-15T01:00:00Z'))).toBe('peak');
   });
 
   it('reports off-peak at 07:59 in Shanghai time, just before the window ends', () => {
     expect(pricingState(Date.parse('2026-06-14T23:59:00Z'))).toBe('offPeak');
+  });
+
+  it('reports off-peak in the midday UTC gap', () => {
+    expect(pricingState(Date.parse('2026-11-18T05:23:00Z'))).toBe('offPeak');
+  });
+
+  it('reports peak at the second UTC window boundary', () => {
+    expect(pricingState(Date.parse('2026-11-18T06:00:00Z'))).toBe('peak');
+  });
+
+  it('reports off-peak after the second UTC window', () => {
+    expect(pricingState(Date.parse('2026-11-18T10:00:00Z'))).toBe('offPeak');
+  });
+
+  it('reports off-peak throughout weekends', () => {
+    expect(pricingState(Date.parse('2026-11-21T02:00:00Z'))).toBe('offPeak');
+  });
+
+  it('reports off-peak on a Chinese public holiday', () => {
+    expect(pricingState(Date.parse('2026-10-01T02:00:00Z'))).toBe('offPeak');
   });
 
   it('reports unavailable for a date outside the coverage', () => {

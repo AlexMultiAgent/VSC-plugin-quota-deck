@@ -1,5 +1,6 @@
 import type { Translator } from '../localization';
 import type { RangeId } from '../core/time';
+import type { PricingState } from '../providers/deepseek/pricing';
 
 export function rangeLabel(range: RangeId, t: Translator): string {
   switch (range) {
@@ -31,4 +32,12 @@ export function capabilityLabel(capability: string, t: Translator): string {
     default:
       return capability;
   }
+}
+
+export function pricingPeriodLabel(pricing: PricingState, t: Translator): string {
+  return pricing === 'peak'
+    ? t('hours.peak')
+    : pricing === 'offPeak'
+      ? t('hours.offPeak')
+      : t('hours.unavailable');
 }

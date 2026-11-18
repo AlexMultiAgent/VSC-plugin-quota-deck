@@ -7,6 +7,8 @@ const CREDENTIAL_PART: Record<CredentialKind, string> = {
   'api-key': 'apiKey',
   'session-token': 'sessionToken',
   'web-cookie': 'webCookie',
+  'access-key-id': 'accessKeyId',
+  'access-key-secret': 'accessKeySecret',
 };
 
 function secretKey(providerId: ProviderId, credential: CredentialKind): string {

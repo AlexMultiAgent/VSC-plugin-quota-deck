@@ -137,6 +137,9 @@ export function renderDashboard(
     title.appendChild(document.createTextNode(provider.name));
     card.appendChild(title);
     card.appendChild(element('div', 'provider-state', provider.stateLabel));
+    if (provider.hoursLabel !== null) {
+      card.appendChild(element('div', 'provider-state', provider.hoursLabel));
+    }
     if (provider.balance !== null) {
       const balance = element('div', 'provider-balance');
       balance.appendChild(element('span', 'provider-balance-label', model.labels.accountBalance));
@@ -162,7 +165,10 @@ export function renderDashboard(
       usage.appendChild(element('strong', 'provider-range-value', provider.rangeUsage.value));
       card.appendChild(usage);
     }
-    if (provider.id === 'deepseek' && provider.capabilities.length > 0) {
+    if (
+      (provider.id === 'deepseek' || provider.id === 'qwen') &&
+      provider.capabilities.length > 0
+    ) {
       const details = element('dl', 'provider-capabilities');
       for (const capability of provider.capabilities) {
         const row = element('div', `provider-capability is-${capability.tone}`);
@@ -267,16 +273,5 @@ export function renderDashboard(
       model.accountTotals.map((row) => [row.currency, row.amount.toFixed(2)]),
     ));
     container.appendChild(card);
-  }
-  if (model.qwen.length > 0) {
-    const matrix = section(model.labels.qwenTitle, 'qwen-matrix');
-    matrix.appendChild(element('p', 'qwen-note', model.labels.qwenUnavailableReason));
-    for (const row of model.qwen) {
-      const line = element('div', 'qwen-row');
-      line.appendChild(element('span', undefined, row.label));
-      line.appendChild(element('span', 'qwen-state', model.labels.qwenUnsupported));
-      matrix.appendChild(line);
-    }
-    container.appendChild(matrix);
   }
 }
