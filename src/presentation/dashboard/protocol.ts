@@ -108,7 +108,7 @@ function isBalanceRows(value: unknown): boolean {
 
 function isCurrencyTotals(value: unknown): boolean {
   return Array.isArray(value) && value.every(
-    (row) => isRecord(row) && typeof row.currency === 'string' && typeof row.total === 'number',
+    (row) => isRecord(row) && typeof row.currency === 'string' && typeof row.amount === 'number',
   );
 }
 

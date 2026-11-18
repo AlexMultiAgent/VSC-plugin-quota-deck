@@ -77,6 +77,14 @@ describe('host messages', () => {
     expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(false);
   });
 
+  it('accepts populated currency totals from the dashboard model', () => {
+    const model = emptyModel();
+    model.usage.costTotals.push({ currency: 'CNY', amount: 1.5 });
+    model.accountTotals.push({ currency: 'CNY', amount: 2.5 });
+
+    expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(true);
+  });
+
   it('rejects a non-object', () => {
     expect(isHostMessage('state')).toBe(false);
   });
