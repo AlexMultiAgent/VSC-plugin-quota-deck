@@ -83,6 +83,20 @@ function bar(percent: number): string {
   );
 }
 
+function pricingPeriod(pricing: PricingState, t: Translator): string {
+  const color =
+    pricing === 'peak'
+      ? 'var(--vscode-charts-orange, #d18616)'
+      : pricing === 'offPeak'
+        ? 'var(--vscode-charts-green, #89d185)'
+        : 'var(--vscode-descriptionForeground)';
+  const weight = pricing === 'unavailable' ? '400' : '600';
+  return (
+    `<span style="color:${color};font-weight:${weight};">` +
+    `${escapeHtml(pricingPeriodLabel(pricing, t))}</span>`
+  );
+}
+
 function quotaValue(value: string): string {
   return (
     '<strong style="display:inline-block;vertical-align:middle;' +
@@ -335,7 +349,7 @@ export function renderTooltip(
       const region = REGION[id] === '' ? '' : t(REGION[id]);
       const period =
         id === 'deepseek'
-          ? `<tr><td colspan="4" class="t-muted">${escapeHtml(pricingPeriodLabel(pricing, t))}</td></tr>`
+          ? `<tr><td colspan="4">${pricingPeriod(pricing, t)}</td></tr>`
           : '';
       return (
         '<table class="t-card">' +

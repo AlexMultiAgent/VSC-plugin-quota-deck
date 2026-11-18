@@ -455,7 +455,7 @@ describe('renderTooltip', () => {
       }),
     };
 
-    const html = renderTooltip(
+    const peakHtml = renderTooltip(
       snapshots,
       ['deepseek'],
       t,
@@ -463,9 +463,23 @@ describe('renderTooltip', () => {
       'Asia/Shanghai',
       'peak',
     );
+    const offPeakHtml = renderTooltip(
+      snapshots,
+      ['deepseek'],
+      t,
+      undefined,
+      'Asia/Shanghai',
+      'offPeak',
+    );
 
-    expect(html).toContain('Peak');
-    expect(html).not.toContain('Off-peak');
+    expect(peakHtml).toContain(
+      '<span style="color:var(--vscode-charts-orange, #d18616);font-weight:600;">Peak</span>',
+    );
+    expect(peakHtml).not.toContain('Off-peak');
+    expect(offPeakHtml).toContain(
+      '<span style="color:var(--vscode-charts-green, #89d185);font-weight:600;">Off-peak</span>',
+    );
+    expect(offPeakHtml).not.toContain('>Peak<');
   });
 
   it('does not ask for a DeepSeek platform session from a legacy cache', () => {
