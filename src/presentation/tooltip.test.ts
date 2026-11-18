@@ -103,7 +103,7 @@ describe('renderTooltip', () => {
     expect(html).not.toContain('AccessKey');
   });
 
-  it('shows a fixed-width colored line track without bracket characters', () => {
+  it('renders a thick, long block track without bracket characters', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -115,14 +115,17 @@ describe('renderTooltip', () => {
     };
     const html = renderTooltip(snapshots, ['minimax-cn'], t);
     expect(html).toContain(
-      '<span style="color:var(--vscode-charts-green);">━━━━━━</span>' +
-        '<span style="color:var(--vscode-descriptionForeground);">────</span>',
+      '<span style="display:inline-block;vertical-align:middle;width:200px;' +
+        'height:12px;border-radius:6px;overflow:hidden;' +
+        'background-color:var(--vscode-descriptionForeground);">' +
+        '<span style="display:block;height:100%;width:60%;' +
+        'background-color:var(--vscode-charts-green);"></span></span>',
     );
     expect(html).not.toContain('[██████');
     expect(html).not.toContain('<code>');
   });
 
-  it('renders every MiniMax quota track at the same width', () => {
+  it('renders every MiniMax quota track at the same long width', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -139,10 +142,10 @@ describe('renderTooltip', () => {
       }),
     };
     const html = renderTooltip(snapshots, ['minimax-cn'], t);
-    const trackSegments = [...html.matchAll(/>([━─]+)<\/span>/g)].map((match) => match[1]!);
+    const tracks = [...html.matchAll(/width:200px;height:12px/g)];
 
-    expect(trackSegments.filter((segment) => segment.includes('━'))).toHaveLength(2);
-    expect(trackSegments.filter((segment) => segment.includes('─'))).toHaveLength(3);
+    expect(tracks).toHaveLength(3);
+    expect(html).not.toMatch(/[━─]/);
     expect(html).not.toContain('>[');
   });
 
@@ -165,7 +168,7 @@ describe('renderTooltip', () => {
     expect(html).not.toContain('<tr><td colspan="4"><tr>');
   });
 
-  it('labels MiniMax remaining and used values plainly in Chinese', () => {
+  it('shows only the remaining value after each MiniMax quota track', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -184,13 +187,25 @@ describe('renderTooltip', () => {
 
     const html = renderTooltip(snapshots, ['minimax-cn'], zh);
 
-    expect(html).toContain('剩余 100%');
-    expect(html).toContain('已使用 0%');
-    expect(html).toContain('剩余 22%');
-    expect(html).toContain('已使用 78%');
+    expect(html).toContain(
+      'background-color:var(--vscode-charts-green);"></span></span>' +
+        '<strong style="display:inline-block;vertical-align:middle;' +
+        'min-width:42px;margin-left:10px;">100%</strong>',
+    );
+    expect(html).toContain(
+      'background-color:var(--vscode-charts-green);"></span></span>' +
+        '<strong style="display:inline-block;vertical-align:middle;' +
+        'min-width:42px;margin-left:10px;">22%</strong>',
+    );
     expect(html).toContain('视频');
-    expect(html).toContain('剩余 3/3 次');
-    expect(html).toContain('已使用 0 次');
+    expect(html).toContain(
+      'background-color:var(--vscode-charts-green);"></span></span>' +
+        '<strong style="display:inline-block;vertical-align:middle;' +
+        'min-width:42px;margin-left:10px;">3/3</strong>',
+    );
+    expect(html).not.toContain('剩余');
+    expect(html).not.toContain('已使用');
+    expect(html).not.toContain('次');
     expect(html).not.toContain('>video<');
   });
 
@@ -210,8 +225,13 @@ describe('renderTooltip', () => {
 
     const html = renderTooltip(snapshots, ['minimax-cn'], zh);
 
-    expect(html).toContain('剩余 0/3 次');
-    expect(html).toContain('已使用 3 次');
+    expect(html).toContain(
+      '<strong style="display:inline-block;vertical-align:middle;' +
+        'min-width:42px;margin-left:10px;">0/3</strong>',
+    );
+    expect(html).not.toContain('剩余');
+    expect(html).not.toContain('已使用');
+    expect(html).not.toContain('次');
   });
 
   it('localizes MiniMax regions, windows, reset times, and the configured time zone', () => {
@@ -251,8 +271,9 @@ describe('renderTooltip', () => {
     expect(html).toContain('国内版');
     expect(html).toContain('5 小时');
     expect(html).toContain('每周');
-    expect(html).toContain('重置于 2026-11-16 12:00');
-    expect(html).toContain('重置于 2026-11-16 16:00');
+    expect(html).toContain('title="下次重置 2026-11-16 12:00">↻ 11-16 12:00</td>');
+    expect(html).toContain('title="下次重置 2026-11-16 16:00">↻ 11-16 16:00</td>');
+    expect(html).not.toContain('重置于');
     expect(html).toContain('Asia/Shanghai');
     expect(html).not.toContain('Domestic');
     expect(html).not.toContain('5-hour');
@@ -278,9 +299,9 @@ describe('renderTooltip', () => {
       }),
     };
 
-    expect(renderTooltip(snapshots, ['minimax-cn'], t, undefined, 'Asia/Shanghai')).toContain(
-      'Resets 2026-11-16 12:00',
-    );
+    const html = renderTooltip(snapshots, ['minimax-cn'], t, undefined, 'Asia/Shanghai');
+
+    expect(html).toContain('title="Next reset 2026-11-16 12:00">↻ 11-16 12:00</td>');
   });
 
   it('escapes provider-controlled strings', () => {
@@ -441,15 +462,15 @@ describe('renderTooltip', () => {
     const html = renderTooltip({}, ['qwen'], t, '2026-11-16T04:00:00.000Z');
     expect(html).toContain('2026-11-16 12:00');
     expect(html).toContain('Asia/Shanghai');
-    expect(html).toContain('Open the dashboard');
+    expect(html).toContain('Click to open the dashboard');
   });
 
   it('puts the dashboard hint on a second footer line', () => {
     const html = renderTooltip({}, ['qwen'], zh, '2026-11-18T10:43:00.000Z', 'Asia/Shanghai');
 
     expect(html).toContain(
-      '<span class="t-muted">更新于 2026-11-18 18:43 · Asia/Shanghai</span>' +
-        '<br><span class="t-muted">在仪表盘中查看更多分析</span>',
+      '<span class="t-muted">⇄ 2026-11-18 18:43 · Asia/Shanghai</span>' +
+        '<br><span class="t-muted">点击在仪表盘中查看更多分析</span>',
     );
   });
 

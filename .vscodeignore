@@ -1,6 +1,8 @@
 .vscode/**
 .remember/**
 .superpowers/**
+.playwright-cli/**
+output/**
 .gitignore
 node_modules/**
 src/**

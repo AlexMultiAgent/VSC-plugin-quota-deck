@@ -55,4 +55,12 @@ describe('Activity Bar contribution', () => {
     expect(svg.replace('http://www.w3.org/2000/svg', ''))
       .not.toMatch(/<script\b|https?:|\bfile:/i);
   });
+
+  it('fills the icon bounds and keeps the top tick inside the gauge', () => {
+    const svg = readFileSync(resolve(root, 'media/activity-bar.svg'), 'utf8');
+
+    expect(svg).toContain('M7 21C4.2 19.8 2 16.7 2 13');
+    expect(svg).toContain('M12 5.35v2.25');
+    expect(svg).not.toContain('M12 4.25v2.1');
+  });
 });

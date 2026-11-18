@@ -7,7 +7,7 @@ import type { MiniMaxPlan, MiniMaxPoints, MiniMaxSubscription } from '../provide
 import type { DeepSeekBalance } from '../providers/deepseek/shape';
 import type { QwenAccountBalance } from '../providers/qwen/shape';
 import { pricingState, type PricingState } from '../providers/deepseek/pricing';
-import { formatMoney, providerDisplayName, remainingBar } from './display';
+import { formatMoney, providerDisplayName } from './display';
 import { pricingPeriodLabel, rangeLabel } from './labels';
 
 const ESCAPES: Record<string, string> = {
@@ -73,11 +73,20 @@ function balances(snapshot: ProviderSnapshot | undefined): BalanceEntry[] {
 }
 
 function bar(percent: number): string {
-  const track = remainingBar(percent);
-  const filled = [...track].filter((segment) => segment === '━').length;
+  const width = Math.min(100, Math.max(0, percent));
   return (
-    `<span style="color:var(--vscode-charts-green);">${'━'.repeat(filled)}</span>` +
-    `<span style="color:var(--vscode-descriptionForeground);">${'─'.repeat(track.length - filled)}</span>`
+    '<span style="display:inline-block;vertical-align:middle;width:200px;' +
+    'height:12px;border-radius:6px;overflow:hidden;' +
+    'background-color:var(--vscode-descriptionForeground);">' +
+    `<span style="display:block;height:100%;width:${width}%;` +
+    'background-color:var(--vscode-charts-green);"></span></span>'
+  );
+}
+
+function quotaValue(value: string): string {
+  return (
+    '<strong style="display:inline-block;vertical-align:middle;' +
+    `min-width:42px;margin-left:10px;">${escapeHtml(value)}</strong>`
   );
 }
 
@@ -218,21 +227,26 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
     for (const window of plan.windows) {
       if (window.remainingPercent === null) continue;
       const remaining = Math.round(window.remainingPercent);
-      const used = 100 - remaining;
       const label =
         window.window === 'weekly'
           ? t('tooltip.window.weekly')
           : t('tooltip.window.fiveHour');
-      const reset =
+      const resetFull =
         window.resetAt === null
           ? ''
-          : `${t('tooltip.resetAt')} ${zonedTime(new Date(window.resetAt).toISOString(), timeZone)}`;
+          : zonedTime(new Date(window.resetAt).toISOString(), timeZone);
+      const resetTitle =
+        resetFull === '' ? '' : ` title="${escapeHtml(`${t('tooltip.resetAt')} ${resetFull}`)}"`;
+      const resetCell =
+        window.resetAt === null
+          ? '<td colspan="2"></td>'
+          : '<td class="t-muted" colspan="2" ' +
+            'style="text-align:right;white-space:nowrap;"' +
+            `${resetTitle}>↻ ${escapeHtml(resetFull.slice(5))}</td>`;
       rows.push(
         `<tr><td><strong>${escapeHtml(label)}</strong></td>` +
-        `<td>${bar(window.remainingPercent)}</td>` +
-        `<td><strong>${escapeHtml(t('tooltip.remaining'))} ${remaining}%</strong>` +
-        `<br><span class="t-muted">${escapeHtml(t('tooltip.used'))} ${used}%</span></td>` +
-        `<td class="t-muted">${escapeHtml(reset)}</td></tr>`,
+        `<td>${bar(window.remainingPercent)}${quotaValue(`${remaining}%`)}</td>` +
+        `${resetCell}</tr>`,
       );
     }
     for (const model of plan.models ?? []) {
@@ -245,16 +259,11 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
         continue;
       }
       const percent = Math.round((model.remaining / model.total) * 100);
-      const used = Math.max(0, model.total - model.remaining);
       const label = model.model === 'video' ? t('tooltip.model.video') : model.model;
       rows.push(
         `<tr><td><strong>${escapeHtml(label)}</strong></td>` +
-        `<td>${bar(percent)}</td>` +
-        `<td><strong>${escapeHtml(t('tooltip.remaining'))} ${model.remaining}/${model.total} ` +
-        `${escapeHtml(t('tooltip.times'))}</strong>` +
-        `<br><span class="t-muted">${escapeHtml(t('tooltip.used'))} ${used} ` +
-        `${escapeHtml(t('tooltip.times'))}</span></td>` +
-        '<td></td></tr>',
+        `<td>${bar(percent)}${quotaValue(`${model.remaining}/${model.total}`)}</td>` +
+        '<td colspan="2"></td></tr>',
       );
     }
     const points = capabilityValue<MiniMaxPoints>(snapshot, 'minimax.points');
