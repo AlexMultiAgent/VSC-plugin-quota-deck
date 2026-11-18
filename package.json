@@ -2,7 +2,7 @@
   "name": "quota-deck",
   "displayName": "QuotaDeck CN — MiniMax DeepSeek Qwen",
   "description": "国产大模型额度监控 · MiniMax、DeepSeek、Qwen 余额、用量与重置倒计时",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "publisher": "alexmultiagent",
   "license": "MIT",
   "repository": {
