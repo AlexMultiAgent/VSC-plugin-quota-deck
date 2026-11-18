@@ -1,20 +1,22 @@
 # QuotaDeck CN
 
 Read-only VS Code extension (`alexmultiagent.quota-deck`) that shows MiniMax / DeepSeek / Qwen
-quota, balance, usage and reset windows in the status bar, a hover tooltip, and an optional
-dashboard. It never proxies model requests and never provides chat completion.
+quota, balance, usage and reset windows in the status bar, a hover tooltip, an Activity Bar
+overview tree, and an optional dashboard. It never proxies model requests and never provides chat
+completion.
 
 ## Commands
 
 ```bash
 npm run typecheck        # tsc --noEmit
 npm test                 # vitest run
+npm run test:watch       # vitest in watch mode
 npm run build            # esbuild → dist/extension.js + dist/webview.js
 npm run watch            # rebuild both bundles on change
 npm run icon             # regenerate media/icon.png from scripts/make-icon.mjs
 npm run check:locales    # package.nls*.json key parity + manifest %placeholder% resolution
 npm run guard:fixtures   # committed fixtures: no secret-shaped or non-zero financial values
-npm run guard:package    # shipped files: no secrets, no absolute local paths
+npm run guard:package    # shipped files: no secrets, no absolute local paths, activity-bar icon present
 npm run package          # build → guard:fixtures → release-gate → vsce package → guard:package
 ```
 
@@ -35,21 +37,29 @@ The webview script is loaded via `webview.asWebviewUri()` — never a raw `file:
 
 ```text
 src/
-  core/          provider-agnostic: types, coordinator, http, cache, secrets, settings, time, errors,
-                 capability (typed reader for capability data)
+  core/          provider-agnostic: types, coordinator, scheduler, http, cache, secrets, settings, time,
+                 errors, capability (typed reader for capability data)
   providers/     one adapter per vendor; each owns its endpoints, credentials, request signing and parsers
                  endpoints.json is the single source for every endpoint and credential env var
+                 endpoints.ts = typed view over that JSON; registry.ts = buildProviders()
                  shape.ts = vendor-neutral primitives; <vendor>/shape.ts = raw payload shapes
-  presentation/  statusBar, tooltip, onboarding, commands, credentials, switcher, labels, display,
-                 dashboard/
+                 only deepseek/ splits raw (usage.ts) from higher-level (aggregate.ts); minimax/ and
+                 qwen/ parse and assemble inside shape.ts + provider.ts; qwen/request.ts signs ACS3
+  presentation/  statusBar, tooltip, overview/ (Activity Bar tree), onboarding, commands, credentials,
+                 switcher, labels, display, quotaTone, quickPickFallback, dashboard/
   localization/  messages.ts (key registry) + en-us.ts / zh-cn.ts bundles
   test/          __mocks__/vscode.ts, fixtures/, helpers/
 ```
 
 Layering rules: `core` knows nothing about any vendor. Within an adapter, `shape.ts` is the only
-place that knows a raw payload shape, `usage.ts` / `aggregate.ts` build higher-level values, and
-`provider.ts` assembles capabilities over the endpoints. `presentation` consumes normalized
-snapshots and never touches endpoints, secrets, or raw payloads.
+place that knows a raw payload shape, `provider.ts` assembles capabilities over the endpoints, and
+`usage.ts` / `aggregate.ts` (DeepSeek only) build higher-level values. `presentation` consumes
+normalized snapshots and never touches endpoints, secrets, or raw payloads.
+
+The status bar, the hover tooltip, the Activity Bar tree (`presentation/overview/`) and the dashboard
+all render the *same* coordinator snapshot. `refreshAll()` in `src/extension.ts` is the only place
+that pushes a snapshot into a surface — a new surface added without a line there shows data that no
+other surface contradicts, so it looks right until it is stale.
 
 `src/providers/shape.ts` holds the vendor-neutral parsing primitives. Use `requireNumber` when the
 provider must have supplied a number (a missing one is contract drift and throws) and
@@ -58,7 +68,10 @@ number.
 
 `src/presentation/display.ts` holds the shared display helpers: `formatMoney`,
 `selectPrimaryCurrency`, `providerDisplayName`, `pickTightestWindow`, `remainingBar`. Use them
-instead of writing another copy.
+instead of writing another copy. `src/presentation/quotaTone.ts` is the shared severity function
+(`quotaTone(percent, warningThresholdPercent)` → `positive | caution | warning | critical`) used by
+the status bar, the dashboard and the Activity Bar tree — the `warning` line follows the user's
+`warningThresholdPercent`, but `caution` is hard-coded at 50 % and `critical` at 5 %.
 
 `src/core/capability.ts` reads capability data in a typed way. Presentation code imports the
 provider's exported types and reads through `capabilityValue`, never a hand-written `as` cast.
@@ -98,6 +111,11 @@ These are product and security rules, not implementation details — do not trad
 - **DeepSeek only uses the public balance endpoint.** The extension never asks for or forwards a
   platform session token or Cookie. Detailed DeepSeek usage, cost, and account summaries belong on
   `platform.deepseek.com`.
+- **The Activity Bar view is a manifest contribution, not a command.** `package.json` declares
+  `contributes.viewsContainers.activitybar`, `contributes.views.quotaDeck.overview` and the
+  `view/title` menu; the tree itself is `presentation/overview/provider.ts`, registered in
+  `src/extension.ts`. `scripts/activity-bar.test.ts` asserts that manifest shape — adding a title
+  action means editing the manifest *and* that test.
 
 ## Gotchas
 
@@ -112,6 +130,11 @@ These are product and security rules, not implementation details — do not trad
   `coverageEnd` in `src/providers/deepseek/pricing-calendar.json` is under 30 days out. Extend
   `coverageEnd` and `holidays` before it lapses. Peak windows are UTC Monday–Friday
   `01:00–04:00` and `06:00–10:00`; weekends and Chinese public holidays are entirely off-peak.
+- **The release gate enforces version consistency across three files.** `scripts/release-gate.mjs`
+  fails unless the `package.json` version, the `package-lock.json` version and the newest
+  `## X.Y.Z` heading in `CHANGELOG.md` all agree, and unless the tag `v<version>` does not already
+  exist at an earlier commit. Re-cutting a version that was already tagged therefore fails on
+  purpose — bump all three files before packaging again.
 - **The design spec's file tree is aspirational, not the layout.**
   `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md` §6 lists `providers/minimax/cn.ts`,
   `global.ts`, `cookies.ts`; the implementation uses one `provider.ts` + `shape.ts` per vendor with
@@ -120,14 +143,25 @@ These are product and security rules, not implementation details — do not trad
   public APIs. MiniMax account endpoints are undocumented web APIs and remain unverified against
   every account type. Treat an unexpected response shape as contract drift to investigate, not
   something to paper over.
+- **MiniMax percentages prefer the computed value over the API field.** `percentFrom()` in
+  `src/providers/minimax/shape.ts` computes `(total - used) / total` whenever both counts are
+  present and only falls back to `current_interval_remaining_percent` otherwise;
+  `MiniMaxWindow.remainingPercentSource` records which one was used. Flipping that precedence
+  silently changes every displayed MiniMax quota.
 - **The marketplace icon is generated.** `media/icon.png` comes from `npm run icon`; never
   hand-edit the PNG. The generator is deterministic, so a regeneration that shows a diff means the
   geometry changed. The release gate rejects an icon that is not 128 × 128.
+- **`media/activity-bar.svg` is hand-authored; only `media/icon.png` is generated.** `npm run icon`
+  regenerates the marketplace PNG and nothing else. The Activity Bar glyph is theme-aware
+  (`currentColor`) and `scripts/activity-bar.test.ts` pins its exact path data, so editing the
+  shape breaks that test until the pinned paths are updated to match.
 - **User-supplied time zones must be validated.** `Intl.DateTimeFormat` throws `RangeError` for
   an unknown IANA zone, and `quotaDeck.timeZone` is user-editable — route it through
   `validTimeZone()` in `src/core/time.ts` before it reaches `Intl`.
 - **Use `hourCycle: 'h23'`, not `hour12: false`.** `hour12: false` can render midnight as hour
-  `24`, which in `shanghaiMinutes()` (`src/providers/deepseek/pricing.ts`) would mean 1440 minutes.
+  `24`, and `zonedParts()` (`src/core/time.ts`) reads that `hour` field.
+  `src/providers/deepseek/pricing.ts` deliberately mixes calendars: the **Shanghai date** decides
+  holiday and weekend, the **UTC minute-of-day** decides the peak window.
 - **Assemble dates with `formatToParts()`, not `format()`.** `.format()` output depends on the
   ICU data the runtime ships; `formatToParts()` gives named fields to compose from.
 - **`scripts/` is outside `tsconfig.json`'s `include`.** `npm run typecheck` only checks `src/**`,
@@ -152,6 +186,8 @@ Credentials come from environment variables only (`DEEPSEEK_API_KEY`, `MINIMAX_C
 `MINIMAX_CN_WEB_COOKIE`, `MINIMAX_GLOBAL_TOKEN_PLAN`, `MINIMAX_GLOBAL_WEB_COOKIE`) — never from a
 file or a command-line argument.
 `scripts/capture-fixture.mjs` is dev-only and must never be imported from `src/`.
+It covers MiniMax and DeepSeek only — `specsFor()` rejects every other provider, so a Qwen fixture
+has to be written by hand.
 
 Sanitization preserves structure but zeroes financial fields (`balance|cost|amount` → `0` / `0.00`)
 and redacts secret-shaped values. Fixtures are therefore proof of *shape*, never proof of a real
@@ -177,5 +213,6 @@ Release tags are annotated, named `vX.Y.Z`, and placed on the commit that writes
 ## Reference
 
 - `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md` — source of truth for product intent
+- `docs/superpowers/specs/2026-11-18-quota-deck-activity-bar-design.md` — intent for the Activity Bar overview
 - `docs/contracts/` — what was actually verified against live provider endpoints
 - `docs/superpowers/plans/` — the historical implementation plans (structure has since drifted)
