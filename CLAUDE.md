@@ -140,14 +140,22 @@ These are product and security rules, not implementation details — do not trad
   `global.ts`, `cookies.ts`; the implementation uses one `provider.ts` + `shape.ts` per vendor with
   a shared `providers/cookies.ts`. Read the code, not the spec tree.
 - **Provider endpoints mix public and web APIs.** Qwen account balance and DeepSeek balance use
-  public APIs. MiniMax account endpoints are undocumented web APIs and remain unverified against
-  every account type. Treat an unexpected response shape as contract drift to investigate, not
-  something to paper over.
-- **MiniMax percentages prefer the computed value over the API field.** `percentFrom()` in
-  `src/providers/minimax/shape.ts` computes `(total - used) / total` whenever both counts are
-  present and only falls back to `current_interval_remaining_percent` otherwise;
-  `MiniMaxWindow.remainingPercentSource` records which one was used. Flipping that precedence
-  silently changes every displayed MiniMax quota.
+  public APIs. MiniMax's account endpoints are undocumented web APIs; the domestic plan,
+  subscription and usage calls are now verified (`docs/contracts/minimax.md`), but the points
+  endpoint and the global host are not. Treat an unexpected response shape as contract drift to
+  investigate, not something to paper over.
+- **`current_interval_usage_count` is the count still left, not the count spent.** MiniMax
+  reports the remaining count beside `current_interval_remaining_percent` in the same record, so
+  a video allowance of 3 with a usage count of 3 is 3 remaining, not 3 spent. `readQuota()` in
+  `src/providers/minimax/shape.ts` derives `remaining`, `used` and the percentage from it; a
+  Token Plan key reports zero counts and only the percentage fields, which is why
+  `remainingPercentSource` exists. The verified contract is in `docs/contracts/minimax.md`.
+- **MiniMax rejects a credential with HTTP 200.** The refusal lives in `base_resp.status_code`
+  (`1004` for a bad key), so `credentialRejection()` in `src/providers/minimax/provider.ts` runs
+  before the shape parsers — otherwise a revoked key reads as a malformed response.
+- **The MiniMax expiry has an epoch field.** `current_subscribe_end_time` is a locale date
+  string such as `"07/06/2027"`, which `Date.parse` resolves to local midnight; read
+  `current_subscribe_end_time_ts` instead and render it in `quotaDeck.timeZone`.
 - **The marketplace icon is generated.** `media/icon.png` comes from `npm run icon`; never
   hand-edit the PNG. The generator is deterministic, so a regeneration that shows a diff means the
   geometry changed. The release gate rejects an icon that is not 128 × 128.
