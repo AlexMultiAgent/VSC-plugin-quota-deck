@@ -107,10 +107,13 @@ Every user-visible value has exactly one provenance:
 - **Local:** computed from data persisted or imported by the extension.
 - **Estimated:** calculated from tokens and a versioned price table.
 
-Provenance and the credential kind are orthogonal axes and are labeled separately: the source badge
-shows 账户 / 本地 / 估算 (account / local / estimated), and the credential badge shows which
-credential produced the value (API Key vs AccessKey). The UI never labels an estimate as account
-quota. A generic `0%` or `0.00` is never used to mask a failed or unavailable request.
+**Today every displayed value is account data**, and the tooltip and the Activity Bar tree label
+each card 账户实时数据. No local estimate and no token-derived price is surfaced, so the 本地 and
+估算 labels do not exist yet — they are introduced together with the first value that needs them,
+and the credential kind is deliberately not shown in the UI.
+
+The rule that outlives the current feature set: the UI never labels an estimate as account quota,
+and a generic `0%` or `0.00` is never used to mask a failed or unavailable request.
 
 ### 3.2 A failed fetch is a state, not a number
 
@@ -922,7 +925,8 @@ Tests never use real credentials and never require live provider accounts.
 - The packaged `package.json` contains no credential key names and no secret-like setting.
 - The pricing calendar `coverageEnd` is at least 30 days out.
 - The `package.json` version, the `package-lock.json` version and the newest `CHANGELOG.md` heading
-  agree, and the release tag sits on the commit that writes that section.
+  agree. A new version number is required only when the change alters what the VSIX ships; a
+  documentation-only commit packages under the current version.
 
 ## 13. Packaging and Marketplace Checklist
 

@@ -131,9 +131,10 @@ These are product and security rules, not implementation details — do not trad
   visible and says it is out of date.
 - **Currencies are never added together.** Token counts are currency-independent and may be
   summed; monetary amounts may not. Keep one row per currency and label the currency.
-- **Provenance is explicit.** Every displayed value is labelled account / local / estimated, and the
-  credential badge (API Key vs AccessKey) is a separate axis. Never present an estimate as account
-  quota.
+- **Provenance is explicit, and everything shown today is account data.** The tooltip and the
+  Activity Bar tree label each card 账户实时数据. No local estimate or token-derived price is
+  surfaced, and the credential type is deliberately not shown. A future estimated value must carry
+  its own label — never let it borrow the account one.
 - **Qwen uses the Alibaba Cloud Billing OpenAPI, not a Model Studio API Key.** The adapter calls
   account-level `QueryAccountBalance` at `business.aliyuncs.com` with ACS3-HMAC-SHA256 signing.
   AccessKey ID and Secret live only in Secret Storage. Model-level quota is not integrated.
@@ -161,11 +162,12 @@ These are product and security rules, not implementation details — do not trad
   `coverageEnd` in `src/providers/deepseek/pricing-calendar.json` is under 30 days out. Extend
   `coverageEnd` and `holidays` before it lapses. Peak windows are UTC Monday–Friday
   `01:00–04:00` and `06:00–10:00`; weekends and Chinese public holidays are entirely off-peak.
-- **The release gate fails as soon as HEAD moves past the tag.** `scripts/release-gate.mjs` checks
-  that the `package.json` version, the `package-lock.json` version and the newest `## X.Y.Z`
-  heading in `CHANGELOG.md` agree, and that `v<version>` points at HEAD. So *any* commit — even a
-  docs-only one — breaks `npm run package` until the version is bumped in all three files and a
-  new tag is cut on the release commit.
+- **A version bump is required only when the change ships.** `scripts/release-gate.mjs` checks that
+  the `package.json` version, the `package-lock.json` version and the newest `## X.Y.Z` heading in
+  `CHANGELOG.md` agree, and that `v<version>` either does not exist yet or still points at HEAD.
+  When the tag is behind HEAD, the gate compares the two commits and fails only when a changed file
+  ships in the VSIX (`src/`, `media/`, the manifest, `README.md`, `CHANGELOG.md`, `LICENSE`).
+  A docs-only commit — `CLAUDE.md`, `docs/**`, `scripts/**` — packages under the current version.
 - **The settings manifest is pinned by a test.** `scripts/settings.test.ts` asserts the exact set of
   `contributes.configuration.properties`, that every one is `scope: 'window'` with a
   `%config.<key>.description%` `markdownDescription`, and that `statusBar.mode` carries two
