@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.18 — 2026-11-20
+
+- 重排 Marketplace 与 GitHub 首页：增加中英文界面截图、安装命令、支持矩阵和两步上手入口。
+- 补充 `token plan`、`coding plan`、`status bar`、`百炼`、`API 余额` 等 Marketplace 搜索关键词。
+- 更新中英文插件描述，明确展示范围包含 Token Plan 窗口与重置倒计时。
+
 ## 0.2.17 — 2026-11-19
 
 - 完整接通 Dashboard Webview 的中英文本地化：启动、重试和失败状态跟随语言设置，面板标题可在运行时立即切换。

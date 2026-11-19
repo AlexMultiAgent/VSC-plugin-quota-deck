@@ -1,12 +1,65 @@
 # QuotaDeck CN
 
-国产大模型额度监控 — MiniMax、DeepSeek、Qwen 的余额、用量与重置倒计时，直接显示在 VS Code 状态栏和左侧 Activity Bar。悬停即可查看摘要，需要账户明细、历史用量或操作入口时再打开可选仪表盘。
+**在 VS Code 状态栏查看 MiniMax、DeepSeek、Qwen 的余额、Token Plan 窗口和重置倒计时。**
+
+不用在三个厂商控制台之间来回切换。QuotaDeck CN 把已配置账户的实时摘要放在编辑器里；悬停查看完整信息，需要明细时再打开可选仪表盘。
+
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck) · [问题反馈](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/issues) · [MIT](LICENSE) · 无遥测
+
+## 预览
+
+以下截图使用演示数据。
+
+| 状态栏与悬停详情 | English |
+|---|---|
+| ![中文状态栏与悬停详情](media/screenshots/status-tooltip.zh-CN.png) | ![English status bar and hover details](media/screenshots/status-tooltip.en-US.png) |
+
+| 仪表盘 | English |
+|---|---|
+| ![中文仪表盘](media/screenshots/dashboard.zh-CN.png) | ![English dashboard](media/screenshots/dashboard.en-US.png) |
+
+| Activity Bar 额度概览 | English |
+|---|---|
+| ![中文 Activity Bar 额度概览](media/screenshots/activity-bar.zh-CN.png) | ![English Activity Bar quota overview](media/screenshots/activity-bar.en-US.png) |
+
+## 安装
+
+在 VS Code Marketplace 搜索 **QuotaDeck CN**，或运行：
+
+```bash
+code --install-extension alexmultiagent.quota-deck
+```
+
+也可从 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck)
+下载 VSIX，再执行 `code --install-extension quota-deck-<version>.vsix`。
+
+## 开始使用
+
+1. 点击左侧 Activity Bar 的 QuotaDeck 入口，或状态栏中的额度摘要。
+2. 选择 MiniMax CN、MiniMax Global、DeepSeek 或 Qwen，填入对应凭据。
+3. 回到编辑器，已配置服务商的余额、额度窗口和重置倒计时会自动显示。
+
+凭据只保存在 VS Code Secret Storage，不写入 `settings.json`，也不会回显到设置页或日志。
+
+## 支持范围
+
+| 服务商 | 展示内容 | 所需凭据 |
+|---|---|---|
+| MiniMax CN / Global | 5 小时与每周额度、视频剩余次数、套餐信息、重置倒计时 | Token Plan Key |
+| DeepSeek | 按币种展示余额、赠送/充值余额、忙时/闲时状态 | API Key |
+| Qwen / 百炼 | 阿里云账户可用余额、现金余额、信控额度和额度上限 | Alibaba Cloud AccessKey ID + Secret |
+
+Qwen / 百炼当前查询的是**阿里云账户级余额**，不是模型级额度；消费明细和模型额度仍需在对应控制台查看。
+
+### English quick start
+
+QuotaDeck CN keeps MiniMax, DeepSeek, and Qwen account data in your VS Code status bar. Open the QuotaDeck Activity Bar view or status bar item, choose a provider, and enter its credential. Configured providers refresh automatically; hover for the full summary or open the optional dashboard for account details. Credentials stay in VS Code Secret Storage. Qwen currently reports Alibaba Cloud account-level balance, not model-level quota.
 
 ## Features
 
 - 状态栏显示各服务商的剩余额度、余额与重置倒计时；DeepSeek 同时标注忙时或闲时。
 - 状态栏只显示已配置的服务商，避免未配置项占据空间。
-- 状态栏默认每 5 分钟自动刷新，也可从仪表盘“立即刷新”或命令面板手动刷新。
+- 状态栏默认每 5 分钟自动刷新；可在仪表盘“立即刷新”或命令面板手动刷新。
 - 单击状态栏打开仪表盘时会立即重新获取数据，并同步刷新状态栏、悬浮详情和仪表盘。
 - MiniMax 状态栏优先显示 5 小时窗口；额度按剩余比例使用绿色、黄色、橙色、红色四阶段文字，仅剩余 5% 及以下使用红色警示背景。
 - 历史用量区间只作用于 MiniMax Token 用量，并与实时额度窗口分开显示；没有实际消费记录时不展示范围筛选。
@@ -20,25 +73,6 @@
 - 简体中文与英文界面。
 - 时间默认按 `Asia/Shanghai` 显示，可在 `quotaDeck.timeZone` 改为任意 IANA 时区；金额默认使用人民币格式。
 
-## What it does not do
-
-- 不代理模型请求，不提供对话补全。
-- 不把本地估算当成账户余额或官方额度。
-- 不把套餐或额度购买记录算作 Token 用量。
-- 不请求或保存网页 Cookie，也不使用网页会话访问厂商控制台。
-- 不做货币换算，也不合并不同币种的金额。
-- 不提供 DeepSeek 平台详细用量、费用或账户汇总；这部分请前往 `https://platform.deepseek.com` 查看。
-- 当前不接入百炼公开 Usage API（`/usage/summary`、`/usage/trend`）和
-  `bl quota show` CLI，因此不提供百炼模型级用量趋势或额度查询。
-
-## Install
-
-从 VS Code Marketplace 安装 `QuotaDeck CN — MiniMax DeepSeek Qwen`，或下载 `.vsix` 后执行：
-
-```bash
-code --install-extension quota-deck-<version>.vsix
-```
-
 ## Configure
 
 1. 点击左侧 Activity Bar 或状态栏的 QuotaDeck 图标。新安装可从额度概览直接进入配置流程；已配置后可展开明细或打开仪表盘。
@@ -50,7 +84,7 @@ DeepSeek 凭据获取方式：
 
 - **API 密钥**：登录 `https://platform.deepseek.com`，进入 `API Keys` 创建并复制。
 
-只配置 API 密钥即可查询余额。插件不再请求 DeepSeek 平台会话令牌或 Cookie，
+只配置 API 密钥即可查询余额。插件不请求 DeepSeek 平台会话令牌或 Cookie，
 详细用量、费用和账户汇总请前往 DeepSeek 官网查看。已有凭据会以掩码形式预填；
 直接按 `Enter` 保留，按 `Ctrl+A` 后可重新输入并替换。
 
@@ -83,12 +117,6 @@ Qwen / 百炼余额获取方式：
 
 额度窗口、重置倒计时与用量区间按 `quotaDeck.timeZone` 指定的 IANA 时区计算，
 默认 `Asia/Shanghai`。修改设置后立即生效，无需重启窗口。
-
-| 服务商 | 必需凭据 |
-|---|---|
-| MiniMax CN / Global | Token Plan Key |
-| DeepSeek | API Key |
-| Qwen / 百炼 | Alibaba Cloud AccessKey ID、Secret |
 
 凭据通过密码输入框填写，不会回显，也不会写入 settings、全局状态或日志。
 重新配置会覆盖已保存的值；若要彻底删除某个凭据，执行 `QuotaDeck CN: Clear Credential`
@@ -129,6 +157,8 @@ Qwen / 百炼余额获取方式：
 - Qwen 余额来自阿里云账户级接口；公开 Usage API 与 `bl quota show` 已列入候选数据源，
   但在契约验证完成前不会发起请求或显示伪造的模型用量与额度。
 - DeepSeek 节假日日历目前覆盖至 `2026-12-31`，超出覆盖范围时显示“时段未知”。
+- 不代理模型请求，不提供对话补全，也不把本地估算当成账户余额或官方额度。
+- 不请求或保存网页 Cookie，不做货币换算，也不合并不同币种的金额。
 
 ## License
 

@@ -1,6 +1,6 @@
 {
   "extension.displayName": "QuotaDeck CN — MiniMax DeepSeek Qwen",
-  "extension.description": "Monitor MiniMax, DeepSeek, and Qwen balances, usage, and reset countdowns in VS Code.",
+  "extension.description": "Track MiniMax, DeepSeek, and Qwen balances, Token Plan windows, and reset countdowns from the VS Code status bar.",
   "command.openDashboard.title": "Open Dashboard",
   "command.refresh.title": "Refresh",
   "command.switchProvider.title": "Switch Provider",

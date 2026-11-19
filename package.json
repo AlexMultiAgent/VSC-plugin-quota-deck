@@ -2,7 +2,7 @@
   "name": "quota-deck",
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
-  "version": "0.2.17",
+  "version": "0.2.18",
   "publisher": "alexmultiagent",
   "license": "MIT",
   "repository": {
@@ -21,11 +21,18 @@
     "deepseek",
     "qwen",
     "quota",
+    "token plan",
+    "coding plan",
     "usage",
     "balance",
+    "balance monitor",
     "token usage",
+    "status bar",
+    "model studio",
     "额度监控",
-    "国产大模型"
+    "国产大模型",
+    "百炼",
+    "API 余额"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
