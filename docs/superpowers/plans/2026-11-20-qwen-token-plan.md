@@ -30,9 +30,53 @@
 | `docs/contracts/qwen.md` | Verified Token Plan contract |
 | `README.md`, `CLAUDE.md`, `CHANGELOG.md`, `package.json`, `package-lock.json` | Documentation and release metadata |
 
+## Revision 2026-11-20: OAuth management login (supersedes Tasks 1–4 transport)
+
+The AK/SK route failed live with `BailianGateway.Team.NotAuthorised` on both gateway sites; the
+user approved switching to the official Qianwen management OAuth device flow. The live probe
+succeeded, and the real responses are already committed under
+`src/test/fixtures/qwen/tokenPlan/standard.json` and `.../tokenPlanSubscription/standard.json`.
+The design authority is the revised
+[`2026-11-20-qwen-token-plan-design.md`](../specs/2026-11-20-qwen-token-plan-design.md).
+
+For the OAuth revision:
+
+- **Task 1 endpoints** become: `qwen-auth` (`https://t.qianwenai.com`), `qwen-cli`
+  (`https://cli.qianwenai.com`), `qwen-data` (`https://cs-data.qianwenai.com`); endpoints
+  `qwen.deviceCode` (`/cli/device/code`), `qwen.deviceToken` (`/cli/device/token`),
+  `qwen.tokenPlanToken` (`/data/v2/api.json`), `qwen.tokenPlanUsage`, and
+  `qwen.tokenPlanSubscription` on `/cli/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=…`.
+  There is no Qwen credential environment variable. `postForm()` is still required.
+- **Task 2 is complete:** the fixtures were captured through the device flow; no second capture is
+  needed. The fixture `steps[0]` is the flat `GenerateCLIAccessToken` response with
+  `data.cliAccessToken = "<redacted>"`.
+- **Task 3** keeps the typed parsers and tests, and adds `src/providers/qwen/auth.ts` for the
+  device-code response, poll response, and stored management token.
+- **Task 4** is replaced by the OAuth provider and the login command:
+  - new credential kind `management-token` in `CREDENTIAL_KINDS` and `CREDENTIAL_PART`;
+  - `connect()` reads AK/SK and the management token, returning `partial` when only one group is
+    present;
+  - the provider issues the console token through
+    `POST https://cli.qianwenai.com/data/v2/api.json` (JSON body `product: ModelStudioRegional`,
+    `action: GenerateCLIAccessToken`, `version: 2026-02-10`, `params: {}`) with the management
+    bearer, then calls `https://cs-data.qianwenai.com/cli/api.json` with
+    `consoleSite: QIANWENAI`;
+  - a new `quotaDeck.loginQwen` command performs the device flow, opens the verification URL, and
+    stores `{ accessToken, expiresAt }` in Secret Storage; it is contributed in `package.json`,
+    registered in `commands.ts`, and reachable from the configure-Qwen flow;
+  - expired or missing management tokens disable only the two Token Plan capabilities
+    (`error.qwen.loginExpired` / `unconfigured`), never the balance.
+
+Tasks 5–9 (localization, tree, tooltip, status bar, dashboard) remain valid unchanged: the data
+types and presentation shape are identical. Task 10's docs/release steps remain, with the OAuth
+capture and login command included.
+
+---
+
 ## Go/no-go gate
 
-Task 2 captures the real responses. **If either capture fails, stop the plan and report the exact failure.** Do not write the parser in Task 3 from guesses. The account must have a personal Token Plan and an Alibaba Cloud AccessKey that can issue a console token.
+The live capture is complete. The parser and provider may now be written against the committed
+fixtures. If a future re-capture disagrees with a fixture, stop and update the contract first.
 
 ---
 
@@ -521,10 +565,6 @@ function capture(capability: 'qwen.tokenPlan' | 'qwen.tokenPlanSubscription'): C
   return JSON.parse(
     JSON.stringify(loadFixture('qwen', capability, 'standard')),
   ) as Captured;
-}
-
-function usageEntity(): any {
-  return capture('qwen.tokenPlan').response.data.DataV2.data.data;
 }
 
 function usageResponse(fields: Record<string, unknown>): any {
@@ -1173,7 +1213,7 @@ describe('QwenProvider', () => {
       kind: 'unconfigured',
       reason: 'missing Alibaba Cloud AccessKey',
     });
-    expect(postJson).toHaveBeenCalledTimes(1);
+    expect(postJson).not.toHaveBeenCalled();
     expect(postForm).not.toHaveBeenCalled();
   });
 });
@@ -2450,7 +2490,7 @@ Append to `src/presentation/dashboard/viewModel.test.ts`:
         label: 'Monthly',
         percent: 38,
         valueLabel: '38%',
-        resetLabel: 'Resets 2026-12-01 08:00 · Remaining 11d 8h',
+        resetLabel: 'Resets 2026-12-01 08:00 · Remaining 11d',
         tone: 'caution',
       },
     ]);
