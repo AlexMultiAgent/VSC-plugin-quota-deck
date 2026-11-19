@@ -8,6 +8,7 @@
   "command.configureProviders.title": "Configure Providers",
   "command.showHelp.title": "Show Help",
   "command.openSettings.title": "Extension Settings",
+  "command.clearCredential.title": "Clear Credential",
   "viewsContainer.quotaDeck.title": "QuotaDeck CN",
   "view.quotaDeck.overview.name": "Quota overview",
   "config.title": "QuotaDeck CN settings",
@@ -25,7 +26,7 @@
   "config.primaryProvider.minimaxGlobal": "MiniMax international account.",
   "config.primaryProvider.deepseek": "DeepSeek account balance.",
   "config.primaryProvider.qwen": "Qwen / Model Studio Alibaba Cloud account balance.",
-  "config.providerOrder.description": "Changes the shared display order used by the status bar, hover details, Activity Bar overview, and dashboard. Unknown and duplicate IDs are ignored; omitted providers are appended in the default order, so this setting does not hide them. MiniMax CN/Global share one status bar slot.",
+  "config.providerOrder.description": "Decides which providers appear and in what order, across the status bar, hover details, Activity Bar overview, and dashboard. Unknown and duplicate IDs are ignored; an empty list falls back to the default order. MiniMax CN/Global share one status bar slot.",
   "config.warningThresholdPercent.description": "MiniMax quota below this percentage is shown with an orange warning; 5% or less is always a red critical warning. Supported values are 11 to 99. DeepSeek and Qwen balances are amounts rather than percentages, so this threshold does not apply to them.",
   "config.timeZone.description": "IANA time zone for dates and times in the dashboard and Activity Bar, reset countdowns, and MiniMax history day/month boundaries. It does not change the reset instants returned by providers or DeepSeek's fixed peak-hours schedule."
 }

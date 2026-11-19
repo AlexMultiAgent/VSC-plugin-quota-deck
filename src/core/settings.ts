@@ -51,10 +51,7 @@ export function readSettings(): Settings {
   const validOrder = Array.isArray(order)
     ? order.filter((id): id is ProviderId => typeof id === 'string' && isProviderId(id))
     : [];
-  const providerOrder = [...new Set(validOrder)];
-  for (const id of DEFAULT_ORDER) {
-    if (!providerOrder.includes(id)) providerOrder.push(id);
-  }
+  const providerOrder = validOrder.length > 0 ? [...new Set(validOrder)] : [...DEFAULT_ORDER];
 
   return {
     language:

@@ -57,12 +57,7 @@ describe('readSettings', () => {
 
   it('drops unknown ids and duplicates from the provider order', () => {
     seedConfiguration({ 'statusBar.providerOrder': ['deepseek', 'kimi', 'deepseek', 'qwen'] });
-    expect(readSettings().providerOrder).toEqual([
-      'deepseek',
-      'qwen',
-      'minimax-cn',
-      'minimax-global',
-    ]);
+    expect(readSettings().providerOrder).toEqual(['deepseek', 'qwen']);
   });
 
   it('falls back to the default order when every id is invalid', () => {
@@ -95,13 +90,8 @@ describe('readSettings', () => {
     expect(settings.timeZone).toBe('Asia/Shanghai');
   });
 
-  it('treats provider order as ordering without hiding omitted providers', () => {
+  it('keeps only the providers named in the order, so a removed provider is hidden', () => {
     seedConfiguration({ 'statusBar.providerOrder': ['qwen', 'deepseek'] });
-    expect(readSettings().providerOrder).toEqual([
-      'qwen',
-      'deepseek',
-      'minimax-cn',
-      'minimax-global',
-    ]);
+    expect(readSettings().providerOrder).toEqual(['qwen', 'deepseek']);
   });
 });
