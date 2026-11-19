@@ -2,10 +2,11 @@
 
 This directory records what was actually verified against provider endpoints.
 It deliberately distinguishes verified capabilities from capabilities that were
-not tested because no test credential was available.
+removed, and from those that were not tested because no test credential was
+available.
 
 - [MiniMax](minimax.md): plan, subscription and token usage verified against a live Token Plan
-  key; the points endpoint needs a web-session Cookie and stays unverified.
+  key; the points capability was removed in v0.2.11 because it needed a web-session Cookie.
 - [DeepSeek](deepseek.md): balance verified; detailed usage and billing stay on the official website.
 - [Qwen / Model Studio](qwen.md): account balance integrated; public usage APIs
   and `bl quota show` recorded as stronger candidate sources.

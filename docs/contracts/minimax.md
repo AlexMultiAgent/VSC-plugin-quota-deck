@@ -9,7 +9,7 @@ Checked on 2026-11-19 against a live domestic Token Plan key (`sk-cp-…`) on
 | `minimax.plan` | verified | Token Plan key |
 | `minimax.subscription` | verified | Token Plan key |
 | `minimax.tokenUsage` | verified | Token Plan key |
-| `minimax.points` | unverified | needs a web-session Cookie |
+| `minimax.points` | removed | needed a web-session Cookie |
 
 ## The credential check lives in the body, not the status code
 
@@ -83,5 +83,7 @@ Top-level keys: `cycle_resource_packages` (the catalogue of plans for sale),
 
 ## `minimax.points`
 
-Unverified: the endpoint is cookie-authenticated and no web-session Cookie was
-available.
+Removed in v0.2.11: the endpoint is cookie-authenticated, and the extension no
+longer accepts a web-session Cookie. `src/core/cache.ts` lists the capability in
+`RETIRED_MINIMAX_CAPABILITIES` so snapshots cached before the removal are
+stripped of it.
