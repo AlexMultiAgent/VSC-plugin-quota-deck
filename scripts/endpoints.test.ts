@@ -36,6 +36,20 @@ describe('provider endpoints', () => {
     expect(ENDPOINTS).not.toHaveProperty('deepseek.accountSummary');
   });
 
+  it('names the Qwen Token Plan origins and endpoints', () => {
+    expect(ORIGINS['qwen-modelstudio']).toBe('https://modelstudio.cn-beijing.aliyuncs.com');
+    expect(ORIGINS['qwen-console']).toBe('https://bailian-cs.console.aliyun.com');
+    expect(ENDPOINTS['qwen.tokenPlanToken']).toBe(
+      '/modelstudio/cli/generateAccessToken?Action=GenerateCLIAccessToken&Version=2026-02-10',
+    );
+    expect(ENDPOINTS['qwen.tokenPlanUsage']).toContain(
+      'zeldaHttp.apikeyMgr.%2Ftokenplan%2Fpersonal%2Fapi%2Fv2%2Fusage',
+    );
+    expect(ENDPOINTS['qwen.tokenPlanSubscription']).toContain(
+      'zeldaHttp.apikeyMgr.%2Ftokenplan%2Fpersonal%2Fapi%2Fv2%2Fsubscription',
+    );
+  });
+
   it('keeps every endpoint a path on its origin', () => {
     for (const [id, path] of Object.entries(ENDPOINTS)) {
       expect(path, id).toMatch(/^\//);

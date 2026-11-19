@@ -55,6 +55,25 @@ describe('HttpClient', () => {
     expect((init.headers as Record<string, string>)['Content-Type']).toBe('application/json');
   });
 
+  it('sends a form body with POST and its content type', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ ok: true }));
+    globalThis.fetch = fetchMock;
+    const client = new HttpClient({ timeoutMs: 1_000, maxAttempts: 1 });
+
+    await client.postForm(
+      'https://api.example.com/v1/action',
+      'params=%7B%7D&region=cn-beijing',
+    );
+
+    const [url, init] = fetchMock.mock.calls.at(-1)! as [string, RequestInit];
+    expect(url).toBe('https://api.example.com/v1/action');
+    expect(init.method).toBe('POST');
+    expect(init.body).toBe('params=%7B%7D&region=cn-beijing');
+    expect((init.headers as Record<string, string>)['Content-Type']).toBe(
+      'application/x-www-form-urlencoded',
+    );
+  });
+
   it('reports a non-2xx status as an error result', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({}, { status: 401 }));
     const client = new HttpClient({ timeoutMs: 1_000, maxAttempts: 1 });

@@ -65,6 +65,24 @@ export class HttpClient {
     );
   }
 
+  /**
+   * Send an `application/x-www-form-urlencoded` POST. The console gateway
+   * accepts a form body, not JSON, and its signature covers the exact string.
+   */
+  async postForm(
+    url: string,
+    body: string,
+    options: RequestOptions = {},
+  ): Promise<JsonResult> {
+    const headers = Object.fromEntries(
+      Object.entries(options.headers ?? {}).filter(
+        ([key]) => key.toLowerCase() !== 'content-type',
+      ),
+    );
+    headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    return this.requestJson('POST', url, body, { ...options, headers });
+  }
+
   private async requestJson(
     method: 'GET' | 'POST',
     url: string,
