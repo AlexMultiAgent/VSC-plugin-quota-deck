@@ -918,6 +918,7 @@ Tests never use real credentials and never require live provider accounts.
 - Unit and integration tests pass.
 - The locale key sets in `package.nls.json` and `package.nls.zh-cn.json` match, and every
   `%...%` placeholder in `package.json` resolves in both.
+- No production source contains a hardcoded Chinese string literal.
 - No committed fixture contains a secret-shaped value or a non-zero financial value.
 - Extension and webview bundles build with `sourcemap: false`, and `.vscodeignore` excludes
   `**/*.map`, `src/**`, and `**/*.ts`.

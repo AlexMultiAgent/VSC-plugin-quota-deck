@@ -115,6 +115,12 @@ variable, and it lives only in Secret Storage.
 exact-key schema — including the range selection the webview sends back. Extend that validator
 whenever a message shape changes.
 
+The dashboard webview owns no translated strings: `presentation/dashboard/locale.ts` builds a
+`DashboardLocalization` payload, the panel injects it as `data-` attributes and also sends it as
+the `locale` host message, and the webview falls back to those attributes — and finally to
+English — until the message arrives. A new webview string needs four edits: the message key, both
+bundles, the `DashboardLocalization` payload, and the protocol validator.
+
 ## Invariants
 
 These are product and security rules, not implementation details — do not trade them away.
@@ -155,10 +161,14 @@ These are product and security rules, not implementation details — do not trad
 - **The `vscode` module is aliased in tests.** `vitest.config.ts` maps `vscode` →
   `src/test/__mocks__/vscode.ts`, a hand-written mock. If new code touches a VS Code API the mock
   does not implement, add it to the mock — do not import the real module.
-- **Localization is a three-file edit.** Add the key to `src/localization/messages.ts`, then to both
-  `en-us.ts` and `zh-cn.ts`. `MessageBundle = Record<MessageKey, string>` makes a missing bundle key
-  a compile error. Manifest strings live separately in `package.nls.json` / `package.nls.zh-cn.json`
-  and must stay key-identical to each other.
+- **Localization is a three-file edit, and no UI text may be hardcoded.** Add the key to
+  `src/localization/messages.ts`, then to both `en-us.ts` and `zh-cn.ts`. `MessageBundle =
+  Record<MessageKey, string>` makes a missing bundle key a compile error. `npm run check:i18n`
+  fails the build on any Chinese string literal in a production source, so a label written straight
+  into `tooltip.ts` breaks the build. Manifest strings live separately in `package.nls.json` /
+  `package.nls.zh-cn.json` and must stay key-identical; `displayName` and `description` are
+  `%extension.displayName%` / `%extension.description%` placeholders resolved from them and pinned
+  by `scripts/locales.test.ts`.
 - **The DeepSeek pricing calendar expires.** `scripts/release-gate.mjs` fails the build when
   `coverageEnd` in `src/providers/deepseek/pricing-calendar.json` is under 30 days out. Extend
   `coverageEnd` and `holidays` before it lapses. Peak windows are UTC Monday–Friday
