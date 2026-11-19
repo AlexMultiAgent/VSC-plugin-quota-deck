@@ -69,6 +69,10 @@ Each surface renders that snapshot through its own derived view model:
 records, and `dashboard/webview/render.ts` turns the dashboard model into DOM. A derived value
 belongs in the view model, not in the surface.
 
+`quotaDeck.statusBar.providerOrder` decides **which** providers appear and in what order — all
+four surfaces filter by it, so removing a provider from the list hides it everywhere. It is not an
+ordering-only preference.
+
 Snapshots are fetched per **range** (`RangeId` in `src/core/time.ts`:
 `today | yesterday | last7 | last30 | thisMonth | lastMonth`). The range flows through
 `coordinator.refreshAll(range)`, `provider.fetchSnapshot(signal, range, timeZone)` and
@@ -157,11 +161,20 @@ These are product and security rules, not implementation details — do not trad
   `coverageEnd` in `src/providers/deepseek/pricing-calendar.json` is under 30 days out. Extend
   `coverageEnd` and `holidays` before it lapses. Peak windows are UTC Monday–Friday
   `01:00–04:00` and `06:00–10:00`; weekends and Chinese public holidays are entirely off-peak.
-- **The release gate enforces version consistency across three files.** `scripts/release-gate.mjs`
-  fails unless the `package.json` version, the `package-lock.json` version and the newest
-  `## X.Y.Z` heading in `CHANGELOG.md` all agree, and unless the tag `v<version>` does not already
-  exist at an earlier commit. Re-cutting a version that was already tagged therefore fails on
-  purpose — bump all three files before packaging again.
+- **The release gate fails as soon as HEAD moves past the tag.** `scripts/release-gate.mjs` checks
+  that the `package.json` version, the `package-lock.json` version and the newest `## X.Y.Z`
+  heading in `CHANGELOG.md` agree, and that `v<version>` points at HEAD. So *any* commit — even a
+  docs-only one — breaks `npm run package` until the version is bumped in all three files and a
+  new tag is cut on the release commit.
+- **The settings manifest is pinned by a test.** `scripts/settings.test.ts` asserts the exact set of
+  `contributes.configuration.properties`, that every one is `scope: 'window'` with a
+  `%config.<key>.description%` `markdownDescription`, and that `statusBar.mode` carries two
+  `enumDescriptions` while `providerOrder` is `uniqueItems`. Adding a setting means editing
+  `package.json` *and* that test.
+- **A registered command is not a reachable command.** `quotaDeck.clearCredential` once had its
+  handler, its confirmation dialog and its tests, but was absent from `contributes.commands` and
+  invoked by no surface, so no user could reach it. A command the user should reach needs both a
+  manifest entry and a call site.
 - **The design spec gates the deferred capabilities.** `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md`
   §4.5 gates `minimax.points`, the DeepSeek usage capabilities, the dashboard charts and the Qwen
   model capabilities behind questions about the *provider*, not about effort. Each gate needs a
@@ -240,8 +253,9 @@ balance.
 
 ## Testing
 
-Vitest, over `src/**/*.test.ts` and `scripts/**/*.test.ts`. Tests never use real credentials and
-never require a live provider account — mock `fetch` and drive providers through fixtures.
+Vitest, over `src/**/*.test.ts` and `scripts/**/*.test.ts`, with each test file colocated beside
+the source it covers. Tests never use real credentials and never require a live provider account
+— mock `fetch` and drive providers through fixtures.
 
 `tsconfig.json` is strict plus `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`; index
 access and optional-property assignment both need explicit handling.
@@ -251,6 +265,9 @@ access and optional-property assignment both need explicit handling.
 Every commit is authored by AlexMultiAgent only. Never add a `Co-Authored-By:` trailer naming
 Claude or any other assistant — GitHub parses those trailers and lists the trailer's author as a
 repository contributor.
+
+Commit messages use the conventional prefixes the history already uses: `feat:`, `fix:`,
+`docs:`, `refactor:`, and `chore(release): vX.Y.Z` for the version bump.
 
 Release tags are annotated, named `vX.Y.Z`, and placed on the commit that writes that version's
 `CHANGELOG.md` section.
