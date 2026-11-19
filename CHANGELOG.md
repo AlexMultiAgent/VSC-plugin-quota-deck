@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.14 — 2026-11-19
+
+- 维护版本，无用户可见的功能变更。
+- 重写设计文档 `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md`：对齐已发布的实现，并把网页会话 Cookie 能力集与 `deepseek.usageAmount` 等已退役能力改写为「论证可行后方可选」的项目，各自附带明确的前置门槛。
+- 删除没有调用方的 `remainingBar` 助手；tooltip 早已改用 16 格 `█` 彩色进度条。
+
 ## 0.2.13 — 2026-11-19
 
 - 修复修改 `quotaDeck.timeZone` 后不生效的问题：协调器此前在构造时固定了时区，现在配置变更会同步更新。
