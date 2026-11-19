@@ -431,7 +431,8 @@ function qwenItem(options: OverviewOptions): OverviewItem {
   const snapshot = options.snapshots.qwen;
   const status = primaryStatus(snapshot, 'qwen.accountBalance', options.t);
   const balance = capabilityValue<QwenAccountBalance>(snapshot, 'qwen.accountBalance');
-  const children: OverviewItem[] = [];
+  const balanceChildren: OverviewItem[] = [];
+  const planChildren: OverviewItem[] = [];
 
   if (balance !== undefined) {
     const fields: Array<{ id: string; label: string; amount: number }> = [
@@ -465,7 +466,7 @@ function qwenItem(options: OverviewOptions): OverviewItem {
     }
     for (const field of fields) {
       const amount = qwenAmount(field.amount, balance.currency);
-      children.push({
+      balanceChildren.push({
         id: `provider:qwen:${field.id}`,
         label: field.label,
         description: amount,
@@ -490,7 +491,7 @@ function qwenItem(options: OverviewOptions): OverviewItem {
     const description =
       `${options.t('tooltip.remaining')} ${percent}% · ` +
       `${options.t('tooltip.used')} ${used}%`;
-    children.push({
+    planChildren.push({
       id: `provider:qwen:tokenPlan:${window.cycle}`,
       label,
       description,
@@ -508,7 +509,7 @@ function qwenItem(options: OverviewOptions): OverviewItem {
   );
   if (subscription?.status === 'active') {
     if (subscription.specCode !== null) {
-      children.push({
+      planChildren.push({
         id: 'provider:qwen:plan',
         label: options.t('dashboard.qwen.planTier'),
         description: subscription.specCode,
@@ -525,7 +526,7 @@ function qwenItem(options: OverviewOptions): OverviewItem {
     if (subscription.expiresAt !== null) {
       const expiry = instantLabel(subscription.expiresAt, options.timeZone);
       if (expiry !== undefined) {
-        children.push({
+        planChildren.push({
           id: 'provider:qwen:expires',
           label: options.t('tooltip.expires'),
           description: expiry,
@@ -538,7 +539,7 @@ function qwenItem(options: OverviewOptions): OverviewItem {
       }
     }
   } else if (subscription?.status === 'none') {
-    children.push({
+    planChildren.push({
       id: 'provider:qwen:notSubscribed',
       label: options.t('dashboard.qwen.notSubscribed'),
       description: '',
@@ -556,7 +557,7 @@ function qwenItem(options: OverviewOptions): OverviewItem {
   ].find((state) => state?.kind === 'failed');
   if (failed?.kind === 'failed') {
     const message = options.t(failed.error.message);
-    children.push({
+    planChildren.push({
       id: 'provider:qwen:tokenPlanFailed',
       label: options.t('capability.qwen.tokenPlan'),
       description: message,
@@ -576,30 +577,64 @@ function qwenItem(options: OverviewOptions): OverviewItem {
         : lowest,
     undefined,
   );
+
+  const children: OverviewItem[] = [];
+  if (balanceChildren.length > 0) {
+    const label = options.t('dashboard.accountBalance');
+    const amount =
+      balance === undefined ? '' : qwenAmount(balance.availableAmount, balance.currency);
+    children.push({
+      id: 'provider:qwen:balanceGroup',
+      label,
+      description: amount,
+      tooltip: detailTooltip(label, amount),
+      state: 'muted',
+      stateLabel: '',
+      action: null,
+      children: balanceChildren,
+    });
+  }
+  if (planChildren.length > 0) {
+    const label = options.t('dashboard.qwen.tokenPlanSection');
+    const description =
+      tightest === undefined ? '' : `${Math.round(tightest.remainingPercent)}%`;
+    children.push({
+      id: 'provider:qwen:tokenPlanGroup',
+      label,
+      description,
+      tooltip: detailTooltip(label, description),
+      state: 'muted',
+      stateLabel: '',
+      action: null,
+      children: planChildren,
+    });
+  }
+
   const balanceText =
     balance === undefined
       ? ''
       : qwenAmount(balance.availableAmount, balance.currency);
+  const planText =
+    tightest === undefined
+      ? ''
+      : `${options.t('dashboard.qwen.tokenPlanSection')} ` +
+        `${Math.round(tightest.remainingPercent)}%`;
   let state = status.state;
   let stateLabel = status.label;
-  let description = stateDescription(status);
-  if (status.state === 'positive') {
-    if (tightest === undefined) {
-      description = balanceText;
-    } else {
-      const percent = Math.round(tightest.remainingPercent);
-      const quota = quotaRow(
-        tokenPlanWindowLabel(tightest.cycle, options.t),
-        percent,
-        options.warningThresholdPercent,
-        options.t,
-      );
-      state = quota.state;
-      stateLabel = quota.stateLabel;
-      const planText = `${tokenPlanWindowLabel(tightest.cycle, options.t)} ${percent}%`;
-      description = [balanceText, planText].filter((part) => part.length > 0).join(' · ');
-    }
+  if (tightest !== undefined && status.state !== 'failed') {
+    const percent = Math.round(tightest.remainingPercent);
+    const quota = quotaRow(
+      tokenPlanWindowLabel(tightest.cycle, options.t),
+      percent,
+      options.warningThresholdPercent,
+      options.t,
+    );
+    state = quota.state;
+    stateLabel = quota.stateLabel;
   }
+  const description =
+    [balanceText, planText].filter((part) => part.length > 0).join(' · ') ||
+    stateDescription(status);
 
   return providerItem(
     'qwen',

@@ -41,6 +41,8 @@ export interface QuotaMeter {
   readonly valueLabel: string | null;
   readonly resetLabel: string | null;
   readonly tone: 'positive' | 'caution' | 'warning' | 'critical' | 'muted';
+  /** Optional section heading; consecutive meters with the same group share one. */
+  readonly group?: string;
 }
 
 export interface ProviderAccent {
@@ -59,6 +61,8 @@ export interface ProviderAccountValue {
 export interface ProviderDetail {
   readonly label: string;
   readonly value: string;
+  /** Optional section heading; consecutive details with the same group share one. */
+  readonly group?: string;
 }
 
 export interface DashboardProvider {
@@ -214,6 +218,7 @@ function qwenTokenPlanMeters(
         window.cycle === 'weekly'
           ? t('tooltip.window.weekly')
           : t('tooltip.window.monthly'),
+      group: t('dashboard.qwen.tokenPlanSection'),
       percent,
       valueLabel: `${Math.round(percent)}%`,
       resetLabel:
@@ -351,24 +356,29 @@ function providerDetails(
   if (id === 'qwen') {
     const balance = capabilityValue<QwenAccountBalance>(snapshot, 'qwen.accountBalance');
     if (balance !== undefined) {
+      const group = t('dashboard.accountBalanceDetails');
       details.push(
         {
           label: t('dashboard.qwen.availableCash'),
           value: formatMoney(balance.availableCashAmount, balance.currency),
+          group,
         },
         {
           label: t('dashboard.qwen.credit'),
           value: formatMoney(balance.creditAmount, balance.currency),
+          group,
         },
         {
           label: t('dashboard.qwen.mybankCredit'),
           value: formatMoney(balance.mybankCreditAmount, balance.currency),
+          group,
         },
       );
       if (balance.quotaLimit !== null) {
         details.push({
           label: t('dashboard.qwen.quotaLimit'),
           value: formatMoney(balance.quotaLimit, balance.currency),
+          group,
         });
       }
     }
@@ -376,23 +386,27 @@ function providerDetails(
       snapshot,
       'qwen.tokenPlanSubscription',
     );
+    const planGroup = t('dashboard.qwen.tokenPlanSection');
     if (tokenPlan?.status === 'active') {
       if (tokenPlan.specCode !== null) {
         details.push({
           label: t('dashboard.qwen.planTier'),
           value: tokenPlan.specCode,
+          group: planGroup,
         });
       }
       if (tokenPlan.expiresAt !== null) {
         details.push({
           label: t('tooltip.expires'),
           value: zonedDateTime(tokenPlan.expiresAt, timeZone),
+          group: planGroup,
         });
       }
     } else if (tokenPlan?.status === 'none') {
       details.push({
         label: t('dashboard.qwen.planTier'),
         value: t('dashboard.qwen.notSubscribed'),
+        group: planGroup,
       });
     }
   }

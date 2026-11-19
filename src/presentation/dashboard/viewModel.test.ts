@@ -507,10 +507,10 @@ describe('buildDashboardModel', () => {
     expect(provider.state).toBe('ok');
     expect(provider.accountValue?.value).toBe('¥-12.34');
     expect(provider.details).toEqual([
-      { label: 'Available cash', value: '¥-18.34' },
-      { label: 'Credit', value: '¥5.00' },
-      { label: 'Mybank credit', value: '¥6.00' },
-      { label: 'Quota limit', value: '¥1000.00' },
+      { label: 'Available cash', value: '¥-18.34', group: 'Balance details' },
+      { label: 'Credit', value: '¥5.00', group: 'Balance details' },
+      { label: 'Mybank credit', value: '¥6.00', group: 'Balance details' },
+      { label: 'Quota limit', value: '¥1000.00', group: 'Balance details' },
       { label: 'Updated', value: '2026-11-16 08:00' },
     ]);
     expect(provider.note).toContain('Model Studio');
@@ -750,12 +750,18 @@ describe('groupHistoryTiles', () => {
         valueLabel: '38%',
         resetLabel: 'Next reset 2026-12-01 08:00 · Reset in 11d',
         tone: 'caution',
+        group: 'Token Plan',
       },
     ]);
-    expect(provider.details).toContainEqual({ label: 'Plan', value: 'pro' });
+    expect(provider.details).toContainEqual({
+      label: 'Plan',
+      value: 'pro',
+      group: 'Token Plan',
+    });
     expect(provider.details).toContainEqual({
       label: 'Expires',
       value: '2027-01-01 08:00',
+      group: 'Token Plan',
     });
     expect(model.hero?.sourceLabel).toBe('Qwen · Monthly');
   });

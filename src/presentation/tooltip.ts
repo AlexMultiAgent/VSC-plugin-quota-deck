@@ -194,6 +194,7 @@ function providerRows(
     const qwenBalance = capabilityValue<QwenAccountBalance>(snapshot, 'qwen.accountBalance');
     let rows = '';
     if (qwenBalance !== undefined) {
+      rows += `<tr><td colspan="4">${escapeHtml(t('dashboard.accountBalance'))}</td></tr>`;
       const row = (label: string, amount: number, suffix = '') =>
         `<tr><td>${escapeHtml(label)}</td>` +
         `<td>${escapeHtml(formatMoney(amount, qwenBalance.currency))}</td>` +

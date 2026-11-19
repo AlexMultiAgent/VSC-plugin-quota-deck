@@ -125,14 +125,16 @@ describe('buildOverviewItems', () => {
     ]);
     expect(items.map((item) => item.label)).toEqual(['Qwen', 'DeepSeek']);
     expect(items[0]?.description).toBe('¥1.25 CNY');
-    expect(items[0]?.children.map((item) => item.label)).toEqual([
+    expect(items[0]?.children.map((item) => item.label)).toEqual(['Account balance']);
+    const balanceGroup = items[0]?.children[0];
+    expect(balanceGroup?.children.map((item) => item.label)).toEqual([
       'Available balance',
       'Available cash',
       'Credit',
       'Mybank credit',
       'Quota limit',
     ]);
-    expect(items[0]?.children.map((item) => item.description)).toEqual([
+    expect(balanceGroup?.children.map((item) => item.description)).toEqual([
       '¥1.25 CNY',
       '¥0.50 CNY',
       '¥0.75 CNY',
@@ -291,15 +293,18 @@ describe('buildOverviewItems', () => {
       warningThresholdPercent: 20,
     });
 
-    expect(items[0]?.description).toBe('¥1.25 CNY · Monthly 38%');
+    expect(items[0]?.description).toBe('¥1.25 CNY · Token Plan 38%');
     expect(items[0]?.state).toBe('caution');
-    const monthly = items[0]?.children.find(
+    const planGroup = items[0]?.children.find(
+      (child) => child.id === 'provider:qwen:tokenPlanGroup',
+    );
+    const monthly = planGroup?.children.find(
       (child) => child.id === 'provider:qwen:tokenPlan:monthly',
     );
     expect(monthly?.description).toBe('Remaining 38% · Used 62%');
     expect(monthly?.tooltip).toContain('Next reset 2026-12-01 08:00');
-    expect(items[0]?.children.map((child) => child.label)).toContain('Plan');
-    expect(items[0]?.children.map((child) => child.label)).toContain('Expires');
+    expect(planGroup?.children.map((child) => child.label)).toContain('Plan');
+    expect(planGroup?.children.map((child) => child.label)).toContain('Expires');
   });
 
   it('shows the unsubscribed state without inventing a window', () => {
@@ -334,8 +339,11 @@ describe('buildOverviewItems', () => {
     });
 
     expect(items[0]?.description).toBe('¥1.00 CNY');
-    expect(items[0]?.children.map((child) => child.label)).toContain(
+    const planGroup = items[0]?.children.find(
+      (child) => child.id === 'provider:qwen:tokenPlanGroup',
+    );
+    expect(planGroup?.children.map((child) => child.label)).toContain(
       'No Token Plan subscription',
     );
-    expect(items[0]?.children.some((child) => child.id.includes('tokenPlan:'))).toBe(false);
+    expect(planGroup?.children.some((child) => child.id.includes('tokenPlan:'))).toBe(false);
   });

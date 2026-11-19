@@ -1,4 +1,9 @@
-import { groupHistoryTiles, type DashboardModel } from '../viewModel';
+import {
+  groupHistoryTiles,
+  type DashboardModel,
+  type ProviderDetail,
+  type QuotaMeter,
+} from '../viewModel';
 import type { RangeId } from '../../../core/time';
 
 export interface WebviewRenderOptions {
@@ -16,6 +21,33 @@ function element<K extends keyof HTMLElementTagNameMap>(
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+interface ProviderSection {
+  readonly label: string | undefined;
+  readonly meters: QuotaMeter[];
+  readonly details: ProviderDetail[];
+}
+
+/**
+ * Merge meters and details that share a group label into one visual section,
+ * so a provider such as Qwen does not repeat a "Token Plan" heading.
+ */
+function buildSections(
+  meters: readonly QuotaMeter[],
+  details: readonly ProviderDetail[],
+): ProviderSection[] {
+  const sections: ProviderSection[] = [];
+  const add = (label: string | undefined): ProviderSection => {
+    const existing = sections.find((section) => section.label === label);
+    if (existing !== undefined) return existing;
+    const section: ProviderSection = { label, meters: [], details: [] };
+    sections.push(section);
+    return section;
+  };
+  for (const meter of meters) add(meter.group).meters.push(meter);
+  for (const detail of details) add(detail.group).details.push(detail);
+  return sections;
 }
 
 function isDarkTheme(): boolean {
@@ -74,43 +106,50 @@ export function renderDashboard(
       account.appendChild(element('strong', 'provider-account-value', provider.accountValue.value));
       card.appendChild(account);
     }
-    if (provider.meters.length > 0) {
-      const meters = element('div', 'meter-list');
-      for (const meter of provider.meters) {
-        const row = element('div', 'meter');
-        const meterHead = element('div', 'meter-head');
-        meterHead.appendChild(element('div', 'meter-label', meter.label));
-        meterHead.appendChild(
-          element(
-            'div',
-            `meter-value is-${meter.tone}`,
-            meter.valueLabel ??
-              (meter.percent === null ? '—' : `${Math.round(meter.percent)}%`),
-          ),
-        );
-        row.appendChild(meterHead);
-        const track = element('div', 'meter-track');
-        const fill = element('div', 'meter-fill');
-        fill.style.width = `${Math.max(0, Math.min(100, meter.percent ?? 0))}%`;
-        fill.style.background = `var(--vscode-charts-${meter.tone === 'critical' ? 'red' : meter.tone === 'warning' ? 'orange' : meter.tone === 'caution' ? 'yellow' : 'green'})`;
-        track.appendChild(fill);
-        row.appendChild(track);
-        if (meter.resetLabel !== null) {
-          row.appendChild(element('div', 'meter-reset', meter.resetLabel));
+    for (const section of buildSections(provider.meters, provider.details)) {
+      const block = element('section', 'provider-section');
+      if (section.label !== undefined) {
+        block.appendChild(element('h3', 'provider-section-title', section.label));
+      }
+      if (section.meters.length > 0) {
+        const meters = element('div', 'meter-list');
+        for (const meter of section.meters) {
+          const row = element('div', 'meter');
+          const meterHead = element('div', 'meter-head');
+          meterHead.appendChild(element('div', 'meter-label', meter.label));
+          meterHead.appendChild(
+            element(
+              'div',
+              `meter-value is-${meter.tone}`,
+              meter.valueLabel ??
+                (meter.percent === null ? '—' : `${Math.round(meter.percent)}%`),
+            ),
+          );
+          row.appendChild(meterHead);
+          const track = element('div', 'meter-track');
+          const fill = element('div', 'meter-fill');
+          fill.style.width = `${Math.max(0, Math.min(100, meter.percent ?? 0))}%`;
+          fill.style.background = `var(--vscode-charts-${meter.tone === 'critical' ? 'red' : meter.tone === 'warning' ? 'orange' : meter.tone === 'caution' ? 'yellow' : 'green'})`;
+          track.appendChild(fill);
+          row.appendChild(track);
+          if (meter.resetLabel !== null) {
+            row.appendChild(element('div', 'meter-reset', meter.resetLabel));
+          }
+          meters.appendChild(row);
         }
-        meters.appendChild(row);
+        block.appendChild(meters);
       }
-      card.appendChild(meters);
-    }
-    if (provider.details.length > 0) {
-      const details = element('dl', 'provider-details');
-      for (const detail of provider.details) {
-        const row = element('div', 'provider-detail');
-        row.appendChild(element('dt', undefined, detail.label));
-        row.appendChild(element('dd', undefined, detail.value));
-        details.appendChild(row);
+      if (section.details.length > 0) {
+        const details = element('dl', 'provider-details');
+        for (const detail of section.details) {
+          const row = element('div', 'provider-detail');
+          row.appendChild(element('dt', undefined, detail.label));
+          row.appendChild(element('dd', undefined, detail.value));
+          details.appendChild(row);
+        }
+        block.appendChild(details);
       }
-      card.appendChild(details);
+      card.appendChild(block);
     }
     if (provider.note) card.appendChild(element('p', 'provider-note', provider.note));
     if (provider.message) card.appendChild(element('p', 'provider-error', provider.message));

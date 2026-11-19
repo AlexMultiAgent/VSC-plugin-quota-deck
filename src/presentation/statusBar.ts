@@ -213,7 +213,9 @@ export function renderStatusBarText(
       if (balanceLive || window !== undefined) {
         const parts: string[] = [];
         if (balanceLive) parts.push(formatBalance(qwenBalance(snapshot)));
-        if (window !== undefined) parts.push(`${Math.round(window.remainingPercent)}%`);
+        if (window !== undefined) {
+          parts.push(`${t('statusBar.qwen.plan')} ${Math.round(window.remainingPercent)}%`);
+        }
         const stale =
           balanceState?.kind === 'stale' ||
           snapshot.capabilities['qwen.tokenPlan']?.kind === 'stale'

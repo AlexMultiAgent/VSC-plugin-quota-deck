@@ -510,7 +510,7 @@ describe('StatusBarPresenter', () => {
     };
 
     expect(renderStatusBarText(snapshots, ['qwen'], t)).toBe(
-      '$(pulse) QW $(warning) ¥-12.34 · 10%',
+      '$(pulse) QW $(warning) ¥-12.34 · Plan 10%',
     );
   });
 
@@ -556,5 +556,7 @@ describe('StatusBarPresenter', () => {
       }),
     };
 
-    expect(renderStatusBarText(snapshots, ['qwen'], t)).toBe('$(pulse) QW $(warning) 38%');
+    expect(renderStatusBarText(snapshots, ['qwen'], t)).toBe(
+      '$(pulse) QW $(warning) Plan 38%',
+    );
   });

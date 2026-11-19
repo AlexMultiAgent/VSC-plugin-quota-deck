@@ -181,6 +181,9 @@ body[data-loading="true"] #app { opacity: 0.55; transition: opacity 120ms ease-o
 .provider-account { align-items: baseline; display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
 .provider-account-label { color: var(--vscode-descriptionForeground); font-size: 12px; }
 .provider-account-value { font-size: 26px; font-variant-numeric: tabular-nums; }
+.provider-section { margin-top: 14px; }
+.provider-section-title { color: var(--vscode-descriptionForeground); font-size: 11px; font-weight: 600; letter-spacing: .04em; margin: 0 0 6px; text-transform: uppercase; }
+.provider-section .provider-details, .provider-section .meter-list { margin-top: 0; }
 .provider-details { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin: 14px 0 0; }
 .provider-detail { border: 1px solid var(--vscode-panel-border); border-radius: 6px; display: flex; gap: 12px; justify-content: space-between; padding: 8px 10px; }
 .provider-detail dt { color: var(--vscode-descriptionForeground); font-size: 12px; }
