@@ -91,6 +91,11 @@
         "title": "%command.openSettings.title%",
         "category": "QuotaDeck CN",
         "icon": "$(gear)"
+      },
+      {
+        "command": "quotaDeck.clearCredential",
+        "title": "%command.clearCredential.title%",
+        "category": "QuotaDeck CN"
       }
     ],
     "viewsContainers": {
@@ -225,6 +230,10 @@
         },
         {
           "command": "quotaDeck.openSettings",
+          "when": "true"
+        },
+        {
+          "command": "quotaDeck.clearCredential",
           "when": "true"
         }
       ],

@@ -149,6 +149,8 @@ export const enUs: MessageBundle = {
   'credentials.clear.title': 'Clear this credential?',
   'credentials.clear.confirm': 'Clear',
   'credentials.clear.cancel': 'Cancel',
+  'credentials.clear.pickTitle': 'Select the credential to clear',
+  'credentials.clear.noneStored': 'No credential is currently stored.',
   'switcher.title': 'QuotaDeck CN — Switch provider',
   'switcher.configured': 'Configured',
   'switcher.notConfigured': 'Not configured',

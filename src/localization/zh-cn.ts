@@ -149,6 +149,8 @@ export const zhCn: MessageBundle = {
   'credentials.clear.title': '清除该凭据？',
   'credentials.clear.confirm': '清除',
   'credentials.clear.cancel': '取消',
+  'credentials.clear.pickTitle': '选择要清除的凭据',
+  'credentials.clear.noneStored': '当前没有已保存的凭据。',
   'switcher.title': 'QuotaDeck CN — 切换服务商',
   'switcher.configured': '已配置',
   'switcher.notConfigured': '未配置',

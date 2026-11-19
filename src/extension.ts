@@ -6,7 +6,7 @@ import { Scheduler } from './core/scheduler';
 import { SecretStore } from './core/secrets';
 import { readSettings } from './core/settings';
 import type { RangeId } from './core/time';
-import type { ConnectionState, CredentialKind, ProviderId } from './core/types';
+import type { ConnectionState, ProviderId } from './core/types';
 import { resolveLanguage, translatorFor } from './localization';
 import { pricingState, type PricingState } from './providers/deepseek/pricing';
 import { buildProviders } from './providers/registry';
@@ -16,6 +16,7 @@ import {
   configureDeepSeek,
   configureMiniMax,
   configureQwen,
+  pickStoredCredential,
 } from './presentation/credentials';
 import { DashboardPanel } from './presentation/dashboard/panel';
 import { buildDashboardModel, type DashboardModel } from './presentation/dashboard/viewModel';
@@ -246,18 +247,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'quotaDeck.clearCredential',
-      async (
-        providerId: ProviderId,
-        credential: CredentialKind,
-      ) => {
-        const cleared = await clearCredential(secrets, providerId, credential, t);
-        if (!cleared) return;
-        await reconnect(providerId);
-        await refreshAll();
-      },
-    ),
+    vscode.commands.registerCommand('quotaDeck.clearCredential', async () => {
+      const target = await pickStoredCredential(secrets, t);
+      if (target === undefined) return;
+      const cleared = await clearCredential(secrets, target.providerId, target.credential, t);
+      if (!cleared) return;
+      await reconnect(target.providerId);
+      await refreshAll();
+    }),
   );
   context.subscriptions.push(
     vscode.window.onDidChangeWindowState((state) => scheduler.setFocused(state.focused)),

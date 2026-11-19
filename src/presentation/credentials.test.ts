@@ -7,6 +7,7 @@ import {
   configureDeepSeek,
   configureMiniMax,
   configureQwen,
+  pickStoredCredential,
 } from './credentials';
 
 const t = translatorFor('en-US');
@@ -195,5 +196,36 @@ describe('clearCredential', () => {
     await configureDeepSeek(store, t);
     expect(await clearCredential(store, 'deepseek', 'api-key', t)).toBe(false);
     expect(await store.read('deepseek', 'api-key')).toBe('sk-test');
+  });
+});
+
+describe('pickStoredCredential', () => {
+  beforeEach(() => __reset());
+
+  it('offers only the credentials that are actually stored', async () => {
+    const store = new SecretStore(SecretStorage);
+    await store.write('deepseek', 'api-key', 'sk-test');
+    state.quickPickResults = ['DeepSeek — API Key'];
+
+    const picked = await pickStoredCredential(store, t);
+
+    const offered = state.quickPickOffered[0] as Array<{ label: string }>;
+    expect(offered.map((item) => item.label)).toEqual(['DeepSeek — API Key']);
+    expect(picked).toEqual({ providerId: 'deepseek', credential: 'api-key' });
+  });
+
+  it('reports when no credential is stored', async () => {
+    const store = new SecretStore(SecretStorage);
+
+    expect(await pickStoredCredential(store, t)).toBeUndefined();
+    expect(state.output.join('\n')).toContain('No credential is currently stored.');
+  });
+
+  it('returns nothing when the picker is dismissed', async () => {
+    const store = new SecretStore(SecretStorage);
+    await store.write('minimax-cn', 'token-plan-key', 'token-key');
+    state.quickPickResults = [undefined];
+
+    expect(await pickStoredCredential(store, t)).toBeUndefined();
   });
 });

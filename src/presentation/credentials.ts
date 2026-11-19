@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { Translator } from '../localization';
+import type { MessageKey } from '../localization/messages';
 import type { SecretStore } from '../core/secrets';
 import type { CredentialKind, ProviderId } from '../core/types';
 
@@ -125,4 +126,54 @@ export async function clearCredential(
   if (confirmation !== t('credentials.clear.confirm')) return false;
   await store.delete(providerId, credential);
   return true;
+}
+
+export interface StoredCredential {
+  readonly providerId: ProviderId;
+  readonly credential: CredentialKind;
+}
+
+const CLEARABLE_CREDENTIALS: readonly (StoredCredential & { readonly labelKey: MessageKey })[] = [
+  {
+    providerId: 'minimax-cn',
+    credential: 'token-plan-key',
+    labelKey: 'credentials.minimax.cn.tokenPlan',
+  },
+  {
+    providerId: 'minimax-global',
+    credential: 'token-plan-key',
+    labelKey: 'credentials.minimax.global.tokenPlan',
+  },
+  { providerId: 'deepseek', credential: 'api-key', labelKey: 'credentials.deepseek.apiKey' },
+  { providerId: 'qwen', credential: 'access-key-id', labelKey: 'credentials.qwen.accessKeyId' },
+  {
+    providerId: 'qwen',
+    credential: 'access-key-secret',
+    labelKey: 'credentials.qwen.accessKeySecret',
+  },
+];
+
+export async function pickStoredCredential(
+  store: SecretStore,
+  t: Translator,
+): Promise<StoredCredential | undefined> {
+  const items: (StoredCredential & { readonly label: string })[] = [];
+  for (const candidate of CLEARABLE_CREDENTIALS) {
+    const stored = await store.read(candidate.providerId, candidate.credential);
+    if (stored === undefined) continue;
+    items.push({
+      providerId: candidate.providerId,
+      credential: candidate.credential,
+      label: t(candidate.labelKey),
+    });
+  }
+  if (items.length === 0) {
+    void vscode.window.showInformationMessage(t('credentials.clear.noneStored'));
+    return undefined;
+  }
+  const picked = await vscode.window.showQuickPick(items, {
+    title: t('credentials.clear.pickTitle'),
+  });
+  if (picked === undefined) return undefined;
+  return { providerId: picked.providerId, credential: picked.credential };
 }
