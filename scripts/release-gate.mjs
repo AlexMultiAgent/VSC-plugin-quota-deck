@@ -21,12 +21,36 @@ export function checkIcon(buffer) {
   return undefined;
 }
 
+/**
+ * Files whose change alters what `@vscode/vsce` ships. `src/` feeds `dist/`,
+ * and the rest are the manifest, the assets and the packaged documents. A
+ * commit that touches none of them leaves the VSIX byte-identical, so it does
+ * not need a new version number.
+ */
+const PACKAGE_AFFECTING = [
+  /^src\//,
+  /^media\//,
+  /^package\.json$/,
+  /^package-lock\.json$/,
+  /^package\.nls(\.zh-cn)?\.json$/,
+  /^README\.md$/i,
+  /^CHANGELOG\.md$/i,
+  /^LICENSE$/,
+  /^esbuild\.mjs$/,
+  /^\.vscodeignore$/,
+];
+
+export function shipsInVsix(file) {
+  return PACKAGE_AFFECTING.some((pattern) => pattern.test(file));
+}
+
 export function checkVersionConsistency({
   version,
   packageLockVersion,
   changelog,
   tagCommit,
   headCommit,
+  changedFiles,
 }) {
   const failures = [];
   const changelogVersion = changelog.match(
@@ -50,10 +74,21 @@ export function checkVersionConsistency({
     headCommit !== undefined &&
     tagCommit !== headCommit
   ) {
-    failures.push(
-      `Version ${version} is already tagged at ${tagCommit} but HEAD is ${headCommit}; ` +
-      'bump the version before packaging.',
-    );
+    if (changedFiles === undefined) {
+      failures.push(
+        `Version ${version} is already tagged at ${tagCommit} but HEAD is ${headCommit}; ` +
+        'the changed files could not be determined, so bump the version before packaging.',
+      );
+    } else {
+      const shipping = changedFiles.filter((file) => shipsInVsix(file));
+      if (shipping.length > 0) {
+        failures.push(
+          `Version ${version} is already tagged at ${tagCommit} but HEAD is ${headCommit}; ` +
+          `${shipping.join(', ')} changed and ships in the VSIX. ` +
+          'Bump the version before packaging.',
+        );
+      }
+    }
   }
   return failures;
 }
@@ -65,6 +100,21 @@ function gitCommit(root, ref) {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim();
+  } catch {
+    return undefined;
+  }
+}
+
+function gitChangedFiles(root, from, to) {
+  try {
+    return execFileSync('git', ['diff', '--name-only', `${from}..${to}`], {
+      cwd: root,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
   } catch {
     return undefined;
   }
@@ -86,12 +136,19 @@ function main() {
   }
   if (manifest.telemetry !== null) failures.push('package.json must declare "telemetry": null');
 
+  const tagCommit = gitCommit(root, `v${manifest.version}^{commit}`);
+  const headCommit = gitCommit(root, 'HEAD');
+
   failures.push(...checkVersionConsistency({
     version: manifest.version,
     packageLockVersion: packageLock.version,
     changelog,
-    tagCommit: gitCommit(root, `v${manifest.version}^{commit}`),
-    headCommit: gitCommit(root, 'HEAD'),
+    tagCommit,
+    headCommit,
+    changedFiles:
+      tagCommit !== undefined && headCommit !== undefined
+        ? gitChangedFiles(root, tagCommit, headCommit)
+        : undefined,
   }));
 
   const settings = Object.keys(manifest.contributes?.configuration?.properties ?? {});

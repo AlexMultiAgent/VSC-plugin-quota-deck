@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DESIGN_SIZE } from './make-icon.mjs';
-import { checkIcon, checkVersionConsistency } from './release-gate.mjs';
+import { checkIcon, checkVersionConsistency, shipsInVsix } from './release-gate.mjs';
 
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
@@ -74,8 +74,50 @@ describe('checkVersionConsistency', () => {
     expect(checkVersionConsistency({
       ...releaseReady,
       tagCommit: 'released-commit',
+      changedFiles: ['src/extension.ts'],
     })).toContain(
-      'Version 0.2.2 is already tagged at released-commit but HEAD is new-commit; bump the version before packaging.',
+      'Version 0.2.2 is already tagged at released-commit but HEAD is new-commit; ' +
+      'src/extension.ts changed and ships in the VSIX. Bump the version before packaging.',
     );
+  });
+
+  it('rejects reusing a version tag when the changed files cannot be determined', () => {
+    expect(checkVersionConsistency({
+      ...releaseReady,
+      tagCommit: 'released-commit',
+    })).toContain(
+      'Version 0.2.2 is already tagged at released-commit but HEAD is new-commit; ' +
+      'the changed files could not be determined, so bump the version before packaging.',
+    );
+  });
+
+  it('accepts a docs-only commit after the tagged commit', () => {
+    expect(checkVersionConsistency({
+      ...releaseReady,
+      tagCommit: 'released-commit',
+      changedFiles: ['CLAUDE.md', 'docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md'],
+    })).toEqual([]);
+  });
+});
+
+describe('shipsInVsix', () => {
+  it('treats the extension sources as shipping', () => {
+    expect(shipsInVsix('src/extension.ts')).toBe(true);
+    expect(shipsInVsix('src/localization/messages.ts')).toBe(true);
+  });
+
+  it('treats the manifest, the assets and the packaged documents as shipping', () => {
+    expect(shipsInVsix('package.json')).toBe(true);
+    expect(shipsInVsix('package.nls.zh-cn.json')).toBe(true);
+    expect(shipsInVsix('README.md')).toBe(true);
+    expect(shipsInVsix('CHANGELOG.md')).toBe(true);
+    expect(shipsInVsix('media/icon.png')).toBe(true);
+  });
+
+  it('treats developer documentation and tooling as not shipping', () => {
+    expect(shipsInVsix('CLAUDE.md')).toBe(false);
+    expect(shipsInVsix('docs/contracts/minimax.md')).toBe(false);
+    expect(shipsInVsix('scripts/release-gate.mjs')).toBe(false);
+    expect(shipsInVsix('tsconfig.json')).toBe(false);
   });
 });
