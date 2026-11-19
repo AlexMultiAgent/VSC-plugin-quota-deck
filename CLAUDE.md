@@ -39,7 +39,9 @@ The webview script is loaded via `webview.asWebviewUri()` — never a raw `file:
 src/
   core/          provider-agnostic: types, coordinator, scheduler, http, cache, secrets, settings, time,
                  errors, capability (typed reader for capability data)
-  providers/     one adapter per vendor; each owns its endpoints, credentials, request signing and parsers
+  providers/     one folder per vendor class (three folders, four providers — MiniMaxProvider is
+                 instantiated for both minimax-cn and minimax-global); each owns its endpoints,
+                 credentials, request signing and parsers
                  endpoints.json is the single source for every endpoint and credential env var
                  endpoints.ts = typed view over that JSON; registry.ts = buildProviders()
                  shape.ts = vendor-neutral primitives; <vendor>/shape.ts = raw payload shapes
@@ -47,7 +49,7 @@ src/
                  qwen/ parse and assemble inside shape.ts + provider.ts; qwen/request.ts signs ACS3
   presentation/  statusBar, tooltip, overview/ (Activity Bar tree), onboarding, commands, credentials,
                  switcher, labels, display, quotaTone, quickPickFallback, dashboard/
-  localization/  messages.ts (key registry) + en-us.ts / zh-cn.ts bundles
+  localization/  messages.ts (key registry) + en-us.ts / zh-cn.ts bundles + index.ts (resolver)
   test/          __mocks__/vscode.ts, fixtures/, helpers/
 ```
 
@@ -61,10 +63,24 @@ all render the *same* coordinator snapshot. `refreshAll()` in `src/extension.ts`
 that pushes a snapshot into a surface — a new surface added without a line there shows data that no
 other surface contradicts, so it looks right until it is stale.
 
+Each surface renders that snapshot through its own derived view model:
+`presentation/overview/model.ts` (`buildOverviewItems`) and
+`presentation/dashboard/viewModel.ts` (`buildDashboardModel`) turn the snapshot into display
+records, and `dashboard/webview/render.ts` turns the dashboard model into DOM. A derived value
+belongs in the view model, not in the surface.
+
+Snapshots are fetched per **range** (`RangeId` in `src/core/time.ts`:
+`today | yesterday | last7 | last30 | thisMonth | lastMonth`). The range flows through
+`coordinator.refreshAll(range)`, `provider.fetchSnapshot(signal, range, timeZone)` and
+`SnapshotCache.load/save(providerId, range)` — the cache key is
+`quotaDeck.snapshot.<providerId>.<range>`, so every range has its own cache entry. Only MiniMax
+consumes the range; DeepSeek and Qwen ignore it. Choosing a range in the dashboard calls
+`selectRange()` in `src/extension.ts`, which re-runs the whole `refreshAll()`.
+
 `src/core/cache.ts` persists the **parsed** snapshot in `globalState`, not the raw provider payload.
 Changing how a provider parses a field therefore changes the meaning of every snapshot already on
 disk, and the cache is painted at startup before the first refresh lands. The cache drops what it no
-longer trusts — `withoutRetiredCapabilities()` for retired DeepSeek capabilities,
+longer trusts — `withoutRetiredCapabilities()` for retired DeepSeek and MiniMax capabilities,
 `withoutLegacyMiniMaxPlan()` for a plan cached under the old count rule — so a parsing change needs
 its own rule there, or a stale number reaches the UI before the first refresh replaces it.
 
@@ -87,10 +103,12 @@ provider's exported types and reads through `capabilityValue`, never a hand-writ
 environment variable. The extension and `scripts/capture-fixture.mjs` both read it, so a changed
 endpoint can never leave the capture script pointing at a URL the extension does not call.
 It is JSON rather than a `.ts` module because `scripts/capture-fixture.mjs` must read it without
-importing anything from `src/`.
+importing anything from `src/`. Qwen's AccessKey pair is not in there — it is not an environment
+variable, and it lives only in Secret Storage.
 
 `src/presentation/dashboard/protocol.ts` validates every host↔webview message against an
-exact-key schema. Extend that validator whenever a message shape changes.
+exact-key schema — including the range selection the webview sends back. Extend that validator
+whenever a message shape changes.
 
 ## Invariants
 
@@ -99,8 +117,10 @@ These are product and security rules, not implementation details — do not trad
 - **Credentials live only in VS Code Secret Storage** (`context.secrets`). Never in settings, global
   state, logs, or webview HTML. `scripts/release-gate.mjs` fails `npm run package` if `package.json`
   declares any setting matching `/cookie|secret|password|token|apikey|session/i`.
-- **Cookies are allow-listed per capability.** Only names in the adapter's allow-list are ever
-  forwarded (e.g. `POINTS_COOKIE_NAMES` in `src/providers/minimax/provider.ts`).
+- **Only API credentials are used — never a browser session.** Since v0.2.11 the web-session Cookie
+  path is gone: MiniMax uses the Token Plan key, DeepSeek the API key, Qwen the AccessKey pair.
+  `CREDENTIAL_KINDS` in `src/core/types.ts` still lists `session-token` and `web-cookie`, but no
+  provider reads them — `src/presentation/credentials.ts` only *deletes* the legacy secrets.
 - **A failed fetch is a state, not a number.** Capability states are `ok | stale | unconfigured |
   unsupported | failed`. Never substitute `0` or `0.00` for missing data — the UI must say why.
   A refresh that fails while a previous value survives becomes `stale`, which keeps the value
@@ -144,13 +164,13 @@ These are product and security rules, not implementation details — do not trad
   purpose — bump all three files before packaging again.
 - **The design spec's file tree is aspirational, not the layout.**
   `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md` §6 lists `providers/minimax/cn.ts`,
-  `global.ts`, `cookies.ts`; the implementation uses one `provider.ts` + `shape.ts` per vendor with
-  a shared `providers/cookies.ts`. Read the code, not the spec tree.
+  `global.ts`, `cookies.ts`; the implementation uses one `provider.ts` + `shape.ts` per vendor
+  folder, and the cookie layer the spec implies no longer exists. Read the code, not the spec tree.
 - **Provider endpoints mix public and web APIs.** Qwen account balance and DeepSeek balance use
   public APIs. MiniMax's account endpoints are undocumented web APIs; the domestic plan,
-  subscription and usage calls are now verified (`docs/contracts/minimax.md`), but the points
-  endpoint and the global host are not. Treat an unexpected response shape as contract drift to
-  investigate, not something to paper over.
+  subscription and usage calls are now verified (`docs/contracts/minimax.md`), but the global host
+  is not. Treat an unexpected response shape as contract drift to investigate, not something to
+  paper over.
 - **Never invent a provider payload.** A hand-written test payload only encodes the guess it was
   written from, so it cannot catch a misread field — the MiniMax video quota stayed inverted
   through several releases because the fixture that "proved" it was invented the same way. Capture
@@ -162,6 +182,9 @@ These are product and security rules, not implementation details — do not trad
   `src/providers/minimax/shape.ts` derives `remaining`, `used` and the percentage from it; a
   Token Plan key reports zero counts and only the percentage fields, which is why
   `remainingPercentSource` exists. The verified contract is in `docs/contracts/minimax.md`.
+- **`minimax.points` is a retired capability.** The points endpoint needs a web-session Cookie, so it
+  was dropped. `src/core/cache.ts` lists it in `RETIRED_MINIMAX_CAPABILITIES` and strips it from
+  snapshots cached before the removal. Do not reintroduce it without a verified credential.
 - **MiniMax rejects a credential with HTTP 200.** The refusal lives in `base_resp.status_code`
   (`1004` for a bad key), so `credentialRejection()` in `src/providers/minimax/provider.ts` runs
   before the shape parsers — otherwise a revoked key reads as a malformed response.
@@ -203,13 +226,11 @@ npm run guard:fixtures
 ```
 
 Credentials come from environment variables only (`DEEPSEEK_API_KEY`, `MINIMAX_CN_TOKEN_PLAN`,
-`MINIMAX_CN_WEB_COOKIE`, `MINIMAX_GLOBAL_TOKEN_PLAN`, `MINIMAX_GLOBAL_WEB_COOKIE`) — never from a
-file or a command-line argument.
+`MINIMAX_GLOBAL_TOKEN_PLAN`) — never from a file or a command-line argument.
 `scripts/capture-fixture.mjs` is dev-only and must never be imported from `src/`.
 It covers MiniMax and DeepSeek only — `specsFor()` rejects every other provider, so a Qwen fixture
-has to be written by hand. For MiniMax the script sends the bearer Token Plan key for
-`minimax.plan`, `minimax.subscription` and `minimax.tokenUsage`, and the web-session Cookie for
-`minimax.points`.
+has to be written by hand. The script sends a bearer Token Plan key for `minimax.plan`,
+`minimax.subscription` and `minimax.tokenUsage`; `headersFor()` supports bearer auth only.
 
 Sanitization preserves structure but zeroes financial fields (`balance|cost|amount` → `0` / `0.00`)
 and redacts secret-shaped values. Fixtures are therefore proof of *shape*, never proof of a real
@@ -234,7 +255,9 @@ Release tags are annotated, named `vX.Y.Z`, and placed on the commit that writes
 
 ## Reference
 
-- `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md` — source of truth for product intent
+- `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md` — the original product intent. It is
+  frozen and still describes the cookie-based capability set that v0.2.11 removed; `docs/contracts/`
+  is the living source of what the extension actually does.
 - `docs/superpowers/specs/2026-11-18-quota-deck-activity-bar-design.md` — intent for the Activity Bar overview
 - `docs/contracts/` — the verified response contract per provider; read it before changing a parser
 - `docs/superpowers/plans/` — the historical implementation plans (structure has since drifted)
