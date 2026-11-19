@@ -79,7 +79,7 @@ Qwen / 百炼余额获取方式：
 
 警告阈值可在 VS Code 设置中搜索 `QuotaDeck warning threshold`，或直接设置
 `quotaDeck.statusBar.warningThresholdPercent`。默认值为 `20`，支持 `11` 到 `99`；
-剩余额度严格低于该值时显示警告，低于或等于 `10%` 时显示严重警告。
+剩余额度严格低于该值时显示警告，低于或等于 `5%` 时显示严重警告。
 
 额度窗口、重置倒计时与用量区间按 `quotaDeck.timeZone` 指定的 IANA 时区计算，
 默认 `Asia/Shanghai`。修改设置后立即生效，无需重启窗口。
@@ -91,6 +91,8 @@ Qwen / 百炼余额获取方式：
 | Qwen / 百炼 | Alibaba Cloud AccessKey ID、Secret |
 
 凭据通过密码输入框填写，不会回显，也不会写入 settings、全局状态或日志。
+重新配置会覆盖已保存的值；若要彻底删除某个凭据，执行 `QuotaDeck CN: Clear Credential`
+并从列表中选择要清除的那一项。
 
 ## Privacy
 
@@ -117,6 +119,7 @@ Qwen / 百炼余额获取方式：
 | `QuotaDeck CN: Configure Qwen` | 配置 Qwen / 百炼的阿里云 AccessKey |
 | `QuotaDeck CN: Configure Providers` | 从仪表盘之外统一打开配置流程 |
 | `QuotaDeck CN: Extension Settings` | 打开本插件的原生设置页 |
+| `QuotaDeck CN: Clear Credential` | 清除已保存的凭据 |
 | `QuotaDeck CN: Show Help` | 查看帮助 |
 
 ## Known limitations
