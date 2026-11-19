@@ -1,0 +1,93 @@
+{
+  "capturedAt": "2026-11-19T22:10:23.249Z",
+  "provider": "qwen",
+  "capability": "qwen.tokenPlanSubscription",
+  "case": "standard",
+  "sourceHost": "cs-data.qianwenai.com",
+  "sourceUrls": [
+    "https://cli.qianwenai.com/data/v2/api.json",
+    "https://cs-data.qianwenai.com/cli/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaHttp.apikeyMgr.%2Ftokenplan%2Fpersonal%2Fapi%2Fv2%2Fsubscription"
+  ],
+  "response": {
+    "code": "200",
+    "data": {
+      "DataV2": {
+        "ret": [
+          "SUCCESS::接口调用成功"
+        ],
+        "data": {
+          "msg": "Success.",
+          "code": "SUCCESS",
+          "data": {
+            "instanceCode": "sfm_tokenplansolo_public_cn-6r351ycuh0o",
+            "specCode": "essential",
+            "remainingDays": 30,
+            "startTime": 1795120671000,
+            "endTime": 1797782400000,
+            "autoRenewFlag": false,
+            "status": "VALID"
+          },
+          "requestId": "790c7b82-91a5-9761-a6bc-def043982e82",
+          "success": true
+        }
+      },
+      "success": true,
+      "httpStatus": 200,
+      "errorCode": "",
+      "api": "zeldaHttp.apikeyMgr./tokenplan/personal/api/v2/subscription",
+      "errorMsg": ""
+    },
+    "httpStatusCode": "200",
+    "requestId": "790c7b82-91a5-4761-a6bc-def043982e82",
+    "successResponse": true
+  },
+  "steps": [
+    {
+      "requestId": "01A1F5DA-C449-5784-A758-353B198EE454",
+      "code": "200",
+      "message": null,
+      "action": null,
+      "apiName": null,
+      "data": {
+        "cliAccessToken": "<redacted>"
+      },
+      "httpStatusCode": "200",
+      "accessDeniedDetail": null,
+      "extendedCode": null,
+      "successResponse": true
+    },
+    {
+      "code": "200",
+      "data": {
+        "DataV2": {
+          "ret": [
+            "SUCCESS::接口调用成功"
+          ],
+          "data": {
+            "msg": "Success.",
+            "code": "SUCCESS",
+            "data": {
+              "instanceCode": "sfm_tokenplansolo_public_cn-6r351ycuh0o",
+              "specCode": "essential",
+              "remainingDays": 30,
+              "startTime": 1795120671000,
+              "endTime": 1797782400000,
+              "autoRenewFlag": false,
+              "status": "VALID"
+            },
+            "requestId": "790c7b82-91a5-9761-a6bc-def043982e82",
+            "success": true
+          }
+        },
+        "success": true,
+        "httpStatus": 200,
+        "errorCode": "",
+        "api": "zeldaHttp.apikeyMgr./tokenplan/personal/api/v2/subscription",
+        "errorMsg": ""
+      },
+      "httpStatusCode": "200",
+      "requestId": "790c7b82-91a5-4761-a6bc-def043982e82",
+      "successResponse": true
+    }
+  ]
+}

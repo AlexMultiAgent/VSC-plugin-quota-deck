@@ -1,0 +1,83 @@
+{
+  "capturedAt": "2026-11-19T22:10:23.249Z",
+  "provider": "qwen",
+  "capability": "qwen.tokenPlan",
+  "case": "standard",
+  "sourceHost": "cs-data.qianwenai.com",
+  "sourceUrls": [
+    "https://cli.qianwenai.com/data/v2/api.json",
+    "https://cs-data.qianwenai.com/cli/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaHttp.apikeyMgr.%2Ftokenplan%2Fpersonal%2Fapi%2Fv2%2Fusage"
+  ],
+  "response": {
+    "code": "200",
+    "data": {
+      "DataV2": {
+        "ret": [
+          "SUCCESS::接口调用成功"
+        ],
+        "data": {
+          "msg": "Success.",
+          "code": "SUCCESS",
+          "data": {
+            "per1MonthPercentage": 0.026214485333333332,
+            "per1MonthResetTime": 1797782400000
+          },
+          "requestId": "1e7deed7-033d-98f2-8d41-064dd7df1d12",
+          "success": true
+        }
+      },
+      "success": true,
+      "httpStatus": 200,
+      "errorCode": "",
+      "api": "zeldaHttp.apikeyMgr./tokenplan/personal/api/v2/usage",
+      "errorMsg": ""
+    },
+    "httpStatusCode": "200",
+    "requestId": "1e7deed7-033d-48f2-8d41-064dd7df1d12",
+    "successResponse": true
+  },
+  "steps": [
+    {
+      "requestId": "01A1F5DA-C449-5784-A758-353B198EE454",
+      "code": "200",
+      "message": null,
+      "action": null,
+      "apiName": null,
+      "data": {
+        "cliAccessToken": "<redacted>"
+      },
+      "httpStatusCode": "200",
+      "accessDeniedDetail": null,
+      "extendedCode": null,
+      "successResponse": true
+    },
+    {
+      "code": "200",
+      "data": {
+        "DataV2": {
+          "ret": [
+            "SUCCESS::接口调用成功"
+          ],
+          "data": {
+            "msg": "Success.",
+            "code": "SUCCESS",
+            "data": {
+              "per1MonthPercentage": 0.026214485333333332,
+              "per1MonthResetTime": 1797782400000
+            },
+            "requestId": "1e7deed7-033d-98f2-8d41-064dd7df1d12",
+            "success": true
+          }
+        },
+        "success": true,
+        "httpStatus": 200,
+        "errorCode": "",
+        "api": "zeldaHttp.apikeyMgr./tokenplan/personal/api/v2/usage",
+        "errorMsg": ""
+      },
+      "httpStatusCode": "200",
+      "requestId": "1e7deed7-033d-48f2-8d41-064dd7df1d12",
+      "successResponse": true
+    }
+  ]
+}
