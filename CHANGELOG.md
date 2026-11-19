@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.19 — 2026-11-20
+
+- 接入千问AI平台个人 Token Plan 额度：新增“登录千问AI平台”设备码登录，显示月度/每周额度剩余百分比、重置时间、套餐档位与到期时间。
+- Token Plan 额度在状态栏、悬浮详情、Activity Bar 概览和仪表盘四处同步展示；额度查询失败不影响阿里云账户余额显示。
+- 新增 `docs/contracts/qwen.md` Token Plan 契约小节与真实抓包 fixture；Qwen 账户余额仍使用阿里云 AccessKey。
+
 ## 0.2.18 — 2026-11-20
 
 - 重排 Marketplace 与 GitHub 首页：增加中英文界面截图、安装命令、支持矩阵和两步上手入口。
