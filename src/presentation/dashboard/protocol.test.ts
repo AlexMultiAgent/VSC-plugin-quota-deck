@@ -4,30 +4,19 @@ import type { DashboardModel } from './viewModel';
 
 function emptyModel(): DashboardModel {
   return {
-    hero: { label: 'x', value: '1', sourceLabel: null },
-    tiles: [],
+    hero: null,
+    historyTiles: [],
+    hasHistoryData: false,
     providers: [],
-    usage: { available: false, currency: null, categories: [], cost: [], requests: [], tokens: [], tokenSeries: [], byModel: [], costTotals: [] },
-    balances: [],
-    accountTotals: [],
-    accountTotalSource: 'unavailable',
     range: 'last7',
     rangeLabel: 'Last 7 days',
     ranges: [{ id: 'last7', label: 'Last 7 days' }],
-    pricingLabel: 'Peak pricing right now',
     labels: {
       configureProviders: 'Configure providers',
       refreshNow: 'Refresh now',
-      accountBalance: 'Account balance',
-      accountUsageSummary: 'Account and usage',
       historyRange: 'History usage range',
-      deepseekUsage: 'Usage range',
-      liveQuotaNote: '5-hour and Weekly quota windows are live.',
-      cost: 'Cost', requests: 'Requests', tokens: 'Tokens', cache: 'Cache', usageTable: 'Usage',
-      modelTable: 'Models', balanceTable: 'Balances', costTable: 'Costs', accountTotalTable: 'Account totals',
-      accountTotalSummary: 'Summary', accountTotalAggregated: 'Aggregated', accountTotalUnavailable: 'Unavailable',
-      columnDate: 'Date', columnModel: 'Model', columnRequests: 'Requests', columnTokens: 'Tokens',
-      columnCost: 'Cost', columnCurrency: 'Currency', columnTotal: 'Total', tableView: 'Table view',
+      historyUsage: 'Historical usage',
+      liveQuotaNote: 'The range affects only MiniMax Token history.',
     },
   };
 }
@@ -37,15 +26,69 @@ describe('host messages', () => {
     expect(isHostMessage({ kind: 'state', model: emptyModel(), range: 'last7' })).toBe(true);
   });
 
+  it('accepts a hero with a live percentage', () => {
+    const model: DashboardModel = {
+      ...emptyModel(),
+      hero: { label: 'Lowest remaining quota', value: '20%', sourceLabel: 'MiniMax CN · Weekly' },
+    };
+    expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(true);
+  });
+
   it('rejects an unknown kind', () => {
     expect(isHostMessage({ kind: 'evil' })).toBe(false);
   });
 
   it('rejects a malformed model', () => {
-    expect(isHostMessage({ kind: 'state', model: { hero: { label: 1, value: '1' } }, range: 'last7' })).toBe(false);
+    expect(
+      isHostMessage({
+        kind: 'state',
+        model: { hero: { label: 1, value: '1' } },
+        range: 'last7',
+      }),
+    ).toBe(false);
   });
 
-  it('validates provider balance and capability details', () => {
+  it('validates provider account values and detail rows', () => {
+    const model = emptyModel();
+    model.providers.push({
+      id: 'qwen',
+      name: 'Qwen',
+      state: 'ok',
+      stateLabel: 'Available',
+      accent: { light: '#eb6834', dark: '#d95926' },
+      meters: [],
+      accountValue: { key: 'balance', label: 'Account balance', value: '¥10.00' },
+      details: [
+        { label: 'Available cash', value: '¥12.00' },
+        { label: 'Credit', value: '¥5.00' },
+      ],
+      hoursLabel: null,
+      note: 'Account balance only.',
+      message: null,
+      fetchedAt: null,
+    });
+    expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(true);
+
+    const provider = model.providers[0]!;
+    model.providers.splice(0, 1, {
+      ...provider,
+      accountValue: {
+        key: 'points' as never,
+        label: 'Points',
+        value: '10',
+      },
+    });
+    expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(false);
+  });
+
+  it('rejects retired account history fields from the host contract', () => {
+    const model = emptyModel() as DashboardModel & { accountTotals?: unknown; usage?: unknown };
+    model.usage = { available: true };
+    model.accountTotals = [{ currency: 'CNY', amount: 2 }];
+    expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(false);
+  });
+
+  it('rejects malformed provider details', () => {
     const model = emptyModel();
     model.providers.push({
       id: 'deepseek',
@@ -54,36 +97,49 @@ describe('host messages', () => {
       stateLabel: 'Partially available',
       accent: { light: '#2a78d6', dark: '#3987e5' },
       meters: [],
+      accountValue: null,
+      details: [{ label: 'Credit', value: 1 as never }],
+      hoursLabel: 'Peak',
       note: null,
       message: null,
       fetchedAt: null,
-      balance: '¥10.00',
-      rangeUsage: null,
-      hoursLabel: 'Peak',
-      capabilities: [{
-        id: 'deepseek.usageAmount',
-        label: 'Usage detail',
-        state: 'unconfigured',
-        stateLabel: 'Not configured',
-        tone: 'muted',
-        message: 'Missing platform session token and cookie.',
-      }],
-    });
-    expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(true);
-    const provider = model.providers[0]!;
-    model.providers.splice(0, 1, {
-      ...provider,
-      capabilities: [{ ...provider.capabilities[0]!, tone: 'evil' as never }],
     });
     expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(false);
   });
 
-  it('accepts populated currency totals from the dashboard model', () => {
+  it('accepts meters with count labels and resets', () => {
     const model = emptyModel();
-    model.usage.costTotals.push({ currency: 'CNY', amount: 1.5 });
-    model.accountTotals.push({ currency: 'CNY', amount: 2.5 });
-
+    model.providers.push({
+      id: 'minimax-cn',
+      name: 'MiniMax CN',
+      state: 'ok',
+      stateLabel: 'Healthy',
+      accent: { light: '#1baf7a', dark: '#199e70' },
+      meters: [{
+        key: 'model:video:current',
+        label: 'Video · Current window',
+        percent: 100,
+        valueLabel: '3/3 · 100%',
+        resetLabel: 'Next reset 2026-11-20 00:00',
+        tone: 'positive',
+      }],
+      accountValue: null,
+      details: [],
+      hoursLabel: null,
+      note: null,
+      message: null,
+      fetchedAt: '2026-11-19T01:00:00.000Z',
+    });
     expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(true);
+
+    model.providers[0]!.meters.splice(0, 1, {
+      key: 'legacy',
+      label: 'Legacy',
+      percent: 50,
+      resetLabel: null,
+      tone: 'caution',
+    } as never);
+    expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(false);
   });
 
   it('rejects a non-object', () => {

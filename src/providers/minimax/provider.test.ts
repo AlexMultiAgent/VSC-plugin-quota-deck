@@ -31,17 +31,15 @@ describe('MiniMaxProvider', () => {
     });
   });
 
-  it('declares the four MiniMax capabilities', () => {
+  it('declares the three capabilities available from a Token Plan key', () => {
     const provider = new MiniMaxProvider('minimax-cn', 'https://www.minimaxi.com', httpClient({ ok: false, error: { kind: 'unknown', message: 'error.unknown' } }));
     const ids = provider.getCapabilities().capabilities.map((capability) => capability.id);
-    expect(ids).toEqual(['minimax.plan', 'minimax.subscription', 'minimax.tokenUsage', 'minimax.points']);
+    expect(ids).toEqual(['minimax.plan', 'minimax.subscription', 'minimax.tokenUsage']);
   });
 
-  it('marks the plan capability required and the points capability optional', () => {
+  it('marks every Token Plan capability as required', () => {
     const provider = new MiniMaxProvider('minimax-cn', 'https://www.minimaxi.com', httpClient({ ok: false, error: { kind: 'unknown', message: 'error.unknown' } }));
-    const byId = new Map(provider.getCapabilities().capabilities.map((c) => [c.id, c] as const));
-    expect(byId.get('minimax.plan')?.required).toBe(true);
-    expect(byId.get('minimax.points')?.required).toBe(false);
+    expect(provider.getCapabilities().capabilities.every((capability) => capability.required)).toBe(true);
   });
 
   it('reports not-configured when no token plan key is stored', async () => {
@@ -50,17 +48,17 @@ describe('MiniMaxProvider', () => {
     expect(connection.kind).toBe('not-configured');
   });
 
-  it('reports partial when only the optional web cookie is missing', async () => {
+  it('is ready with only a Token Plan key', async () => {
     const provider = new MiniMaxProvider('minimax-cn', 'https://www.minimaxi.com', httpClient({ ok: false, error: { kind: 'unknown', message: 'error.unknown' } }));
     const connection = await provider.connect(secretReader({ 'minimax-cn:token-plan-key': 'token' }));
-    expect(connection.kind).toBe('partial');
+    expect(connection.kind).toBe('ready');
   });
 
-  it('resolves the points capability to unconfigured when the cookie is absent', async () => {
+  it('does not collect cookie-only points', async () => {
     const provider = new MiniMaxProvider('minimax-cn', 'https://www.minimaxi.com', httpClient({ ok: false, error: { kind: 'unknown', message: 'error.unknown' } }));
     await provider.connect(secretReader({ 'minimax-cn:token-plan-key': 'token' }));
     const snapshot = await provider.fetchSnapshot(new AbortController().signal);
-    expect(snapshot.capabilities['minimax.points']?.kind).toBe('unconfigured');
+    expect(snapshot.capabilities).not.toHaveProperty('minimax.points');
   });
 
   it('never reports an unavailable capability as a zero percentage', async () => {
@@ -103,6 +101,51 @@ describe('MiniMaxProvider', () => {
     expect(state?.kind === 'ok' ? state.data : undefined).toMatchObject({
       rangeId: 'last7',
       tokens: 100,
+    });
+  });
+
+  it('reads every page needed to finish the selected token-usage range', async () => {
+    const now = Date.now();
+    const firstPage = Array.from({ length: 100 }, (_, index) => ({
+      created_at: now - index * 60_000,
+      consume_token: 100,
+    }));
+    const http = {
+      getJson: vi.fn(async (url: string) => {
+        if (url.includes('/account/amount')) {
+          const page = new URL(url).searchParams.get('page');
+          return {
+            ok: true,
+            body: page === '2'
+              ? {
+                  currency: 'CNY',
+                  total_cnt: 102,
+                  charge_records: [
+                    { created_at: now - 101 * 60_000, consume_token: 250 },
+                    { created_at: now - 40 * 86_400_000, consume_token: 900 },
+                  ],
+                }
+              : {
+                  currency: 'CNY',
+                  total_cnt: 102,
+                  charge_records: firstPage,
+                },
+          };
+        }
+        return { ok: false, error: { kind: 'auth', message: 'error.auth' } };
+      }),
+    } as unknown as HttpClient;
+    const provider = new MiniMaxProvider('minimax-cn', 'https://www.minimaxi.com', http);
+    await provider.connect(secretReader({ 'minimax-cn:token-plan-key': 'token' }));
+    const snapshot = await provider.fetchSnapshot(
+      new AbortController().signal,
+      'last7',
+      'Asia/Shanghai',
+    );
+
+    expect(snapshot.capabilities['minimax.tokenUsage']).toMatchObject({
+      kind: 'ok',
+      data: { rangeId: 'last7', tokens: 10_250 },
     });
   });
 });

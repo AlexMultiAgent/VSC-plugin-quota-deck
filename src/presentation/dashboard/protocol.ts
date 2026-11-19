@@ -1,4 +1,5 @@
 import type { DashboardModel } from './viewModel';
+import { PROVIDER_IDS } from '../../core/types';
 import { RANGE_IDS, type RangeId } from '../../core/time';
 
 export type HostMessage =
@@ -10,6 +11,14 @@ export type WebviewMessage =
   | { readonly kind: 'configure' }
   | { readonly kind: 'refresh' }
   | { readonly kind: 'setRange'; readonly range: RangeId };
+
+const LABEL_KEYS = [
+  'configureProviders',
+  'refreshNow',
+  'historyRange',
+  'historyUsage',
+  'liveQuotaNote',
+] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -25,10 +34,6 @@ export function isRangeId(value: unknown): value is RangeId {
   return typeof value === 'string' && (RANGE_IDS as readonly string[]).includes(value);
 }
 
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
-}
-
 function isStringOrNull(value: unknown): boolean {
   return typeof value === 'string' || value === null;
 }
@@ -37,151 +42,163 @@ function isNumberOrNull(value: unknown): boolean {
   return typeof value === 'number' || value === null;
 }
 
-function isPoints(value: unknown): boolean {
-  return Array.isArray(value) && value.every(
-    (point) => isRecord(point) && typeof point.x === 'string' && typeof point.y === 'number',
-  );
-}
-
-function isTokenSeries(value: unknown): boolean {
-  return Array.isArray(value) && value.every(
-    (series) =>
-      isRecord(series) &&
-      typeof series.label === 'string' &&
-      typeof series.color === 'string' &&
-      typeof series.darkColor === 'string' &&
-      Array.isArray(series.values) &&
-      series.values.every((entry) => typeof entry === 'number'),
-  );
-}
-
 function isMeters(value: unknown): boolean {
   return Array.isArray(value) && value.every(
     (meter) =>
       isRecord(meter) &&
+      hasExactKeys(meter, ['key', 'label', 'percent', 'valueLabel', 'resetLabel', 'tone']) &&
       typeof meter.key === 'string' &&
       typeof meter.label === 'string' &&
       isNumberOrNull(meter.percent) &&
+      isStringOrNull(meter.valueLabel) &&
       isStringOrNull(meter.resetLabel) &&
       typeof meter.tone === 'string',
   );
 }
 
-function isProviderCapabilities(value: unknown): boolean {
-  return Array.isArray(value) && value.every(
-    (capability) =>
-      isRecord(capability) &&
-      typeof capability.id === 'string' &&
-      typeof capability.label === 'string' &&
-      ['ok', 'stale', 'failed', 'unconfigured', 'unsupported'].includes(String(capability.state)) &&
-      typeof capability.stateLabel === 'string' &&
-      ['positive', 'warning', 'critical', 'muted'].includes(String(capability.tone)) &&
-      isStringOrNull(capability.message),
-  );
-}
-
-function isProviderRangeUsage(value: unknown): boolean {
+function isProviderAccountValue(value: unknown): boolean {
   return value === null || (
     isRecord(value) &&
+    hasExactKeys(value, ['key', 'label', 'value']) &&
+    value.key === 'balance' &&
     typeof value.label === 'string' &&
     typeof value.value === 'string'
   );
 }
 
-function isModelRows(value: unknown): boolean {
+function isProviderDetails(value: unknown): boolean {
   return Array.isArray(value) && value.every(
-    (row) =>
-      isRecord(row) &&
-      typeof row.model === 'string' &&
-      typeof row.requests === 'number' &&
-      typeof row.totalTokens === 'number' &&
-      typeof row.cost === 'number' &&
-      typeof row.currency === 'string',
-  );
-}
-
-function isBalanceRows(value: unknown): boolean {
-  return Array.isArray(value) && value.every(
-    (row) => isRecord(row) && typeof row.currency === 'string' && typeof row.total === 'number',
-  );
-}
-
-function isCurrencyTotals(value: unknown): boolean {
-  return Array.isArray(value) && value.every(
-    (row) => isRecord(row) && typeof row.currency === 'string' && typeof row.amount === 'number',
+    (detail) =>
+      isRecord(detail) &&
+      hasExactKeys(detail, ['label', 'value']) &&
+      typeof detail.label === 'string' &&
+      typeof detail.value === 'string',
   );
 }
 
 function isRangeOptions(value: unknown): boolean {
   return Array.isArray(value) && value.every(
-    (entry) => isRecord(entry) && isRangeId(entry.id) && typeof entry.label === 'string',
+    (entry) =>
+      isRecord(entry) &&
+      hasExactKeys(entry, ['id', 'label']) &&
+      isRangeId(entry.id) &&
+      typeof entry.label === 'string',
   );
 }
 
 function isLabels(value: unknown): boolean {
-  return isRecord(value) && Object.values(value).every((entry) => typeof entry === 'string');
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, LABEL_KEYS) &&
+    Object.values(value).every((entry) => typeof entry === 'string')
+  );
 }
 
 function isDashboardModel(value: unknown): value is DashboardModel {
-  if (!isRecord(value)) return false;
   if (
-    !isRecord(value.hero) ||
-    typeof value.hero.label !== 'string' ||
-    typeof value.hero.value !== 'string' ||
-    !isStringOrNull(value.hero.sourceLabel)
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'hero',
+      'historyTiles',
+      'hasHistoryData',
+      'providers',
+      'range',
+      'rangeLabel',
+      'ranges',
+      'labels',
+    ])
   ) {
     return false;
   }
-  if (!Array.isArray(value.tiles) || !value.tiles.every(
-    (tile) => isRecord(tile) && typeof tile.key === 'string' && typeof tile.label === 'string' &&
-      typeof tile.value === 'string' && typeof tile.tone === 'string' &&
-      typeof tile.scope === 'string',
-  )) return false;
-  if (!Array.isArray(value.providers) || !value.providers.every(
-    (provider) => isRecord(provider) && typeof provider.id === 'string' &&
-      typeof provider.name === 'string' && typeof provider.state === 'string' &&
-      typeof provider.stateLabel === 'string' &&
-      isRecord(provider.accent) && typeof provider.accent.light === 'string' &&
-      typeof provider.accent.dark === 'string' && isMeters(provider.meters) &&
-      isStringOrNull(provider.balance) && isProviderRangeUsage(provider.rangeUsage) &&
-      isStringOrNull(provider.hoursLabel) &&
-      isProviderCapabilities(provider.capabilities) &&
-      isStringOrNull(provider.note) &&
-      isStringOrNull(provider.message) && isStringOrNull(provider.fetchedAt),
-  )) return false;
-  if (!isRecord(value.usage)) return false;
-  const usage = value.usage;
+
   if (
-    typeof usage.available !== 'boolean' ||
-    !isStringOrNull(usage.currency) ||
-    !isStringArray(usage.categories) ||
-    !isPoints(usage.cost) ||
-    !isPoints(usage.requests) ||
-    !isPoints(usage.tokens) ||
-    !isTokenSeries(usage.tokenSeries) ||
-    !isModelRows(usage.byModel) ||
-    !isCurrencyTotals(usage.costTotals)
-  ) return false;
-  if (!isBalanceRows(value.balances)) return false;
-  if (!isCurrencyTotals(value.accountTotals)) return false;
+    value.hero !== null &&
+    (
+      !isRecord(value.hero) ||
+      !hasExactKeys(value.hero, ['label', 'value', 'sourceLabel']) ||
+      typeof value.hero.label !== 'string' ||
+      typeof value.hero.value !== 'string' ||
+      !isStringOrNull(value.hero.sourceLabel)
+    )
+  ) {
+    return false;
+  }
+
   if (
-    value.accountTotalSource !== 'summary' &&
-    value.accountTotalSource !== 'aggregated' &&
-    value.accountTotalSource !== 'unavailable'
-  ) return false;
-  if (typeof value.rangeLabel !== 'string' || !isRangeOptions(value.ranges)) return false;
-  if (typeof value.pricingLabel !== 'string' || !isLabels(value.labels)) return false;
-  return isRangeId(value.range);
+    !Array.isArray(value.historyTiles) ||
+    typeof value.hasHistoryData !== 'boolean' ||
+    !value.historyTiles.every(
+      (tile) =>
+        isRecord(tile) &&
+        hasExactKeys(tile, ['key', 'label', 'value', 'tone', 'scope']) &&
+        typeof tile.key === 'string' &&
+        typeof tile.label === 'string' &&
+        typeof tile.value === 'string' &&
+        typeof tile.tone === 'string' &&
+        typeof tile.scope === 'string',
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    !Array.isArray(value.providers) ||
+    !value.providers.every(
+      (provider) =>
+        isRecord(provider) &&
+        hasExactKeys(provider, [
+          'id',
+          'name',
+          'state',
+          'stateLabel',
+          'accent',
+          'meters',
+          'accountValue',
+          'details',
+          'hoursLabel',
+          'note',
+          'message',
+          'fetchedAt',
+        ]) &&
+        typeof provider.id === 'string' &&
+        (PROVIDER_IDS as readonly string[]).includes(provider.id) &&
+        typeof provider.name === 'string' &&
+        typeof provider.state === 'string' &&
+        typeof provider.stateLabel === 'string' &&
+        isRecord(provider.accent) &&
+        hasExactKeys(provider.accent, ['light', 'dark']) &&
+        typeof provider.accent.light === 'string' &&
+        typeof provider.accent.dark === 'string' &&
+        isMeters(provider.meters) &&
+        isProviderAccountValue(provider.accountValue) &&
+        isProviderDetails(provider.details) &&
+        isStringOrNull(provider.hoursLabel) &&
+        isStringOrNull(provider.note) &&
+        isStringOrNull(provider.message) &&
+        isStringOrNull(provider.fetchedAt),
+    )
+  ) {
+    return false;
+  }
+
+  return (
+    isRangeId(value.range) &&
+    typeof value.rangeLabel === 'string' &&
+    isRangeOptions(value.ranges) &&
+    isLabels(value.labels)
+  );
 }
 
 export function isHostMessage(value: unknown): value is HostMessage {
   if (!isRecord(value)) return false;
   if (value.kind === 'state') {
     return hasExactKeys(value, ['kind', 'model', 'range']) &&
-      isRangeId(value.range) && isDashboardModel(value.model);
+      isRangeId(value.range) &&
+      isDashboardModel(value.model);
   }
   if (value.kind === 'locale') {
-    return hasExactKeys(value, ['kind', 'strings']) && isRecord(value.strings) &&
+    return hasExactKeys(value, ['kind', 'strings']) &&
+      isRecord(value.strings) &&
       Object.values(value.strings).every((entry) => typeof entry === 'string');
   }
   return false;

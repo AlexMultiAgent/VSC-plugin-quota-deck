@@ -7,7 +7,6 @@ import type { PricingState } from '../../providers/deepseek/pricing';
 import type { DeepSeekBalance } from '../../providers/deepseek/shape';
 import type {
   MiniMaxPlan,
-  MiniMaxPoints,
   MiniMaxSubscription,
   MiniMaxWindow,
 } from '../../providers/minimax/shape';
@@ -281,23 +280,6 @@ function miniMaxChildren(
       ),
       state: quota.state,
       stateLabel: quota.stateLabel,
-      action: null,
-      children: [],
-    });
-  }
-
-  const points = capabilityValue<MiniMaxPoints>(snapshot, 'minimax.points');
-  if (typeof points?.balance === 'number') {
-    children.push({
-      id: `provider:${id}:points`,
-      label: options.t('capability.minimax.points'),
-      description: points.balance.toLocaleString('en-US'),
-      tooltip: detailTooltip(
-        options.t('capability.minimax.points'),
-        points.balance.toLocaleString('en-US'),
-      ),
-      state: 'muted',
-      stateLabel: '',
       action: null,
       children: [],
     });

@@ -14,8 +14,6 @@ import { signAliyunRequest } from './request';
 
 const CAPABILITIES: readonly CapabilityDescriptor[] = [
   { id: 'qwen.accountBalance', titleKey: 'capability.qwen.accountBalance', credential: 'access-key-id', required: true },
-  { id: 'qwen.modelQuota', titleKey: 'capability.qwen.modelQuota', credential: 'access-key-id', required: false },
-  { id: 'qwen.consumption', titleKey: 'capability.qwen.consumption', credential: 'access-key-id', required: false },
 ];
 
 export class QwenProvider implements QuotaProvider {
@@ -60,14 +58,6 @@ export class QwenProvider implements QuotaProvider {
     const fetchedAt = new Date().toISOString();
     const capabilities: Record<string, CapabilityState> = {};
     capabilities['qwen.accountBalance'] = await this.fetchBalance(fetchedAt, signal);
-    capabilities['qwen.modelQuota'] = {
-      kind: 'unsupported',
-      reason: 'model-level quota is not integrated; use the Model Studio console',
-    };
-    capabilities['qwen.consumption'] = {
-      kind: 'unsupported',
-      reason: 'BSS bill detail API is not implemented; use Alibaba Cloud Billing',
-    };
     return { providerId: this.id, fetchedAt, capabilities };
   }
 

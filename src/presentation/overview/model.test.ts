@@ -24,11 +24,6 @@ describe('buildOverviewItems', () => {
               models: [{ model: 'video', remaining: 3, total: 3, used: 0 }],
             },
           },
-          'minimax.points': {
-            kind: 'ok',
-            fetchedAt: 'x',
-            data: { balance: 6850, expiresAt: null },
-          },
           'minimax.subscription': {
             kind: 'ok',
             fetchedAt: 'x',
@@ -52,7 +47,7 @@ describe('buildOverviewItems', () => {
     expect(items[0]?.tooltip).toContain('⇄ 2026-11-18 18:43');
     expect(items[0]?.action?.kind).toBe('openDashboard');
     expect(items[0]?.children.map((item) => item.label)).toEqual([
-      '5 小时', '每周', '视频', '积分余额', '到期',
+      '5 小时', '每周', '视频', '到期',
     ]);
     expect(items[0]?.children[0]?.description).toBe('剩余 100% · 已使用 0%');
     expect(items[0]?.children[1]?.description).toBe('剩余 22% · 已使用 78%');

@@ -1,6 +1,6 @@
 # QuotaDeck CN
 
-国产大模型额度监控 — MiniMax、DeepSeek、Qwen 的余额、用量与重置倒计时，直接显示在 VS Code 状态栏和左侧 Activity Bar。悬停即可查看摘要，需要图表和模型明细时再打开可选仪表盘。
+国产大模型额度监控 — MiniMax、DeepSeek、Qwen 的余额、用量与重置倒计时，直接显示在 VS Code 状态栏和左侧 Activity Bar。悬停即可查看摘要，需要账户明细、历史用量或操作入口时再打开可选仪表盘。
 
 ## Features
 
@@ -9,10 +9,10 @@
 - 状态栏默认每 5 分钟自动刷新，也可从仪表盘“立即刷新”或命令面板手动刷新。
 - 单击状态栏打开仪表盘时会立即重新获取数据，并同步刷新状态栏、悬浮详情和仪表盘。
 - MiniMax 状态栏优先显示 5 小时窗口；额度按剩余比例使用绿色、黄色、橙色、红色四阶段文字，仅剩余 5% 及以下使用红色警示背景。
-- 历史用量区间与实时额度窗口分开展示，MiniMax 卡片显示所选区间的 Token 用量。
+- 历史用量区间只作用于 MiniMax Token 用量，并与实时额度窗口分开显示；没有实际消费记录时不展示范围筛选。
 - 悬停提示展示完整摘要，并标注账户实时数据来源；不会重复展示 API Key / AccessKey 等凭据类型。
 - 左侧 Activity Bar 提供额度概览：展开查看各服务商明细，点击服务商打开完整仪表盘；标题栏可刷新、打开仪表盘或进入插件设置。
-- 可选仪表盘：时间范围切换、账户余额、能力状态与表格视图。
+- 可选仪表盘：最低实时额度、额度重置、当前账户明细、MiniMax 套餐与可用历史用量，并提供刷新和配置入口。
 - MiniMax 国内版与国际版账号独立配置。
 - DeepSeek 官方余额查询；详细用量与账单请前往 DeepSeek 官网。
 - 取数失败时保留上一次的数据并标注“数据已过期”，而不是显示为未配置。
@@ -24,7 +24,8 @@
 
 - 不代理模型请求，不提供对话补全。
 - 不把本地估算当成账户余额或官方额度。
-- 不自动提取浏览器 Cookie。
+- 不把套餐或额度购买记录算作 Token 用量。
+- 不请求或保存网页 Cookie，也不使用网页会话访问厂商控制台。
 - 不做货币换算，也不合并不同币种的金额。
 - 不提供 DeepSeek 平台详细用量、费用或账户汇总；这部分请前往 `https://platform.deepseek.com` 查看。
 - 当前不接入百炼公开 Usage API（`/usage/summary`、`/usage/trend`）和
@@ -83,11 +84,11 @@ Qwen / 百炼余额获取方式：
 额度窗口、重置倒计时与用量区间按 `quotaDeck.timeZone` 指定的 IANA 时区计算，
 默认 `Asia/Shanghai`。修改设置后立即生效，无需重启窗口。
 
-| 服务商 | 必需凭据 | 可选凭据 |
-|---|---|---|
-| MiniMax CN / Global | Token Plan Key | Web Session Cookie（用于积分） |
-| DeepSeek | API Key | — |
-| Qwen / 百炼 | Alibaba Cloud AccessKey ID、Secret | — |
+| 服务商 | 必需凭据 |
+|---|---|
+| MiniMax CN / Global | Token Plan Key |
+| DeepSeek | API Key |
+| Qwen / 百炼 | Alibaba Cloud AccessKey ID、Secret |
 
 凭据通过密码输入框填写，不会回显，也不会写入 settings、全局状态或日志。
 
@@ -102,7 +103,7 @@ Qwen / 百炼余额获取方式：
 | `api.deepseek.com` | DeepSeek 余额 |
 | `business.aliyuncs.com` | 阿里云账户余额（Qwen / 百炼） |
 
-Cookie 只发送到对应厂商域名，并按各适配器声明的最小 Cookie 名称集合筛选。账户响应进入展示层前会被规范化和 HTML 转义；提交后的 fixture 还会经过凭据形状与财务金额匿名化检查。
+账户响应进入展示层前会被规范化和 HTML 转义；提交后的 fixture 还会经过凭据形状与财务金额匿名化检查。
 
 ## Commands
 

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { loadFixture } from '../../test/helpers/fixture';
 import {
   readMiniMaxPlan,
-  readMiniMaxPoints,
   readMiniMaxSubscription,
   readMiniMaxTokenUsage,
 } from './shape';
@@ -40,6 +39,11 @@ describe('readMiniMaxPlan', () => {
       used: 0,
       remainingPercent: 100,
       resetAt: 1795104000000,
+      weeklyTotal: 21,
+      weeklyRemaining: 21,
+      weeklyUsed: 0,
+      weeklyRemainingPercent: 100,
+      weeklyResetAt: 1795363200000,
     });
   });
 
@@ -87,6 +91,9 @@ describe('readMiniMaxSubscription', () => {
     const fixture = loadFixture('minimax-cn', 'minimax.subscription', 'standard') as {
       response: unknown;
     };
+    expect(readMiniMaxSubscription(fixture.response).planName).toBe(
+      'TokenPlanMax-年度会员',
+    );
     const originalTimeZone = process.env.TZ;
     try {
       for (const timeZone of ['UTC', 'America/New_York', 'Asia/Shanghai']) {
@@ -111,6 +118,7 @@ describe('readMiniMaxTokenUsage', () => {
       rangeId: 'last7',
       tokens: 30,
       currency: null,
+      hasUsageRecords: true,
     });
   });
 
@@ -122,11 +130,26 @@ describe('readMiniMaxTokenUsage', () => {
     ];
     expect(readMiniMaxTokenUsage({ charge_records: records }, 'thisMonth', now).tokens).toBe(10);
   });
-});
 
-describe('readMiniMaxPoints', () => {
-  it('reads a points balance and keeps missing data null', () => {
-    expect(readMiniMaxPoints({ token_plan_credit: 6850 }).balance).toBe(6850);
-    expect(readMiniMaxPoints({}).balance).toBeNull();
+  it('does not present plan purchases as Token usage', () => {
+    const usage = readMiniMaxTokenUsage(
+      {
+        charge_records: [
+          {
+            method: 'code_plan_purchase',
+            consume_token: 0,
+            created_at: Date.parse('2026-03-14T10:00:00Z') / 1000,
+          },
+          {
+            method: 'openplatform_purchase',
+            consume_token: 0,
+            created_at: Date.parse('2026-03-14T11:00:00Z') / 1000,
+          },
+        ],
+      },
+      'last30',
+      Date.parse('2026-03-15T07:30:00Z'),
+    );
+    expect(usage).toMatchObject({ tokens: 0, hasUsageRecords: false });
   });
 });

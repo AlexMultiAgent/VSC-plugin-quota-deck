@@ -9,17 +9,14 @@
     "minimax.plan": "/v1/api/openplatform/coding_plan/remains",
     "minimax.subscription": "/v1/api/openplatform/charge/combo/cycle_audio_resource_package?biz_line=2&cycle_type=1&resource_package_type=7",
     "minimax.tokenUsage": "/account/amount?page=1&limit=100&aggregate=false",
-    "minimax.points": "/backend/account/token_plan_credit",
     "deepseek.balance": "/user/balance"
   },
   "credentials": {
     "minimax-cn": {
-      "tokenPlanEnv": "MINIMAX_CN_TOKEN_PLAN",
-      "cookieEnv": "MINIMAX_CN_WEB_COOKIE"
+      "tokenPlanEnv": "MINIMAX_CN_TOKEN_PLAN"
     },
     "minimax-global": {
-      "tokenPlanEnv": "MINIMAX_GLOBAL_TOKEN_PLAN",
-      "cookieEnv": "MINIMAX_GLOBAL_WEB_COOKIE"
+      "tokenPlanEnv": "MINIMAX_GLOBAL_TOKEN_PLAN"
     },
     "deepseek": {
       "apiKeyEnv": "DEEPSEEK_API_KEY"

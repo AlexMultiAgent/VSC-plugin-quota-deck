@@ -725,7 +725,7 @@ describe('renderTooltip', () => {
     expect(renderTooltip(snapshots, ['deepseek'], t)).not.toContain('cookie');
   });
 
-  it('shows MiniMax media quota, points, and expiry', () => {
+  it('shows MiniMax media quota and expiry without cookie-only points', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -746,7 +746,7 @@ describe('renderTooltip', () => {
     };
     const html = renderTooltip(snapshots, ['minimax-cn'], t);
     expect(html).toContain('Video');
-    expect(html).toContain('6,850');
+    expect(html).not.toContain('6,850');
     expect(html).toContain('2027-06-30');
   });
 

@@ -30,7 +30,6 @@ export async function configureMiniMax(
 ): Promise<void> {
   const region = providerId === 'minimax-cn' ? 'cn' : 'global';
   const existingTokenPlan = await store.read(providerId, 'token-plan-key');
-  const existingCookie = await store.read(providerId, 'web-cookie');
   const tokenPlan = await askSecret({
     title: region === 'cn'
       ? t('credentials.minimax.cn.tokenPlan')
@@ -42,17 +41,7 @@ export async function configureMiniMax(
   if (tokenPlan !== undefined && tokenPlan.length > 0) {
     await store.write(providerId, 'token-plan-key', tokenPlan);
   }
-  const cookie = await askSecret({
-    title: region === 'cn'
-      ? t('credentials.minimax.cn.cookie')
-      : t('credentials.minimax.global.cookie'),
-    placeHolder: t('credentials.minimax.optionalPlaceholder'),
-    prompt: t('credentials.minimax.optionalPlaceholder'),
-    ...(existingCookie !== undefined ? { existing: existingCookie } : {}),
-  });
-  if (cookie !== undefined && cookie.length > 0) {
-    await store.write(providerId, 'web-cookie', cookie);
-  }
+  await store.delete(providerId, 'web-cookie');
 }
 
 export async function configureDeepSeek(store: SecretStore, t: Translator): Promise<void> {

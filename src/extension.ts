@@ -89,6 +89,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       t,
       range,
       pricing,
+      timeZone: settings.timeZone,
       warningThresholdPercent: settings.warningThresholdPercent,
     });
   }

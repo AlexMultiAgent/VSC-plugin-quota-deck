@@ -36,12 +36,10 @@ const BALANCE_RESPONSE = {
 };
 
 describe('QwenProvider', () => {
-  it('declares account balance and the capabilities that remain unsupported', () => {
+  it('declares only the account balance it actually queries', () => {
     const provider = new QwenProvider(ORIGIN, http({ ok: true, body: {} }));
     expect(provider.getCapabilities().capabilities.map((capability) => capability.id)).toEqual([
       'qwen.accountBalance',
-      'qwen.modelQuota',
-      'qwen.consumption',
     ]);
   });
 
@@ -56,7 +54,7 @@ describe('QwenProvider', () => {
 
     expect(state).toEqual({
       kind: 'ready',
-      capabilities: ['qwen.accountBalance', 'qwen.modelQuota', 'qwen.consumption'],
+      capabilities: ['qwen.accountBalance'],
     });
   });
 
@@ -69,7 +67,7 @@ describe('QwenProvider', () => {
     });
   });
 
-  it('queries account balance with a signed POST and leaves unsupported metrics empty', async () => {
+  it('queries only account balance with a signed POST', async () => {
     const client = http({ ok: true, body: BALANCE_RESPONSE });
     const provider = new QwenProvider(ORIGIN, client);
     await provider.connect(
@@ -92,14 +90,7 @@ describe('QwenProvider', () => {
         currency: 'CNY',
       },
     });
-    expect(snapshot.capabilities['qwen.modelQuota']).toEqual({
-      kind: 'unsupported',
-      reason: 'model-level quota is not integrated; use the Model Studio console',
-    });
-    expect(snapshot.capabilities['qwen.consumption']).toEqual({
-      kind: 'unsupported',
-      reason: 'BSS bill detail API is not implemented; use Alibaba Cloud Billing',
-    });
+    expect(Object.keys(snapshot.capabilities)).toEqual(['qwen.accountBalance']);
 
     const post = vi.mocked(client.postJson);
     expect(post).toHaveBeenCalledTimes(1);

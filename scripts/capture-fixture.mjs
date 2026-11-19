@@ -10,14 +10,10 @@ const { origins, endpoints, credentials } = JSON.parse(
 
 function minimaxEndpoints(provider, capability) {
   const origin = process.env.MINIMAX_ORIGIN ?? origins[provider];
-  const { tokenPlanEnv, cookieEnv } = credentials[provider];
+  const { tokenPlanEnv } = credentials[provider];
   const path = endpoints[capability];
   if (path === undefined) throw new Error(`unknown MiniMax capability: ${capability}`);
-  const auth =
-    capability === 'minimax.points'
-      ? { kind: 'cookie', env: cookieEnv }
-      : { kind: 'bearer', env: tokenPlanEnv };
-  return [{ url: `${origin}${path}`, auth }];
+  return [{ url: `${origin}${path}`, auth: { kind: 'bearer', env: tokenPlanEnv } }];
 }
 
 function deepseekEndpoints(capability) {
@@ -46,10 +42,6 @@ function headersFor(spec) {
     const token = process.env[spec.auth.env];
     if (!token) throw new Error(`missing environment variable ${spec.auth.env}`);
     headers.Authorization = `Bearer ${token}`;
-  } else if (spec.auth.kind === 'cookie') {
-    const cookie = process.env[spec.auth.env];
-    if (!cookie) throw new Error(`missing environment variable ${spec.auth.env}`);
-    headers.Cookie = cookie;
   } else {
     throw new Error(`unsupported auth kind: ${spec.auth.kind}`);
   }

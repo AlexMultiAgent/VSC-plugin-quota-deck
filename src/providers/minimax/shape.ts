@@ -16,6 +16,11 @@ export interface MiniMaxModel {
   readonly used: number | null;
   readonly remainingPercent: number | null;
   readonly resetAt: number | null;
+  readonly weeklyTotal: number | null;
+  readonly weeklyRemaining: number | null;
+  readonly weeklyUsed: number | null;
+  readonly weeklyRemainingPercent: number | null;
+  readonly weeklyResetAt: number | null;
 }
 
 export interface MiniMaxPlan {
@@ -32,13 +37,8 @@ export interface MiniMaxTokenUsage {
   readonly rangeId: RangeId;
   readonly tokens: number;
   readonly currency: string | null;
+  readonly hasUsageRecords: boolean;
 }
-
-export interface MiniMaxPoints {
-  readonly balance: number | null;
-  readonly expiresAt: number | null;
-}
-
 
 function asTimestamp(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -144,6 +144,11 @@ export function readMiniMaxPlan(response: unknown): MiniMaxPlan {
       numberOrNull(record.current_interval_usage_count),
       numberOrNull(record.current_interval_remaining_percent),
     );
+    const weeklyQuota = readQuota(
+      numberOrNull(record.current_weekly_total_count),
+      numberOrNull(record.current_weekly_usage_count),
+      numberOrNull(record.current_weekly_remaining_percent),
+    );
     return {
       model: String(record.model_name ?? ''),
       total: quota.total,
@@ -151,6 +156,11 @@ export function readMiniMaxPlan(response: unknown): MiniMaxPlan {
       used: quota.used,
       remainingPercent: quota.remainingPercent,
       resetAt: asTimestamp(record.end_time),
+      weeklyTotal: weeklyQuota.total,
+      weeklyRemaining: weeklyQuota.remaining,
+      weeklyUsed: weeklyQuota.used,
+      weeklyRemainingPercent: weeklyQuota.remainingPercent,
+      weeklyResetAt: asTimestamp(record.weekly_end_time),
     };
   });
 
@@ -163,6 +173,10 @@ export function readMiniMaxSubscription(response: unknown): MiniMaxSubscription 
     typeof root.current_subscribe === 'object' && root.current_subscribe !== null
       ? (root.current_subscribe as Record<string, unknown>)
       : root;
+  const planName =
+    current.current_subscribe_title ??
+    current.combo_name ??
+    current.plan_name;
   // `current_subscribe_end_time` is a locale date string such as "07/06/2027";
   // parsing it yields local midnight, so the epoch field wins when present.
   const expiresAt =
@@ -170,10 +184,7 @@ export function readMiniMaxSubscription(response: unknown): MiniMaxSubscription 
     asTimestamp(current.current_subscribe_end_time ?? current.end_time);
   return {
     expiresAt,
-    planName:
-      typeof (current.combo_name ?? current.plan_name) === 'string'
-        ? String(current.combo_name ?? current.plan_name)
-        : null,
+    planName: typeof planName === 'string' ? planName : null,
   };
 }
 
@@ -192,10 +203,20 @@ export function readMiniMaxTokenUsage(
   const records = Array.isArray(root.charge_records) ? root.charge_records : [];
   const range = rangeFor(rangeId, now, timeZone);
   let tokens = 0;
+  let hasUsageRecords = false;
 
   for (const raw of records) {
     if (typeof raw !== 'object' || raw === null) continue;
     const record = raw as Record<string, unknown>;
+    // `/account/amount` also lists plan and credit purchases. Those events are
+    // not model usage and must not make an all-zero usage range look populated.
+    if (
+      typeof record.method === 'string' &&
+      record.method.endsWith('_purchase')
+    ) {
+      continue;
+    }
+    hasUsageRecords = true;
     const timestamp = recordTime(record.created_at);
     if (timestamp === null) continue;
     if (timestamp < range.start || timestamp > range.end) continue;
@@ -206,23 +227,6 @@ export function readMiniMaxTokenUsage(
     rangeId,
     tokens,
     currency: typeof root.currency === 'string' ? root.currency : null,
-  };
-}
-
-export function readMiniMaxPoints(response: unknown): MiniMaxPoints {
-  const root = asRecord(response, 'root');
-  const data =
-    typeof root.data === 'object' && root.data !== null
-      ? (root.data as Record<string, unknown>)
-      : root;
-  const balanceKeys = ['token_plan_credit', 'credit', 'points', 'point_balance', 'balance'];
-  let balance: number | null = null;
-  for (const key of balanceKeys) {
-    balance = numberOrNull(data[key]);
-    if (balance !== null) break;
-  }
-  return {
-    balance,
-    expiresAt: asTimestamp(data.expire_time ?? data.expires_at),
+    hasUsageRecords,
   };
 }

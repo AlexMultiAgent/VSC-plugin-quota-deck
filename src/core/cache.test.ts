@@ -53,6 +53,30 @@ describe('SnapshotCache', () => {
     expect(await cache.load('deepseek', 'last7')).toEqual(snapshot);
   });
 
+  it('drops retired MiniMax cookie points from legacy caches', async () => {
+    const storage = new Map<string, unknown>([[
+      'quotaDeck.snapshot.minimax-cn.last7',
+      {
+        providerId: 'minimax-cn',
+        fetchedAt: '2026-11-16T00:00:00.000Z',
+        capabilities: {
+          'minimax.points': {
+            kind: 'ok',
+            fetchedAt: '2026-11-16T00:00:00.000Z',
+            data: { balance: 6850, expiresAt: null },
+          },
+        },
+      },
+    ]]);
+    const cache = new SnapshotCache(storage);
+
+    expect(await cache.load('minimax-cn', 'last7')).toEqual({
+      providerId: 'minimax-cn',
+      fetchedAt: '2026-11-16T00:00:00.000Z',
+      capabilities: {},
+    });
+  });
+
   it('drops a MiniMax plan cached under the inverted count rule', async () => {
     const storage = new Map<string, unknown>([[
       'quotaDeck.snapshot.minimax-cn.last7',

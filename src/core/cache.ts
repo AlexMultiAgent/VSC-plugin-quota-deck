@@ -14,6 +14,7 @@ const RETIRED_DEEPSEEK_CAPABILITIES = new Set([
   'deepseek.usageCost',
   'deepseek.accountSummary',
 ]);
+const RETIRED_MINIMAX_CAPABILITIES = new Set(['minimax.points']);
 
 function isSnapshot(value: unknown): value is ProviderSnapshot {
   if (typeof value !== 'object' || value === null) return false;
@@ -37,9 +38,15 @@ function stripSensitive(value: unknown): unknown {
 }
 
 function withoutRetiredCapabilities(snapshot: ProviderSnapshot): ProviderSnapshot {
-  if (snapshot.providerId !== 'deepseek') return snapshot;
+  const retired =
+    snapshot.providerId === 'deepseek'
+      ? RETIRED_DEEPSEEK_CAPABILITIES
+      : snapshot.providerId === 'minimax-cn' || snapshot.providerId === 'minimax-global'
+        ? RETIRED_MINIMAX_CAPABILITIES
+        : undefined;
+  if (retired === undefined) return snapshot;
   const entries = Object.entries(snapshot.capabilities).filter(
-    ([capability]) => !RETIRED_DEEPSEEK_CAPABILITIES.has(capability),
+    ([capability]) => !retired.has(capability),
   );
   return entries.length === Object.keys(snapshot.capabilities).length
     ? snapshot

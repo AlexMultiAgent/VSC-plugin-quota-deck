@@ -14,41 +14,40 @@ const t = translatorFor('en-US');
 describe('configureMiniMax', () => {
   beforeEach(() => __reset());
 
-  it('writes the token plan key to the secret store', async () => {
-    state.inputBoxResults = ['token-key', undefined];
+  it('asks only for the Token Plan key', async () => {
+    state.inputBoxResults = ['token-key'];
     const store = new SecretStore(SecretStorage);
     await configureMiniMax(store, 'minimax-cn', t);
     expect(await store.read('minimax-cn', 'token-plan-key')).toBe('token-key');
-  });
-
-  it('does not write a web cookie when the step is skipped', async () => {
-    state.inputBoxResults = ['token-key', undefined];
-    const store = new SecretStore(SecretStorage);
-    await configureMiniMax(store, 'minimax-cn', t);
-    expect(await store.read('minimax-cn', 'web-cookie')).toBeUndefined();
-  });
-
-  it('writes a web cookie when one is entered', async () => {
-    state.inputBoxResults = ['token-key', 'session=abc'];
-    const store = new SecretStore(SecretStorage);
-    await configureMiniMax(store, 'minimax-cn', t);
-    expect(await store.read('minimax-cn', 'web-cookie')).toBe('session=abc');
+    expect(state.inputBoxOptions).toHaveLength(1);
   });
 
   it('keeps domestic and global instances apart', async () => {
-    state.inputBoxResults = ['cn-key', undefined, 'global-key', undefined];
+    state.inputBoxResults = ['cn-key', 'global-key'];
     const store = new SecretStore(SecretStorage);
     await configureMiniMax(store, 'minimax-cn', t);
     await configureMiniMax(store, 'minimax-global', t);
     expect(await store.read('minimax-cn', 'token-plan-key')).toBe('cn-key');
     expect(await store.read('minimax-global', 'token-plan-key')).toBe('global-key');
+    expect(state.inputBoxOptions).toHaveLength(2);
   });
 
   it('never echoes the entered value', async () => {
-    state.inputBoxResults = ['token-key', undefined];
+    state.inputBoxResults = ['token-key'];
     const store = new SecretStore(SecretStorage);
     await configureMiniMax(store, 'minimax-cn', t);
     expect(state.output.join('\n')).not.toContain('token-key');
+  });
+
+  it('clears the retired MiniMax web cookie without asking for it', async () => {
+    const store = new SecretStore(SecretStorage);
+    await store.write('minimax-cn', 'web-cookie', 'session=legacy');
+    state.inputBoxResults = ['token-key'];
+
+    await configureMiniMax(store, 'minimax-cn', t);
+
+    expect(await store.read('minimax-cn', 'web-cookie')).toBeUndefined();
+    expect(state.inputBoxOptions).toHaveLength(1);
   });
 });
 

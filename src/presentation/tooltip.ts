@@ -3,12 +3,11 @@ import type { ProviderId, ProviderSnapshot } from '../core/types';
 import type { MessageKey } from '../localization/messages';
 import { SHANGHAI } from '../core/time';
 import { capabilityValue } from '../core/capability';
-import type { MiniMaxPlan, MiniMaxPoints, MiniMaxSubscription } from '../providers/minimax/shape';
+import type { MiniMaxPlan, MiniMaxSubscription } from '../providers/minimax/shape';
 import type { DeepSeekBalance } from '../providers/deepseek/shape';
 import type { QwenAccountBalance } from '../providers/qwen/shape';
 import { pricingState, type PricingState } from '../providers/deepseek/pricing';
 import { formatMoney, providerDisplayName } from './display';
-import { rangeLabel } from './labels';
 
 const ESCAPES: Record<string, string> = {
   '&': '&amp;',
@@ -39,27 +38,6 @@ interface WindowView {
 interface BalanceEntry {
   readonly currency: string;
   readonly total: number;
-}
-
-interface UsagePoint {
-  readonly date: string;
-  readonly requests: number;
-  readonly totalTokens: number;
-  readonly cacheHitTokens: number;
-  readonly cacheMissTokens: number;
-  readonly outputTokens: number;
-}
-
-interface UsageCost {
-  readonly date: string;
-  readonly cost: number;
-  readonly currency: string;
-}
-
-interface UsageSummary {
-  readonly requests: number;
-  readonly tokens: number;
-  readonly cacheHitRate: number | null;
 }
 
 function hasUsableConfiguration(snapshot: ProviderSnapshot | undefined): snapshot is ProviderSnapshot {
@@ -139,99 +117,6 @@ function resetCell(
   );
 }
 
-function usageDate(value: string, timeZone: string): string {
-  const parsed = Date.parse(value);
-  if (Number.isNaN(parsed)) return value.slice(0, 10);
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date(parsed));
-  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
-  return `${get('year')}-${get('month')}-${get('day')}`;
-}
-
-function summarize(points: readonly UsagePoint[]): UsageSummary {
-  const cacheHit = points.reduce((sum, point) => sum + point.cacheHitTokens, 0);
-  const cacheMiss = points.reduce((sum, point) => sum + point.cacheMissTokens, 0);
-  const denominator = cacheHit + cacheMiss;
-  return {
-    requests: points.reduce((sum, point) => sum + point.requests, 0),
-    tokens: points.reduce((sum, point) => sum + point.totalTokens, 0),
-    cacheHitRate: denominator === 0 ? null : cacheHit / denominator,
-  };
-}
-
-function usageRow(
-  label: string,
-  summary: UsageSummary,
-  cost: number,
-  currency: string,
-  t: Translator,
-): string {
-  const cache = summary.cacheHitRate === null
-    ? ''
-    : `${t('dashboard.cacheHit')} ${Math.round(summary.cacheHitRate * 100)}%`;
-  return (
-    `<tr><td>${escapeHtml(label)}</td>` +
-    `<td>${escapeHtml(formatMoney(cost, currency))}</td>` +
-    `<td>${summary.requests} ${escapeHtml(t('tooltip.requestsShort'))} · ` +
-    `${summary.tokens} ${escapeHtml(t('tooltip.tokensShort'))}</td>` +
-    `<td class="t-muted">${escapeHtml(cache)}</td></tr>`
-  );
-}
-
-function costTotals(costs: readonly UsageCost[]): Map<string, number> {
-  const totals = new Map<string, number>();
-  for (const row of costs) {
-    totals.set(row.currency, (totals.get(row.currency) ?? 0) + row.cost);
-  }
-  return totals;
-}
-
-function usageRows(snapshot: ProviderSnapshot | undefined, t: Translator, timeZone: string): string {
-  if (snapshot?.providerId === 'deepseek') return '';
-  const state = snapshot?.capabilities['deepseek.usageAmount'];
-  if (state === undefined) return '';
-  if (state.kind === 'failed') {
-    if (state.error.kind === 'auth') {
-      return `<tr><td colspan="4" class="t-failed">${escapeHtml(t('dashboard.sessionExpired'))}</td></tr>`;
-    }
-    return '';
-  }
-  if (state.kind !== 'ok' && state.kind !== 'stale') return '';
-  const data = state.data as
-    | { points?: UsagePoint[]; costs?: UsageCost[]; rangeId?: string }
-    | undefined;
-  const points = data?.points ?? [];
-  if (points.length === 0) return '';
-
-  const costs = data?.costs ?? [];
-  const rangeId = data?.rangeId ?? 'last7';
-  const rows: string[] = [];
-  const pushRows = (label: string, subset: readonly UsagePoint[]) => {
-    const summary = summarize(subset);
-    const totals = costTotals(costs.filter((row) => subset.some((point) => point.date === row.date)));
-    if (totals.size === 0) {
-      rows.push(usageRow(label, summary, 0, 'CNY', t));
-      return;
-    }
-    for (const [currency, total] of totals) {
-      rows.push(usageRow(label, summary, total, currency, t));
-    }
-  };
-  if (rangeId === 'last7') {
-    const today = usageDate(new Date().toISOString(), timeZone);
-    const todayPoints = points.filter((point) => usageDate(point.date, timeZone) === today);
-    if (todayPoints.length > 0) pushRows(t('dashboard.range.today'), todayPoints);
-    pushRows(t('dashboard.range.last7'), points);
-  } else {
-    pushRows(rangeLabel(rangeId as Parameters<typeof rangeLabel>[0], t), points);
-  }
-  return rows.join('');
-}
-
 function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, timeZone: string): string {
   if (snapshot === undefined) {
     return `<tr><td colspan="4" class="t-muted">${escapeHtml(t('state.unconfigured'))}</td></tr>`;
@@ -294,15 +179,14 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
         `${resetCell(model.resetAt, timeZone, t)}</tr>`,
       );
     }
-    const points = capabilityValue<MiniMaxPoints>(snapshot, 'minimax.points');
-    if (typeof points?.balance === 'number') {
+    const subscription = capabilityValue<MiniMaxSubscription>(snapshot, 'minimax.subscription');
+    if (subscription?.planName) {
       rows.push(
-        `<tr><td>${escapeHtml(t('capability.minimax.points'))}</td>` +
-        `<td>${points.balance.toLocaleString('en-US')}</td>` +
+        `<tr><td>${escapeHtml(t('dashboard.minimax.planName'))}</td>` +
+        `<td>${escapeHtml(subscription.planName)}</td>` +
         '<td></td><td></td></tr>',
       );
     }
-    const subscription = capabilityValue<MiniMaxSubscription>(snapshot, 'minimax.subscription');
     if (typeof subscription?.expiresAt === 'number') {
       rows.push(
         `<tr><td>${escapeHtml(t('tooltip.expires'))}</td>` +
@@ -323,11 +207,8 @@ function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, tim
           `<td class="t-muted">${escapeHtml(t('tooltip.balance'))}</td><td></td></tr>`,
       )
       .join('');
-    return rows + usageRows(snapshot, t, timeZone);
+    return rows;
   }
-
-  const usage = usageRows(snapshot, t, timeZone);
-  if (usage.length > 0) return usage;
 
   const failed = Object.values(snapshot.capabilities).find((state) => state.kind === 'failed');
   if (failed !== undefined && failed.kind === 'failed') {
