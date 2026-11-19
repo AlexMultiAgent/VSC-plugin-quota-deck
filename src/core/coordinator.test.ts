@@ -137,6 +137,27 @@ describe('Coordinator', () => {
     expect(order).toEqual(['start', 'end']);
   });
 
+  it('uses an updated time zone for later refreshes', async () => {
+    const seen: Array<string | undefined> = [];
+    const p: QuotaProvider = {
+      ...provider('minimax-cn', makeSnapshot('minimax-cn', {})),
+      fetchSnapshot: async (_signal, _range, timeZone) => {
+        seen.push(timeZone);
+        return makeSnapshot('minimax-cn', {});
+      },
+    };
+    const coordinator = new Coordinator({
+      providers: [p],
+      timeZone: 'Asia/Shanghai',
+    });
+
+    await coordinator.refreshAll();
+    coordinator.setTimeZone('America/New_York');
+    await coordinator.refreshAll();
+
+    expect(seen).toEqual(['Asia/Shanghai', 'America/New_York']);
+  });
+
   it('disposes every provider on shutdown', async () => {
     const p = provider('qwen', makeSnapshot('qwen', {}));
     const coordinator = new Coordinator({ providers: [p] });

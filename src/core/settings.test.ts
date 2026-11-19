@@ -57,7 +57,12 @@ describe('readSettings', () => {
 
   it('drops unknown ids and duplicates from the provider order', () => {
     seedConfiguration({ 'statusBar.providerOrder': ['deepseek', 'kimi', 'deepseek', 'qwen'] });
-    expect(readSettings().providerOrder).toEqual(['deepseek', 'qwen']);
+    expect(readSettings().providerOrder).toEqual([
+      'deepseek',
+      'qwen',
+      'minimax-cn',
+      'minimax-global',
+    ]);
   });
 
   it('falls back to the default order when every id is invalid', () => {
@@ -73,5 +78,30 @@ describe('readSettings', () => {
   it('falls back to the default time zone for an unknown zone', () => {
     seedConfiguration({ timeZone: 'Not/AZone' });
     expect(readSettings().timeZone).toBe('Asia/Shanghai');
+  });
+
+  it('falls back when enum, boolean, or time zone settings have invalid types', () => {
+    seedConfiguration({
+      language: 'fr-CA',
+      'statusBar.mode': 'everything',
+      pauseWhenUnfocused: 'false',
+      timeZone: 8,
+    });
+
+    const settings = readSettings();
+    expect(settings.language).toBe('auto');
+    expect(settings.statusBarMode).toBe('all');
+    expect(settings.pauseWhenUnfocused).toBe(true);
+    expect(settings.timeZone).toBe('Asia/Shanghai');
+  });
+
+  it('treats provider order as ordering without hiding omitted providers', () => {
+    seedConfiguration({ 'statusBar.providerOrder': ['qwen', 'deepseek'] });
+    expect(readSettings().providerOrder).toEqual([
+      'qwen',
+      'deepseek',
+      'minimax-cn',
+      'minimax-global',
+    ]);
   });
 });

@@ -111,58 +111,93 @@
       ]
     },
     "configuration": {
-      "title": "QuotaDeck CN",
+      "title": "%config.title%",
+      "order": 10,
       "properties": {
         "quotaDeck.language": {
           "type": "string",
           "enum": ["auto", "zh-CN", "en-US"],
+          "enumDescriptions": [
+            "%config.language.auto%",
+            "%config.language.zhCn%",
+            "%config.language.enUs%"
+          ],
           "default": "auto",
-          "description": "%config.language.description%"
+          "scope": "window",
+          "order": 10,
+          "markdownDescription": "%config.language.description%"
         },
         "quotaDeck.refreshIntervalMinutes": {
           "type": "number",
           "minimum": 1,
           "maximum": 60,
           "default": 5,
-          "description": "%config.refreshIntervalMinutes.description%"
+          "scope": "window",
+          "order": 20,
+          "markdownDescription": "%config.refreshIntervalMinutes.description%"
         },
         "quotaDeck.pauseWhenUnfocused": {
           "type": "boolean",
           "default": true,
-          "description": "%config.pauseWhenUnfocused.description%"
+          "scope": "window",
+          "order": 30,
+          "markdownDescription": "%config.pauseWhenUnfocused.description%"
         },
         "quotaDeck.statusBar.mode": {
           "type": "string",
           "enum": ["all", "focused"],
+          "enumDescriptions": [
+            "%config.statusBarMode.all%",
+            "%config.statusBarMode.focused%"
+          ],
           "default": "all",
-          "description": "%config.statusBarMode.description%"
+          "scope": "window",
+          "order": 40,
+          "markdownDescription": "%config.statusBarMode.description%"
         },
         "quotaDeck.statusBar.primaryProvider": {
           "type": "string",
           "enum": ["minimax-cn", "minimax-global", "deepseek", "qwen"],
+          "enumDescriptions": [
+            "%config.primaryProvider.minimaxCn%",
+            "%config.primaryProvider.minimaxGlobal%",
+            "%config.primaryProvider.deepseek%",
+            "%config.primaryProvider.qwen%"
+          ],
           "default": "minimax-cn",
-          "description": "%config.primaryProvider.description%"
+          "scope": "window",
+          "order": 50,
+          "markdownDescription": "%config.primaryProvider.description%"
         },
         "quotaDeck.statusBar.providerOrder": {
           "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
           "items": {
             "type": "string",
             "enum": ["minimax-cn", "minimax-global", "deepseek", "qwen"]
           },
           "default": ["minimax-cn", "minimax-global", "deepseek", "qwen"],
-          "description": "%config.providerOrder.description%"
+          "scope": "window",
+          "order": 60,
+          "markdownDescription": "%config.providerOrder.description%"
         },
         "quotaDeck.statusBar.warningThresholdPercent": {
           "type": "number",
           "minimum": 11,
           "maximum": 99,
           "default": 20,
-          "description": "%config.warningThresholdPercent.description%"
+          "scope": "window",
+          "order": 70,
+          "markdownDescription": "%config.warningThresholdPercent.description%"
         },
         "quotaDeck.timeZone": {
           "type": "string",
           "default": "Asia/Shanghai",
-          "description": "%config.timeZone.description%"
+          "scope": "window",
+          "order": 80,
+          "markdownDescription": "%config.timeZone.description%"
         }
       }
     },

@@ -104,6 +104,7 @@ export interface DashboardOptions {
   readonly pricing: PricingState;
   readonly timeZone?: string;
   readonly warningThresholdPercent?: number;
+  readonly now?: number;
 }
 
 export interface HistoryTileGroup {
@@ -138,6 +139,7 @@ function mediaMeters(
   snapshot: ProviderSnapshot | undefined,
   warningThresholdPercent: number,
   timeZone: string,
+  now: number,
   t: Translator,
 ): QuotaMeter[] {
   return (capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan')?.models ?? []).flatMap((model) => {
@@ -158,7 +160,7 @@ function mediaMeters(
         resetLabel:
           model.resetAt == null
             ? null
-            : `${t('tooltip.resetAt')} ${zonedDateTime(model.resetAt, timeZone)}`,
+            : resetLabel(model.resetAt, timeZone, now, t),
         tone: quotaTone(percent, warningThresholdPercent),
       });
     }
@@ -184,7 +186,7 @@ function mediaMeters(
         resetLabel:
           model.weeklyResetAt == null
             ? null
-            : `${t('tooltip.resetAt')} ${zonedDateTime(model.weeklyResetAt, timeZone)}`,
+            : resetLabel(model.weeklyResetAt, timeZone, now, t),
         tone: quotaTone(percent, warningThresholdPercent),
       });
     }
@@ -268,6 +270,31 @@ function zonedDateTime(timestamp: number, timeZone: string): string {
   }).formatToParts(new Date(timestamp));
   const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
   return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
+}
+
+function durationLabel(milliseconds: number, t: Translator): string {
+  const totalMinutes = Math.floor(Math.max(0, milliseconds) / 60_000);
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}${t('dashboard.duration.day')}`);
+  if (hours > 0) parts.push(`${hours}${t('dashboard.duration.hour')}`);
+  if (minutes > 0) parts.push(`${minutes}${t('dashboard.duration.minute')}`);
+  if (parts.length === 0) parts.push(`0${t('dashboard.duration.minute')}`);
+  return parts.join('').trim();
+}
+
+function resetLabel(
+  resetAt: number,
+  timeZone: string,
+  now: number,
+  t: Translator,
+): string {
+  return (
+    `${t('tooltip.resetAt')} ${zonedDateTime(resetAt, timeZone)}` +
+    ` · ${t('dashboard.resetRemaining')} ${durationLabel(resetAt - now, t)}`
+  );
 }
 
 function providerDetails(
@@ -380,6 +407,7 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
   const { snapshots, order, t, range, pricing } = options;
   const timeZone = options.timeZone ?? SHANGHAI;
   const warningThresholdPercent = options.warningThresholdPercent ?? 20;
+  const now = options.now ?? Date.now();
   const providers: DashboardProvider[] = order.flatMap((id) => {
     const snapshot = snapshots[id];
     const state = health(snapshot);
@@ -398,10 +426,10 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
         resetLabel:
           window.resetAt === null
             ? null
-            : `${t('tooltip.resetAt')} ${zonedDateTime(window.resetAt, timeZone)}`,
+            : resetLabel(window.resetAt, timeZone, now, t),
         tone: meterTone,
       };
-    }).concat(mediaMeters(snapshot, warningThresholdPercent, timeZone, t));
+    }).concat(mediaMeters(snapshot, warningThresholdPercent, timeZone, now, t));
     const failed = snapshot === undefined
       ? undefined
       : Object.values(snapshot.capabilities).find((entry) => entry.kind === 'failed');

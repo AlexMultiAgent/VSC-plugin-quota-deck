@@ -250,6 +250,7 @@ describe('buildDashboardModel', () => {
   it('shows MiniMax model usage for the current and weekly windows', () => {
     const model = buildDashboardModel(
       options({
+        now: Date.parse('2026-11-19T00:00:00+08:00'),
         order: ['minimax-cn'],
         snapshots: {
           'minimax-cn': makeSnapshot('minimax-cn', {
@@ -285,7 +286,7 @@ describe('buildDashboardModel', () => {
         label: 'Video · Current window',
         percent: 100,
         valueLabel: '3/3 · 100%',
-        resetLabel: 'Next reset 2026-11-20 00:00',
+        resetLabel: 'Next reset 2026-11-20 00:00 · Reset in 1d',
         tone: 'positive',
       },
       {
@@ -293,10 +294,93 @@ describe('buildDashboardModel', () => {
         label: 'Video · Weekly',
         percent: 100,
         valueLabel: '21/21 · 100%',
-        resetLabel: 'Next reset 2026-11-23 00:00',
+        resetLabel: 'Next reset 2026-11-23 00:00 · Reset in 4d',
         tone: 'positive',
       },
     ]);
+  });
+
+  it('shows the remaining time beside each MiniMax reset time', () => {
+    const now = Date.parse('2026-11-19T08:00:00+08:00');
+    const model = buildDashboardModel(
+      options({
+        now,
+        order: ['minimax-cn'],
+        snapshots: {
+          'minimax-cn': makeSnapshot('minimax-cn', {
+            'minimax.plan': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: {
+                windows: [
+                  {
+                    window: 'fiveHour',
+                    remainingPercent: 80,
+                    resetAt: Date.parse('2026-11-19T10:30:00+08:00'),
+                    unlimited: false,
+                  },
+                ],
+                models: [
+                  {
+                    model: 'video',
+                    total: 3,
+                    remaining: 2,
+                    used: 1,
+                    remainingPercent: 67,
+                    resetAt: Date.parse('2026-11-20T11:30:00+08:00'),
+                    weeklyTotal: 21,
+                    weeklyRemaining: 14,
+                    weeklyUsed: 7,
+                    weeklyRemainingPercent: 67,
+                    weeklyResetAt: Date.parse('2026-11-24T00:00:00+08:00'),
+                  },
+                ],
+              },
+            },
+          }),
+        },
+      }),
+    );
+
+    expect(model.providers[0]!.meters.map((meter) => meter.resetLabel)).toEqual([
+      'Next reset 2026-11-19 10:30 · Reset in 2h 30m',
+      'Next reset 2026-11-20 11:30 · Reset in 1d 3h 30m',
+      'Next reset 2026-11-24 00:00 · Reset in 4d 16h',
+    ]);
+  });
+
+  it('localizes the remaining time beside reset times', () => {
+    const zh = translatorFor('zh-CN');
+    const model = buildDashboardModel(
+      options({
+        t: zh,
+        now: Date.parse('2026-11-19T08:00:00+08:00'),
+        order: ['minimax-cn'],
+        snapshots: {
+          'minimax-cn': makeSnapshot('minimax-cn', {
+            'minimax.plan': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: {
+                windows: [
+                  {
+                    window: 'fiveHour',
+                    remainingPercent: 80,
+                    resetAt: Date.parse('2026-11-19T10:30:00+08:00'),
+                    unlimited: false,
+                  },
+                ],
+                models: [],
+              },
+            },
+          }),
+        },
+      }),
+    );
+
+    expect(model.providers[0]!.meters[0]!.resetLabel).toBe(
+      '下次重置 2026-11-19 10:30 · 剩余 2小时30分钟',
+    );
   });
 
   it('never renders a failed quota as zero', () => {

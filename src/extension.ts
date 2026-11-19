@@ -269,6 +269,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       settings = readSettings();
       t = translatorFor(resolveLanguage(settings.language, vscode.env.language));
       statusBar.setTranslator(t);
+      coordinator.setTimeZone(settings.timeZone);
       scheduler.reconfigure({
         refreshIntervalMinutes: settings.refreshIntervalMinutes,
         pauseWhenUnfocused: settings.pauseWhenUnfocused,

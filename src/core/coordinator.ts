@@ -62,6 +62,7 @@ export class Coordinator {
   private readonly providers: QuotaProvider[];
   private readonly cache: SnapshotCache | undefined;
   private readonly timeoutMs: number;
+  private timeZone: string | undefined;
   private inFlight: { range: RangeId; promise: Promise<Partial<Record<ProviderId, ProviderSnapshot>>> } | undefined;
   private last: Partial<Record<ProviderId, ProviderSnapshot>> = {};
 
@@ -70,10 +71,15 @@ export class Coordinator {
     this.providers = options.providers;
     this.cache = options.cache;
     this.timeoutMs = options.timeoutMs ?? 15_000;
+    this.timeZone = options.timeZone;
   }
 
   getLast(): Partial<Record<ProviderId, ProviderSnapshot>> {
     return this.last;
+  }
+
+  setTimeZone(timeZone: string): void {
+    this.timeZone = timeZone;
   }
 
   async refreshAll(range: RangeId = 'last7'): Promise<Partial<Record<ProviderId, ProviderSnapshot>>> {
@@ -99,7 +105,7 @@ export class Coordinator {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), this.timeoutMs);
       try {
-        const snapshot = await provider.fetchSnapshot(controller.signal, range, this.options.timeZone);
+        const snapshot = await provider.fetchSnapshot(controller.signal, range, this.timeZone);
         result[provider.id] = snapshot;
         for (const state of Object.values(snapshot.capabilities)) {
           if (state.kind === 'failed' && state.error.kind === 'rate-limit') {

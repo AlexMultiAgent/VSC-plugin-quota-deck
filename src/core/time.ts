@@ -109,8 +109,8 @@ export function rangeFor(id: RangeId, now: number, timeZone: string = SHANGHAI):
  * `RangeError` for an unknown zone, so an unvalidated setting would crash the
  * extension on the next refresh.
  */
-export function validTimeZone(zone: string | undefined): string {
-  if (zone === undefined || zone.trim() === '') return SHANGHAI;
+export function validTimeZone(zone: unknown): string {
+  if (typeof zone !== 'string' || zone.trim() === '') return SHANGHAI;
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: zone });
     return zone;

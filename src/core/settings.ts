@@ -36,28 +36,34 @@ function numberSetting(value: unknown, fallback: number): number {
 
 export function readSettings(): Settings {
   const config = vscode.workspace.getConfiguration('quotaDeck');
-  const language = config.get<Language>('language', 'auto');
+  const languageValue = config.get<unknown>('language', 'auto');
   const refresh = numberSetting(config.get<unknown>('refreshIntervalMinutes'), DEFAULT_REFRESH_INTERVAL_MINUTES);
-  const mode = config.get<StatusBarMode>('statusBar.mode', 'all');
+  const modeValue = config.get<unknown>('statusBar.mode', 'all');
   const primary = config.get<string>('statusBar.primaryProvider', 'minimax-cn');
   const order = config.get<unknown[]>('statusBar.providerOrder', DEFAULT_ORDER);
+  const pauseWhenUnfocused = config.get<unknown>('pauseWhenUnfocused', true);
   const warningThreshold = numberSetting(
     config.get<unknown>('statusBar.warningThresholdPercent'),
     DEFAULT_WARNING_THRESHOLD_PERCENT,
   );
-  const timeZone = validTimeZone(config.get<string>('timeZone', DEFAULT_TIME_ZONE));
+  const timeZone = validTimeZone(config.get<unknown>('timeZone', DEFAULT_TIME_ZONE));
 
   const validOrder = Array.isArray(order)
     ? order.filter((id): id is ProviderId => typeof id === 'string' && isProviderId(id))
     : [];
+  const providerOrder = [...new Set(validOrder)];
+  for (const id of DEFAULT_ORDER) {
+    if (!providerOrder.includes(id)) providerOrder.push(id);
+  }
 
   return {
-    language,
+    language:
+      languageValue === 'zh-CN' || languageValue === 'en-US' ? languageValue : 'auto',
     refreshIntervalMinutes: clamp(refresh, 1, 60, DEFAULT_REFRESH_INTERVAL_MINUTES),
-    pauseWhenUnfocused: config.get<boolean>('pauseWhenUnfocused', true),
-    statusBarMode: mode,
+    pauseWhenUnfocused: pauseWhenUnfocused !== false,
+    statusBarMode: modeValue === 'focused' ? 'focused' : 'all',
     primaryProvider: isProviderId(primary) ? primary : 'minimax-cn',
-    providerOrder: validOrder.length > 0 ? [...new Set(validOrder)] : [...DEFAULT_ORDER],
+    providerOrder,
     warningThresholdPercent: clamp(warningThreshold, 11, 99, DEFAULT_WARNING_THRESHOLD_PERCENT),
     timeZone,
   };
