@@ -3,7 +3,6 @@ import {
   formatMoney,
   pickTightestWindow,
   providerDisplayName,
-  remainingBar,
   selectPrimaryCurrency,
 } from './display';
 
@@ -64,29 +63,5 @@ describe('pickTightestWindow', () => {
 
   it('returns undefined when no window qualifies', () => {
     expect(pickTightestWindow([window(null)])).toBeUndefined();
-  });
-});
-
-describe('remainingBar', () => {
-  it('fills a fixed-width line track', () => {
-    expect(remainingBar(60)).toBe('━━━━━━────');
-    expect(remainingBar(65)).toBe('━━━━━━━───');
-  });
-
-  it('keeps one filled segment for a small remainder', () => {
-    expect(remainingBar(3)).toBe('━─────────');
-  });
-
-  it('renders an empty track for zero', () => {
-    expect(remainingBar(0)).toBe('──────────');
-  });
-
-  it('clamps a percentage above one hundred', () => {
-    expect(remainingBar(140)).toBe('━━━━━━━━━━');
-  });
-
-  it('keeps every track the same rendered width', () => {
-    const widths = [0, 3, 26, 69, 100].map((percent) => [...remainingBar(percent)].length);
-    expect(new Set(widths)).toEqual(new Set([10]));
   });
 });
