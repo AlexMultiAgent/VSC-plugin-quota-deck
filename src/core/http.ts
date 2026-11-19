@@ -65,6 +65,11 @@ export class HttpClient {
     );
   }
 
+  /** Send a POST without a body or content type (the Qianwen auth surface). */
+  async postEmpty(url: string, options: RequestOptions = {}): Promise<JsonResult> {
+    return this.requestJson('POST', url, undefined, options);
+  }
+
   /**
    * Send an `application/x-www-form-urlencoded` POST. The console gateway
    * accepts a form body, not JSON, and its signature covers the exact string.

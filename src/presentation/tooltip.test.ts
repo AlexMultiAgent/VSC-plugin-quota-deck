@@ -775,3 +775,82 @@ describe('renderTooltip', () => {
     expect(html).not.toContain('2027-07-05');
   });
 });
+
+  it('shows Qwen Token Plan windows, plan, and expiry after the balance rows', () => {
+    const snapshots = {
+      qwen: makeSnapshot('qwen', {
+        'qwen.accountBalance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            availableAmount: 1,
+            availableCashAmount: 1,
+            creditAmount: 0,
+            mybankCreditAmount: 0,
+            quotaLimit: null,
+            currency: 'CNY',
+          },
+        },
+        'qwen.tokenPlan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              {
+                cycle: 'monthly',
+                usedRatio: 0.62,
+                resetAt: Date.parse('2026-12-01T00:00:00Z'),
+              },
+            ],
+          },
+        },
+        'qwen.tokenPlanSubscription': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            status: 'active',
+            specCode: 'pro',
+            expiresAt: Date.parse('2027-01-01T00:00:00Z'),
+            remainingDays: 40,
+          },
+        },
+      }),
+    };
+
+    const html = renderTooltip(snapshots, ['qwen'], t);
+
+    expect(html).toContain('<tr><td colspan="4">Token Plan</td></tr>');
+    expect(html).toContain('Monthly');
+    expect(html).toContain('38%');
+    expect(html).toContain('Next reset 2026-12-01 08:00');
+    expect(html).toContain('>Plan<');
+    expect(html).toContain('pro');
+    expect(html).toContain('Expires');
+  });
+
+  it('shows the unsubscribed and failed states instead of a zero window', () => {
+    const unsubscribed = {
+      qwen: makeSnapshot('qwen', {
+        'qwen.accountBalance': { kind: 'unconfigured', reason: 'missing' },
+        'qwen.tokenPlanSubscription': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: { status: 'none', specCode: null, expiresAt: null, remainingDays: null },
+        },
+      }),
+    };
+    expect(renderTooltip(unsubscribed, ['qwen'], t)).toContain('No Token Plan subscription');
+
+    const failed = {
+      qwen: makeSnapshot('qwen', {
+        'qwen.accountBalance': { kind: 'unconfigured', reason: 'missing' },
+        'qwen.tokenPlan': {
+          kind: 'failed',
+          error: { kind: 'auth', message: 'error.qwen.loginExpired' },
+        },
+      }),
+    };
+    expect(renderTooltip(failed, ['qwen'], t)).toContain(
+      'The Qianwen AI sign-in expired',
+    );
+  });

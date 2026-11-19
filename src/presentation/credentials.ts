@@ -151,6 +151,11 @@ const CLEARABLE_CREDENTIALS: readonly (StoredCredential & { readonly labelKey: M
     credential: 'access-key-secret',
     labelKey: 'credentials.qwen.accessKeySecret',
   },
+  {
+    providerId: 'qwen',
+    credential: 'management-token',
+    labelKey: 'credentials.qwen.managementToken',
+  },
 ];
 
 export async function pickStoredCredential(

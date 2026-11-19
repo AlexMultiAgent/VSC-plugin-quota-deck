@@ -15,6 +15,7 @@ export const CREDENTIAL_KINDS = [
   'web-cookie',
   'access-key-id',
   'access-key-secret',
+  'management-token',
 ] as const;
 export type CredentialKind = (typeof CREDENTIAL_KINDS)[number];
 

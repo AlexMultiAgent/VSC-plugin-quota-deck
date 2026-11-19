@@ -480,3 +480,81 @@ describe('StatusBarPresenter', () => {
     presenter.dispose();
   });
 });
+
+  it('adds the tightest Qwen Token Plan window to the balance segment', () => {
+    const snapshots = {
+      qwen: makeSnapshot('qwen', {
+        'qwen.accountBalance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            availableAmount: -12.34,
+            creditAmount: 5,
+            mybankCreditAmount: 6,
+            availableCashAmount: -18.34,
+            quotaLimit: 1000,
+            currency: 'CNY',
+          },
+        },
+        'qwen.tokenPlan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { cycle: 'monthly', usedRatio: 0.62, resetAt: null },
+              { cycle: 'weekly', usedRatio: 0.9, resetAt: null },
+            ],
+          },
+        },
+      }),
+    };
+
+    expect(renderStatusBarText(snapshots, ['qwen'], t)).toBe(
+      '$(pulse) QW $(warning) ¥-12.34 · 10%',
+    );
+  });
+
+  it('keeps the Qwen balance when the Token Plan capability failed', () => {
+    const snapshots = {
+      qwen: makeSnapshot('qwen', {
+        'qwen.accountBalance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            availableAmount: -12.34,
+            creditAmount: 5,
+            mybankCreditAmount: 6,
+            availableCashAmount: -18.34,
+            quotaLimit: 1000,
+            currency: 'CNY',
+          },
+        },
+        'qwen.tokenPlan': {
+          kind: 'failed',
+          error: { kind: 'auth', message: 'error.qwen.loginExpired' },
+        },
+      }),
+    };
+
+    expect(renderStatusBarText(snapshots, ['qwen'], t)).toBe(
+      '$(pulse) QW $(dashboard) ¥-12.34',
+    );
+  });
+
+  it('shows a live Qwen window when the balance is unavailable', () => {
+    const snapshots = {
+      qwen: makeSnapshot('qwen', {
+        'qwen.accountBalance': {
+          kind: 'failed',
+          error: { kind: 'auth', message: 'error.auth' },
+        },
+        'qwen.tokenPlan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: { windows: [{ cycle: 'monthly', usedRatio: 0.62, resetAt: null }] },
+        },
+      }),
+    };
+
+    expect(renderStatusBarText(snapshots, ['qwen'], t)).toBe('$(pulse) QW $(warning) 38%');
+  });

@@ -84,6 +84,11 @@
         "category": "QuotaDeck CN"
       },
       {
+        "command": "quotaDeck.loginQwen",
+        "title": "%command.loginQwen.title%",
+        "category": "QuotaDeck CN"
+      },
+      {
         "command": "quotaDeck.configureProviders",
         "title": "%command.configureProviders.title%",
         "category": "QuotaDeck CN"

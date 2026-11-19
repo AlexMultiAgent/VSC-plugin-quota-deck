@@ -6,7 +6,7 @@ import { formatCountdown } from '../core/time';
 import { capabilityValue } from '../core/capability';
 import type { MiniMaxPlan } from '../providers/minimax/shape';
 import type { DeepSeekBalance } from '../providers/deepseek/shape';
-import type { QwenAccountBalance } from '../providers/qwen/shape';
+import type { QwenAccountBalance, QwenTokenPlan } from '../providers/qwen/shape';
 import { pricingState, type PricingState } from '../providers/deepseek/pricing';
 import { formatMoney, pickTightestWindow, selectPrimaryCurrency } from './display';
 import { pricingPeriodLabel } from './labels';
@@ -64,6 +64,35 @@ function qwenBalance(snapshot: ProviderSnapshot | undefined): BalanceView | unde
     : { currency: balance.currency, amount: balance.availableAmount };
 }
 
+interface QwenTokenPlanWindowView {
+  readonly cycle: 'monthly' | 'weekly';
+  readonly remainingPercent: number;
+  readonly resetAt: number | null;
+}
+
+function qwenTokenPlanWindows(
+  snapshot: ProviderSnapshot | undefined,
+): QwenTokenPlanWindowView[] {
+  const plan = capabilityValue<QwenTokenPlan>(snapshot, 'qwen.tokenPlan');
+  return (plan?.windows ?? []).map((window) => ({
+    cycle: window.cycle,
+    remainingPercent: (1 - window.usedRatio) * 100,
+    resetAt: window.resetAt,
+  }));
+}
+
+function tightestQwenWindow(
+  snapshot: ProviderSnapshot | undefined,
+): QwenTokenPlanWindowView | undefined {
+  return qwenTokenPlanWindows(snapshot).reduce<QwenTokenPlanWindowView | undefined>(
+    (lowest, window) =>
+      lowest === undefined || window.remainingPercent < lowest.remainingPercent
+        ? window
+        : lowest,
+    undefined,
+  );
+}
+
 const MAX_STATUS_BAR_SEGMENTS = 3;
 const STATUS_ICON = {
   positive: '$(check)',
@@ -97,10 +126,16 @@ function visibleTone(
   warningThresholdPercent: number,
 ): QuotaTone {
   const tones = visible.flatMap((id) => {
+    if (id === 'qwen') {
+      const window = tightestQwenWindow(snapshots[id]);
+      return window === undefined
+        ? []
+        : [quotaTone(window.remainingPercent, warningThresholdPercent)];
+    }
     const window = preferredWindow(snapshots[id]);
-    return window === undefined
+    return window === undefined || window.remainingPercent === null
       ? []
-      : [quotaTone(window.remainingPercent!, warningThresholdPercent)];
+      : [quotaTone(window.remainingPercent, warningThresholdPercent)];
   });
   if (tones.includes('critical')) return 'critical';
   if (tones.includes('warning')) return 'warning';
@@ -173,9 +208,22 @@ export function renderStatusBarText(
 
     if (id === 'qwen') {
       const balanceState = snapshot.capabilities['qwen.accountBalance'];
-      if (balanceState?.kind === 'ok' || balanceState?.kind === 'stale') {
-        const stale = balanceState.kind === 'stale' ? ` ${t('state.stale')}` : '';
-        return `${label} ${STATUS_ICON.neutral} ${formatBalance(qwenBalance(snapshot))}${stale}`;
+      const balanceLive = balanceState?.kind === 'ok' || balanceState?.kind === 'stale';
+      const window = tightestQwenWindow(snapshot);
+      if (balanceLive || window !== undefined) {
+        const parts: string[] = [];
+        if (balanceLive) parts.push(formatBalance(qwenBalance(snapshot)));
+        if (window !== undefined) parts.push(`${Math.round(window.remainingPercent)}%`);
+        const stale =
+          balanceState?.kind === 'stale' ||
+          snapshot.capabilities['qwen.tokenPlan']?.kind === 'stale'
+            ? ` ${t('state.stale')}`
+            : '';
+        const icon =
+          window === undefined
+            ? STATUS_ICON.neutral
+            : STATUS_ICON[quotaTone(window.remainingPercent, warningThresholdPercent)];
+        return `${label} ${icon} ${parts.join(' · ')}${stale}`;
       }
       const state = unavailableState(snapshot, t);
       return `${label} ${state.icon} ${state.label}`;

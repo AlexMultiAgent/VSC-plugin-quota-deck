@@ -184,8 +184,8 @@ path with `/subscription` and adds `"commodityCode": "sfm_tokenplansolo_public_c
 
 - origins: `qwen-api` (BSS balance), `qwen-auth` (`https://t.qianwenai.com`), `qwen-cli`
   (`https://cli.qianwenai.com`), `qwen-data` (`https://cs-data.qianwenai.com`);
-- endpoints: `qwen.deviceCode` (`/cli/device/code`), `qwen.deviceToken`
-  (`/cli/device/token`), `qwen.tokenPlanToken` (`/data/v2/api.json`),
+- endpoints: `qwen.deviceCode` (`/cli/device/code`), `qwen.devicePoll`
+  (`/cli/device/token`), `qwen.consoleAccess` (`/data/v2/api.json`),
   `qwen.tokenPlanUsage`, `qwen.tokenPlanSubscription`;
 - no Qwen credential environment variable: the extension reads the management token from Secret
   Storage and the balance AccessKey pair from Secret Storage.

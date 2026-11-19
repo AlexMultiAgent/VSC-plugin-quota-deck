@@ -693,3 +693,69 @@ describe('groupHistoryTiles', () => {
     ]);
   });
 });
+
+  it('adds Qwen Token Plan meters and subscription details', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['qwen'],
+        now: Date.parse('2026-11-20T00:00:00Z'),
+        snapshots: {
+          qwen: makeSnapshot('qwen', {
+            'qwen.accountBalance': {
+              kind: 'ok',
+              fetchedAt: '2026-11-16T00:00:00.000Z',
+              data: {
+                availableAmount: 1,
+                availableCashAmount: 1,
+                creditAmount: 0,
+                mybankCreditAmount: 0,
+                quotaLimit: null,
+                currency: 'CNY',
+              },
+            },
+            'qwen.tokenPlan': {
+              kind: 'ok',
+              fetchedAt: '2026-11-16T00:00:00.000Z',
+              data: {
+                windows: [
+                  {
+                    cycle: 'monthly',
+                    usedRatio: 0.62,
+                    resetAt: Date.parse('2026-12-01T00:00:00Z'),
+                  },
+                ],
+              },
+            },
+            'qwen.tokenPlanSubscription': {
+              kind: 'ok',
+              fetchedAt: '2026-11-16T00:00:00.000Z',
+              data: {
+                status: 'active',
+                specCode: 'pro',
+                expiresAt: Date.parse('2027-01-01T00:00:00Z'),
+                remainingDays: 40,
+              },
+            },
+          }),
+        },
+      }),
+    );
+
+    const provider = model.providers[0]!;
+    expect(provider.meters).toEqual([
+      {
+        key: 'qwen-token-plan:monthly',
+        label: 'Monthly',
+        percent: 38,
+        valueLabel: '38%',
+        resetLabel: 'Next reset 2026-12-01 08:00 · Reset in 11d',
+        tone: 'caution',
+      },
+    ]);
+    expect(provider.details).toContainEqual({ label: 'Plan', value: 'pro' });
+    expect(provider.details).toContainEqual({
+      label: 'Expires',
+      value: '2027-01-01 08:00',
+    });
+    expect(model.hero?.sourceLabel).toBe('Qwen · Monthly');
+  });

@@ -167,3 +167,16 @@ describe('HttpClient', () => {
     expect(failure(result).kind).toBe('malformed');
   });
 });
+
+  it('sends a POST without a body or content type', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ ok: true }));
+    globalThis.fetch = fetchMock;
+    const client = new HttpClient({ timeoutMs: 1_000, maxAttempts: 1 });
+
+    await client.postEmpty('https://api.example.com/auth');
+
+    const [, init] = fetchMock.mock.calls.at(-1)! as [string, RequestInit];
+    expect(init.method).toBe('POST');
+    expect(init.body).toBeUndefined();
+    expect((init.headers as Record<string, string>)['Content-Type']).toBeUndefined();
+  });

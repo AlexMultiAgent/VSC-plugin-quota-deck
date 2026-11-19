@@ -36,12 +36,13 @@ describe('provider endpoints', () => {
     expect(ENDPOINTS).not.toHaveProperty('deepseek.accountSummary');
   });
 
-  it('names the Qwen Token Plan origins and endpoints', () => {
-    expect(ORIGINS['qwen-modelstudio']).toBe('https://modelstudio.cn-beijing.aliyuncs.com');
-    expect(ORIGINS['qwen-console']).toBe('https://bailian-cs.console.aliyun.com');
-    expect(ENDPOINTS['qwen.tokenPlanToken']).toBe(
-      '/modelstudio/cli/generateAccessToken?Action=GenerateCLIAccessToken&Version=2026-02-10',
-    );
+  it('names the Qwen OAuth and Token Plan origins and endpoints', () => {
+    expect(ORIGINS['qwen-auth']).toBe('https://t.qianwenai.com');
+    expect(ORIGINS['qwen-cli']).toBe('https://cli.qianwenai.com');
+    expect(ORIGINS['qwen-data']).toBe('https://cs-data.qianwenai.com');
+    expect(ENDPOINTS['qwen.deviceCode']).toBe('/cli/device/code');
+    expect(ENDPOINTS['qwen.devicePoll']).toBe('/cli/device/token');
+    expect(ENDPOINTS['qwen.consoleAccess']).toBe('/data/v2/api.json');
     expect(ENDPOINTS['qwen.tokenPlanUsage']).toContain(
       'zeldaHttp.apikeyMgr.%2Ftokenplan%2Fpersonal%2Fapi%2Fv2%2Fusage',
     );

@@ -9,7 +9,8 @@ import type { RangeId } from './core/time';
 import type { ConnectionState, ProviderId } from './core/types';
 import { resolveLanguage, translatorFor } from './localization';
 import { pricingState, type PricingState } from './providers/deepseek/pricing';
-import { buildProviders } from './providers/registry';
+import { ENDPOINTS } from './providers/endpoints';
+import { buildProviders, QWEN_AUTH_ORIGIN } from './providers/registry';
 import { registerCommands } from './presentation/commands';
 import {
   clearCredential,
@@ -24,6 +25,7 @@ import { buildDashboardModel, type DashboardModel } from './presentation/dashboa
 import { runOnboarding } from './presentation/onboarding';
 import { buildOverviewItems } from './presentation/overview/model';
 import { QuotaOverviewProvider } from './presentation/overview/provider';
+import { loginQwen } from './presentation/qwenLogin';
 import { buildFallbackItems } from './presentation/quickPickFallback';
 import { StatusBarPresenter } from './presentation/statusBar';
 import { buildSwitcherItems } from './presentation/switcher';
@@ -175,6 +177,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await reconnect('qwen');
       await refreshAll();
     },
+    loginQwen: async (): Promise<void> => {
+      const signedIn = await loginQwen(secrets, context, t, http, {
+        origin: QWEN_AUTH_ORIGIN,
+        codePath: ENDPOINTS['qwen.deviceCode'],
+        tokenPath: ENDPOINTS['qwen.devicePoll'],
+      });
+      if (!signedIn) return;
+      await reconnect('qwen');
+      await refreshAll();
+    },
   };
 
   async function configureProviders(): Promise<void> {
@@ -234,6 +246,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       },
       configureQwen: async () => {
         await writer.configureQwen();
+      },
+      loginQwen: async () => {
+        await writer.loginQwen();
       },
       configureProviders,
       showHelp: async () => {

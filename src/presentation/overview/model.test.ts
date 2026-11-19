@@ -245,3 +245,97 @@ describe('buildOverviewItems', () => {
     expect(items[0]?.children).toEqual([]);
   });
 });
+
+  it('adds Token Plan windows, plan, and expiry to the Qwen item', () => {
+    const items = buildOverviewItems({
+      snapshots: {
+        qwen: makeSnapshot('qwen', {
+          'qwen.accountBalance': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: {
+              availableAmount: 1.25,
+              availableCashAmount: 0.5,
+              creditAmount: 0.75,
+              mybankCreditAmount: 0,
+              quotaLimit: null,
+              currency: 'CNY',
+            },
+          },
+          'qwen.tokenPlan': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: {
+              windows: [
+                { cycle: 'monthly', usedRatio: 0.62, resetAt: Date.parse('2026-12-01T00:00:00Z') },
+              ],
+            },
+          },
+          'qwen.tokenPlanSubscription': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: {
+              status: 'active',
+              specCode: 'pro',
+              expiresAt: Date.parse('2027-01-01T00:00:00Z'),
+              remainingDays: 40,
+            },
+          },
+        }),
+      },
+      configured: { qwen: true },
+      order: ['qwen'],
+      t,
+      pricing: 'offPeak',
+      timeZone: 'Asia/Shanghai',
+      warningThresholdPercent: 20,
+    });
+
+    expect(items[0]?.description).toBe('¥1.25 CNY · Monthly 38%');
+    expect(items[0]?.state).toBe('caution');
+    const monthly = items[0]?.children.find(
+      (child) => child.id === 'provider:qwen:tokenPlan:monthly',
+    );
+    expect(monthly?.description).toBe('Remaining 38% · Used 62%');
+    expect(monthly?.tooltip).toContain('Next reset 2026-12-01 08:00');
+    expect(items[0]?.children.map((child) => child.label)).toContain('Plan');
+    expect(items[0]?.children.map((child) => child.label)).toContain('Expires');
+  });
+
+  it('shows the unsubscribed state without inventing a window', () => {
+    const items = buildOverviewItems({
+      snapshots: {
+        qwen: makeSnapshot('qwen', {
+          'qwen.accountBalance': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: {
+              availableAmount: 1,
+              availableCashAmount: 1,
+              creditAmount: 0,
+              mybankCreditAmount: 0,
+              quotaLimit: null,
+              currency: 'CNY',
+            },
+          },
+          'qwen.tokenPlanSubscription': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: { status: 'none', specCode: null, expiresAt: null, remainingDays: null },
+          },
+        }),
+      },
+      configured: { qwen: true },
+      order: ['qwen'],
+      t,
+      pricing: 'offPeak',
+      timeZone: 'Asia/Shanghai',
+      warningThresholdPercent: 20,
+    });
+
+    expect(items[0]?.description).toBe('¥1.00 CNY');
+    expect(items[0]?.children.map((child) => child.label)).toContain(
+      'No Token Plan subscription',
+    );
+    expect(items[0]?.children.some((child) => child.id.includes('tokenPlan:'))).toBe(false);
+  });

@@ -47,7 +47,8 @@ src/
                  endpoints.ts = typed view over that JSON; registry.ts = buildProviders()
                  shape.ts = vendor-neutral primitives; <vendor>/shape.ts = raw payload shapes
                  only deepseek/ splits raw (usage.ts) from higher-level (aggregate.ts); minimax/ and
-                 qwen/ parse and assemble inside shape.ts + provider.ts; qwen/request.ts signs ACS3
+                 qwen/ parse and assemble inside shape.ts + provider.ts; qwen/request.ts signs ACS3;
+                 qwen/auth.ts parses the management device flow and stored token, qwen/login.ts runs it
   presentation/  statusBar, tooltip, overview/ (Activity Bar tree), onboarding, commands, credentials,
                  switcher, labels, display, quotaTone, quickPickFallback, dashboard/
   localization/  messages.ts (key registry) + en-us.ts / zh-cn.ts bundles + index.ts (resolver)
@@ -105,11 +106,11 @@ the status bar, the dashboard and the Activity Bar tree — the `warning` line f
 provider's exported types and reads through `capabilityValue`, never a hand-written `as` cast.
 
 `src/providers/endpoints.json` is the single source for every endpoint URL and credential
-environment variable. The extension and `scripts/capture-fixture.mjs` both read it, so a changed
-endpoint can never leave the capture script pointing at a URL the extension does not call.
-It is JSON rather than a `.ts` module because `scripts/capture-fixture.mjs` must read it without
-importing anything from `src/`. Qwen's AccessKey pair is not in there — it is not an environment
-variable, and it lives only in Secret Storage.
+environment variable. The extension, `scripts/capture-fixture.mjs` and
+`scripts/capture-qwen-fixtures.mjs` all read it, so a changed endpoint can never leave a capture
+script pointing at a URL the extension does not call. It is JSON rather than a `.ts` module because
+the capture scripts must read it without importing anything from `src/`. Qwen's AccessKey pair is
+not in there — it is not an environment variable, and it lives only in Secret Storage.
 
 `src/presentation/dashboard/protocol.ts` validates every host↔webview message against an
 exact-key schema — including the range selection the webview sends back. Extend that validator
@@ -129,9 +130,12 @@ These are product and security rules, not implementation details — do not trad
   state, logs, or webview HTML. `scripts/release-gate.mjs` fails `npm run package` if `package.json`
   declares any setting matching `/cookie|secret|password|token|apikey|session/i`.
 - **Only API credentials are used — never a browser session.** Since v0.2.11 the web-session Cookie
-  path is gone: MiniMax uses the Token Plan key, DeepSeek the API key, Qwen the AccessKey pair.
+  path is gone: MiniMax uses the Token Plan key, DeepSeek the API key, Qwen the AccessKey pair for
+  the account balance and the official Qianwen management OAuth token for the Token Plan.
   `CREDENTIAL_KINDS` in `src/core/types.ts` still lists `session-token` and `web-cookie`, but no
-  provider reads them — `src/presentation/credentials.ts` only *deletes* the legacy secrets.
+  provider reads them — `src/presentation/credentials.ts` only *deletes* the legacy secrets. The
+  `management-token` kind is an OAuth access token from the platform's official device flow, not a
+  browser cookie, and it is obtained only by the `quotaDeck.loginQwen` command.
 - **A failed fetch is a state, not a number.** Capability states are `ok | stale | unconfigured |
   unsupported | failed`. Never substitute `0` or `0.00` for missing data — the UI must say why.
   A refresh that fails while a previous value survives becomes `stale`, which keeps the value
@@ -142,11 +146,14 @@ These are product and security rules, not implementation details — do not trad
   Activity Bar tree label each card 账户实时数据. No local estimate or token-derived price is
   surfaced, and the credential type is deliberately not shown. A future estimated value must carry
   its own label — never let it borrow the account one.
-- **Qwen uses the Alibaba Cloud Billing OpenAPI, not a Model Studio API Key.** The adapter calls
-  account-level `QueryAccountBalance` at `business.aliyuncs.com` with ACS3-HMAC-SHA256 signing.
-  AccessKey ID and Secret live only in Secret Storage. Model-level quota is not integrated.
-  Consumption detail requires the separate BSS bill APIs, extra permissions, and pagination, so it
-  is not implemented and must be viewed in the Alibaba Cloud billing console.
+- **Qwen uses the Alibaba Cloud Billing OpenAPI for the balance and the Qianwen management OAuth
+  flow for the Token Plan.** The balance calls account-level `QueryAccountBalance` at
+  `business.aliyuncs.com` with ACS3-HMAC-SHA256 signing and a Secret Storage AccessKey pair. The
+  personal Token Plan quota uses the official device-flow token (`quotaDeck.loginQwen`) to issue a
+  console token at `cli.qianwenai.com` and query `cs-data.qianwenai.com`; an `sk-sp-…` Token Plan
+  key cannot query quota. Model-level quota and consumption detail remain console-only and are not
+  integrated; consumption detail needs the separate BSS bill APIs, extra permissions, and
+  pagination.
 - **DeepSeek only uses the public balance endpoint.** The extension never asks for or forwards a
   platform session token or Cookie. Detailed DeepSeek usage, cost, and account summaries belong on
   `platform.deepseek.com`.
@@ -213,6 +220,12 @@ These are product and security rules, not implementation details — do not trad
 - **`minimax.points` is a retired capability.** The points endpoint needs a web-session Cookie, so it
   was dropped. `src/core/cache.ts` lists it in `RETIRED_MINIMAX_CAPABILITIES` and strips it from
   snapshots cached before the removal. Do not reintroduce it without a verified credential.
+- **The Qianwen management token is a device-flow token, not a Token Plan key.** The login command
+  uses `t.qianwenai.com` with PKCE, exchanges the OAuth bearer for a console token at
+  `cli.qianwenai.com/data/v2/api.json`, then queries `cs-data.qianwenai.com` with
+  `consoleSite: "QIANWENAI"`. The official CLI has no refresh grant: an expired `expiresAt` means
+  the user re-runs `QuotaDeck CN: 登录千问AI平台`. `per1MonthPercentage` is a **used** ratio in
+  0..1; monthly and weekly are independent. The verified contract is in `docs/contracts/qwen.md`.
 - **MiniMax rejects a credential with HTTP 200.** The refusal lives in `base_resp.status_code`
   (`1004` for a bad key), so `credentialRejection()` in `src/providers/minimax/provider.ts` runs
   before the shape parsers — otherwise a revoked key reads as a malformed response.
@@ -256,9 +269,12 @@ npm run guard:fixtures
 Credentials come from environment variables only (`DEEPSEEK_API_KEY`, `MINIMAX_CN_TOKEN_PLAN`,
 `MINIMAX_GLOBAL_TOKEN_PLAN`) — never from a file or a command-line argument.
 `scripts/capture-fixture.mjs` is dev-only and must never be imported from `src/`.
-It covers MiniMax and DeepSeek only — `specsFor()` rejects every other provider, so a Qwen fixture
-has to be written by hand. The script sends a bearer Token Plan key for `minimax.plan`,
+It covers MiniMax and DeepSeek only. The script sends a bearer Token Plan key for `minimax.plan`,
 `minimax.subscription` and `minimax.tokenUsage`; `headersFor()` supports bearer auth only.
+Qwen Token Plan fixtures come from `scripts/capture-qwen-fixtures.mjs`, which runs the official
+OAuth device flow once, opens the verification URL, and writes both Qwen fixtures; the access token
+stays in memory and the console token is redacted in the fixture. Never hand-write a Qwen fee
+payload or reuse a token response as a fixture.
 
 Sanitization preserves structure but zeroes financial fields (`balance|cost|amount` → `0` / `0.00`)
 and redacts secret-shaped values. Fixtures are therefore proof of *shape*, never proof of a real

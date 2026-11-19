@@ -5,7 +5,11 @@ import { SHANGHAI } from '../core/time';
 import { capabilityValue } from '../core/capability';
 import type { MiniMaxPlan, MiniMaxSubscription } from '../providers/minimax/shape';
 import type { DeepSeekBalance } from '../providers/deepseek/shape';
-import type { QwenAccountBalance } from '../providers/qwen/shape';
+import type {
+  QwenAccountBalance,
+  QwenTokenPlan,
+  QwenTokenPlanSubscription,
+} from '../providers/qwen/shape';
 import { pricingState, type PricingState } from '../providers/deepseek/pricing';
 import { formatMoney, providerDisplayName } from './display';
 
@@ -117,26 +121,94 @@ function resetCell(
   );
 }
 
-function providerRows(snapshot: ProviderSnapshot | undefined, t: Translator, timeZone: string): string {
+function tokenPlanWindowLabel(cycle: 'monthly' | 'weekly', t: Translator): string {
+  return cycle === 'weekly' ? t('tooltip.window.weekly') : t('tooltip.window.monthly');
+}
+
+function qwenTokenPlanRows(
+  snapshot: ProviderSnapshot,
+  t: Translator,
+  timeZone: string,
+): string {
+  const plan = capabilityValue<QwenTokenPlan>(snapshot, 'qwen.tokenPlan');
+  const subscription = capabilityValue<QwenTokenPlanSubscription>(
+    snapshot,
+    'qwen.tokenPlanSubscription',
+  );
+  let rows = '';
+
+  if (plan !== undefined && plan.windows.length > 0) {
+    rows += `<tr><td colspan="4">${escapeHtml(t('dashboard.qwen.tokenPlanSection'))}</td></tr>`;
+    for (const window of plan.windows) {
+      const remaining = Math.max(0, Math.min(100, (1 - window.usedRatio) * 100));
+      const label = tokenPlanWindowLabel(window.cycle, t);
+      rows +=
+        `<tr><td>${escapeHtml(label)}</td>` +
+        `<td>${bar(remaining)}${quotaValue(`${Math.round(remaining)}%`)}</td>` +
+        `${resetCell(window.resetAt, timeZone, t)}</tr>`;
+    }
+  }
+
+  if (subscription?.status === 'active') {
+    if (subscription.specCode !== null) {
+      rows +=
+        `<tr><td>${escapeHtml(t('dashboard.qwen.planTier'))}</td>` +
+        `<td>${escapeHtml(subscription.specCode)}</td><td></td><td></td></tr>`;
+    }
+    if (subscription.expiresAt !== null) {
+      const expiry = zonedTime(new Date(subscription.expiresAt).toISOString(), timeZone);
+      rows +=
+        `<tr><td>${escapeHtml(t('tooltip.expires'))}</td>` +
+        `<td>${escapeHtml(expiry)}</td><td></td><td></td></tr>`;
+    }
+  } else if (subscription?.status === 'none') {
+    rows +=
+      `<tr><td colspan="4" class="t-muted">` +
+      `${escapeHtml(t('dashboard.qwen.notSubscribed'))}</td></tr>`;
+  }
+
+  const failed = [
+    snapshot.capabilities['qwen.tokenPlan'],
+    snapshot.capabilities['qwen.tokenPlanSubscription'],
+  ].find((state) => state?.kind === 'failed');
+  if (failed?.kind === 'failed') {
+    rows +=
+      `<tr><td colspan="4" class="t-failed">` +
+      `${escapeHtml(t(failed.error.message))}</td></tr>`;
+  }
+
+  return rows;
+}
+
+function providerRows(
+  id: ProviderId,
+  snapshot: ProviderSnapshot | undefined,
+  t: Translator,
+  timeZone: string,
+): string {
   if (snapshot === undefined) {
     return `<tr><td colspan="4" class="t-muted">${escapeHtml(t('state.unconfigured'))}</td></tr>`;
   }
 
-  const qwenBalance = capabilityValue<QwenAccountBalance>(snapshot, 'qwen.accountBalance');
-  if (qwenBalance !== undefined) {
-    const row = (label: string, amount: number, suffix = '') =>
-      `<tr><td>${escapeHtml(label)}</td>` +
-      `<td>${escapeHtml(formatMoney(amount, qwenBalance.currency))}</td>` +
-      `<td class="t-muted">${escapeHtml(qwenBalance.currency)}${escapeHtml(suffix)}</td><td></td></tr>`;
-    let rows =
-      row(t('dashboard.qwen.availableBalance'), qwenBalance.availableAmount) +
-      row(t('dashboard.qwen.availableCash'), qwenBalance.availableCashAmount) +
-      row(t('dashboard.qwen.credit'), qwenBalance.creditAmount) +
-      row(t('dashboard.qwen.mybankCredit'), qwenBalance.mybankCreditAmount);
-    if (qwenBalance.quotaLimit !== null) {
-      rows += row(t('dashboard.qwen.quotaLimit'), qwenBalance.quotaLimit);
+  if (id === 'qwen') {
+    const qwenBalance = capabilityValue<QwenAccountBalance>(snapshot, 'qwen.accountBalance');
+    let rows = '';
+    if (qwenBalance !== undefined) {
+      const row = (label: string, amount: number, suffix = '') =>
+        `<tr><td>${escapeHtml(label)}</td>` +
+        `<td>${escapeHtml(formatMoney(amount, qwenBalance.currency))}</td>` +
+        `<td class="t-muted">${escapeHtml(qwenBalance.currency)}${escapeHtml(suffix)}</td><td></td></tr>`;
+      rows =
+        row(t('dashboard.qwen.availableBalance'), qwenBalance.availableAmount) +
+        row(t('dashboard.qwen.availableCash'), qwenBalance.availableCashAmount) +
+        row(t('dashboard.qwen.credit'), qwenBalance.creditAmount) +
+        row(t('dashboard.qwen.mybankCredit'), qwenBalance.mybankCreditAmount);
+      if (qwenBalance.quotaLimit !== null) {
+        rows += row(t('dashboard.qwen.quotaLimit'), qwenBalance.quotaLimit);
+      }
     }
-    return rows;
+    rows += qwenTokenPlanRows(snapshot, t, timeZone);
+    if (rows.length > 0) return rows;
   }
 
   const plan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
@@ -243,7 +315,7 @@ export function renderTooltip(
         `<tr><td class="t-title"><strong>${escapeHtml(providerDisplayName(id))}</strong></td>` +
         `<td class="t-muted">${escapeHtml(region)}</td></tr>` +
         period +
-        providerRows(snapshot, t, timeZone) +
+        providerRows(id, snapshot, t, timeZone) +
         '</table>'
       );
     });

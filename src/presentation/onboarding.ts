@@ -7,6 +7,7 @@ export interface CredentialWriter {
   configureMiniMax(providerId: 'minimax-cn' | 'minimax-global'): Promise<void>;
   configureDeepSeek(): Promise<void>;
   configureQwen(): Promise<void>;
+  loginQwen(): Promise<void>;
 }
 
 interface ProviderChoice {
@@ -67,7 +68,19 @@ export async function runOnboarding(
   if (picked.id === 'deepseek') {
     await writer.configureDeepSeek();
   } else if (picked.id === 'qwen') {
-    await writer.configureQwen();
+    const action = await vscode.window.showQuickPick(
+      [
+        { label: t('credentials.qwen.configureBalance'), action: 'balance' },
+        { label: t('credentials.qwen.loginTitle'), action: 'login' },
+      ] as const,
+      { title: providerDisplayName('qwen') },
+    );
+    if (action === undefined) return;
+    if (action.action === 'login') {
+      await writer.loginQwen();
+    } else {
+      await writer.configureQwen();
+    }
   } else {
     await writer.configureMiniMax(picked.id);
   }

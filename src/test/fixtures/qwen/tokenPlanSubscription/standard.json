@@ -19,7 +19,7 @@
           "msg": "Success.",
           "code": "SUCCESS",
           "data": {
-            "instanceCode": "sfm_tokenplansolo_public_cn-6r351ycuh0o",
+            "instanceCode": "<redacted>",
             "specCode": "essential",
             "remainingDays": 30,
             "startTime": 1795120671000,
@@ -67,7 +67,7 @@
             "msg": "Success.",
             "code": "SUCCESS",
             "data": {
-              "instanceCode": "sfm_tokenplansolo_public_cn-6r351ycuh0o",
+              "instanceCode": "<redacted>",
               "specCode": "essential",
               "remainingDays": 30,
               "startTime": 1795120671000,

@@ -9,7 +9,11 @@ import type {
   MiniMaxSubscription,
   MiniMaxTokenUsage,
 } from '../../providers/minimax/shape';
-import type { QwenAccountBalance } from '../../providers/qwen/shape';
+import type {
+  QwenAccountBalance,
+  QwenTokenPlan,
+  QwenTokenPlanSubscription,
+} from '../../providers/qwen/shape';
 import { formatMoney, providerDisplayName, selectPrimaryCurrency } from '../display';
 import { pricingPeriodLabel, rangeLabel } from '../labels';
 import { quotaTone } from '../quotaTone';
@@ -194,6 +198,31 @@ function mediaMeters(
   });
 }
 
+function qwenTokenPlanMeters(
+  snapshot: ProviderSnapshot | undefined,
+  warningThresholdPercent: number,
+  timeZone: string,
+  now: number,
+  t: Translator,
+): QuotaMeter[] {
+  const plan = capabilityValue<QwenTokenPlan>(snapshot, 'qwen.tokenPlan');
+  return (plan?.windows ?? []).map((window) => {
+    const percent = Math.max(0, Math.min(100, (1 - window.usedRatio) * 100));
+    return {
+      key: `qwen-token-plan:${window.cycle}`,
+      label:
+        window.cycle === 'weekly'
+          ? t('tooltip.window.weekly')
+          : t('tooltip.window.monthly'),
+      percent,
+      valueLabel: `${Math.round(percent)}%`,
+      resetLabel:
+        window.resetAt === null ? null : resetLabel(window.resetAt, timeZone, now, t),
+      tone: quotaTone(percent, warningThresholdPercent),
+    };
+  });
+}
+
 function balanceRows(snapshot: ProviderSnapshot | undefined): DeepSeekBalance['entries'] {
   return capabilityValue<DeepSeekBalance>(snapshot, 'deepseek.balance')?.entries ?? [];
 }
@@ -343,6 +372,29 @@ function providerDetails(
         });
       }
     }
+    const tokenPlan = capabilityValue<QwenTokenPlanSubscription>(
+      snapshot,
+      'qwen.tokenPlanSubscription',
+    );
+    if (tokenPlan?.status === 'active') {
+      if (tokenPlan.specCode !== null) {
+        details.push({
+          label: t('dashboard.qwen.planTier'),
+          value: tokenPlan.specCode,
+        });
+      }
+      if (tokenPlan.expiresAt !== null) {
+        details.push({
+          label: t('tooltip.expires'),
+          value: zonedDateTime(tokenPlan.expiresAt, timeZone),
+        });
+      }
+    } else if (tokenPlan?.status === 'none') {
+      details.push({
+        label: t('dashboard.qwen.planTier'),
+        value: t('dashboard.qwen.notSubscribed'),
+      });
+    }
   }
   if (id === 'deepseek') {
     const balance = capabilityValue<DeepSeekBalance>(snapshot, 'deepseek.balance');
@@ -429,7 +481,9 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
             : resetLabel(window.resetAt, timeZone, now, t),
         tone: meterTone,
       };
-    }).concat(mediaMeters(snapshot, warningThresholdPercent, timeZone, now, t));
+    })
+      .concat(mediaMeters(snapshot, warningThresholdPercent, timeZone, now, t))
+      .concat(qwenTokenPlanMeters(snapshot, warningThresholdPercent, timeZone, now, t));
     const failed = snapshot === undefined
       ? undefined
       : Object.values(snapshot.capabilities).find((entry) => entry.kind === 'failed');

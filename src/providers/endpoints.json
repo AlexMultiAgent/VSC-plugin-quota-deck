@@ -4,15 +4,18 @@
     "minimax-global": "https://www.minimax.io",
     "deepseek-api": "https://api.deepseek.com",
     "qwen-api": "https://business.aliyuncs.com",
-    "qwen-modelstudio": "https://modelstudio.cn-beijing.aliyuncs.com",
-    "qwen-console": "https://bailian-cs.console.aliyun.com"
+    "qwen-auth": "https://t.qianwenai.com",
+    "qwen-cli": "https://cli.qianwenai.com",
+    "qwen-data": "https://cs-data.qianwenai.com"
   },
   "endpoints": {
     "minimax.plan": "/v1/api/openplatform/coding_plan/remains",
     "minimax.subscription": "/v1/api/openplatform/charge/combo/cycle_audio_resource_package?biz_line=2&cycle_type=1&resource_package_type=7",
     "minimax.tokenUsage": "/account/amount?page=1&limit=100&aggregate=false",
     "deepseek.balance": "/user/balance",
-    "qwen.tokenPlanToken": "/modelstudio/cli/generateAccessToken?Action=GenerateCLIAccessToken&Version=2026-02-10",
+    "qwen.deviceCode": "/cli/device/code",
+    "qwen.devicePoll": "/cli/device/token",
+    "qwen.consoleAccess": "/data/v2/api.json",
     "qwen.tokenPlanUsage": "/cli/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaHttp.apikeyMgr.%2Ftokenplan%2Fpersonal%2Fapi%2Fv2%2Fusage",
     "qwen.tokenPlanSubscription": "/cli/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaHttp.apikeyMgr.%2Ftokenplan%2Fpersonal%2Fapi%2Fv2%2Fsubscription"
   },
@@ -25,10 +28,6 @@
     },
     "deepseek": {
       "apiKeyEnv": "DEEPSEEK_API_KEY"
-    },
-    "qwen": {
-      "accessKeyIdEnv": "ALIBABA_CLOUD_ACCESS_KEY_ID",
-      "accessKeySecretEnv": "ALIBABA_CLOUD_ACCESS_KEY_SECRET"
     }
   }
 }

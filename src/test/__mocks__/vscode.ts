@@ -13,6 +13,7 @@ export class EventEmitter<T> {
 export const StatusBarAlignment = { Left: 1, Right: 2 } as const;
 export const ViewColumn = { Active: -1, Beside: -2, One: 1 } as const;
 export const TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 } as const;
+export const ProgressLocation = { SourceControl: 1, Window: 10, Notification: 15 } as const;
 
 export class MarkdownString {
   value: string;
@@ -306,8 +307,23 @@ export const window = {
     state.output.push(`warn:${message}`);
     return Promise.resolve();
   },
-  withProgress<T>(_options: unknown, task: (progress: unknown) => Promise<T>): Promise<T> {
-    return task({ report: () => undefined });
+  withProgress<T>(
+    _options: unknown,
+    task: (
+      progress: { report(value: unknown): void },
+      token: {
+        isCancellationRequested: boolean;
+        onCancellationRequested(listener: () => void): Disposable;
+      },
+    ) => Promise<T>,
+  ): Promise<T> {
+    return task(
+      { report: () => undefined },
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: () => ({ dispose: () => undefined }),
+      },
+    );
   },
   createWebviewPanel(_viewType: string, _title: string, _column: number, _options: unknown): WebviewPanel {
     const listeners: Array<(message: unknown) => void> = [];

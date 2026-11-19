@@ -43,8 +43,8 @@ For the OAuth revision:
 
 - **Task 1 endpoints** become: `qwen-auth` (`https://t.qianwenai.com`), `qwen-cli`
   (`https://cli.qianwenai.com`), `qwen-data` (`https://cs-data.qianwenai.com`); endpoints
-  `qwen.deviceCode` (`/cli/device/code`), `qwen.deviceToken` (`/cli/device/token`),
-  `qwen.tokenPlanToken` (`/data/v2/api.json`), `qwen.tokenPlanUsage`, and
+  `qwen.deviceCode` (`/cli/device/code`), `qwen.devicePoll` (`/cli/device/token`),
+  `qwen.consoleAccess` (`/data/v2/api.json`), `qwen.tokenPlanUsage`, and
   `qwen.tokenPlanSubscription` on `/cli/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=…`.
   There is no Qwen credential environment variable. `postForm()` is still required.
 - **Task 2 is complete:** the fixtures were captured through the device flow; no second capture is
@@ -121,7 +121,7 @@ Append to `scripts/endpoints.test.ts`:
   it('names the Qwen Token Plan origins and endpoints', () => {
     expect(ORIGINS['qwen-modelstudio']).toBe('https://modelstudio.cn-beijing.aliyuncs.com');
     expect(ORIGINS['qwen-console']).toBe('https://bailian-cs.console.aliyun.com');
-    expect(ENDPOINTS['qwen.tokenPlanToken']).toBe(
+    expect(ENDPOINTS['qwen.consoleAccess']).toBe(
       '/modelstudio/cli/generateAccessToken?Action=GenerateCLIAccessToken&Version=2026-02-10',
     );
     expect(ENDPOINTS['qwen.tokenPlanUsage']).toContain(
@@ -157,7 +157,7 @@ Replace `src/providers/endpoints.json` with:
     "minimax.subscription": "/v1/api/openplatform/charge/combo/cycle_audio_resource_package?biz_line=2&cycle_type=1&resource_package_type=7",
     "minimax.tokenUsage": "/account/amount?page=1&limit=100&aggregate=false",
     "deepseek.balance": "/user/balance",
-    "qwen.tokenPlanToken": "/modelstudio/cli/generateAccessToken?Action=GenerateCLIAccessToken&Version=2026-02-10",
+    "qwen.consoleAccess": "/modelstudio/cli/generateAccessToken?Action=GenerateCLIAccessToken&Version=2026-02-10",
     "qwen.tokenPlanUsage": "/cli/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaHttp.apikeyMgr.%2Ftokenplan%2Fpersonal%2Fapi%2Fv2%2Fusage",
     "qwen.tokenPlanSubscription": "/cli/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaHttp.apikeyMgr.%2Ftokenplan%2Fpersonal%2Fapi%2Fv2%2Fsubscription"
   },
@@ -323,7 +323,7 @@ function qwenSteps(capability) {
     );
   }
 
-  const tokenUrl = new URL(`${origins['qwen-modelstudio']}${endpoints['qwen.tokenPlanToken']}`);
+  const tokenUrl = new URL(`${origins['qwen-modelstudio']}${endpoints['qwen.consoleAccess']}`);
   const tokenHeaders = signAliyunRequest({
     method: 'POST',
     pathname: tokenUrl.pathname,
@@ -1424,7 +1424,7 @@ export class QwenProvider implements QuotaProvider {
       return { kind: 'failed', error: { kind: 'auth', message: 'error.auth' } };
     }
 
-    const url = `${this.origins.modelStudio}${ENDPOINTS['qwen.tokenPlanToken']}`;
+    const url = `${this.origins.modelStudio}${ENDPOINTS['qwen.consoleAccess']}`;
     const body = '{}';
     const headers = signAliyunRequest({
       method: 'POST',
@@ -2830,5 +2830,5 @@ git commit -m "chore(release): v0.2.19"
 - Type names are consistent across tasks: `QwenTokenPlan`, `QwenTokenPlanWindow`,
   `QwenTokenPlanSubscription`, `QwenOrigins`, `QwenTokenPlanWindowView` (presentation-local).
 - The new capability ids are `qwen.tokenPlan` and `qwen.tokenPlanSubscription` everywhere; the
-  endpoint ids are `qwen.tokenPlanToken`, `qwen.tokenPlanUsage`, and
+  endpoint ids are `qwen.consoleAccess`, `qwen.tokenPlanUsage`, and
   `qwen.tokenPlanSubscription`.

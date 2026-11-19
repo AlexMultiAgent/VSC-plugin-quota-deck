@@ -13,6 +13,7 @@ describe('registerCommands', () => {
       configureMiniMax: async () => undefined,
       configureDeepSeek: async () => undefined,
       configureQwen: async () => undefined,
+      loginQwen: async () => undefined,
       configureProviders: async () => undefined,
       showHelp: async () => undefined,
       openSettings: async () => undefined,
@@ -22,6 +23,7 @@ describe('registerCommands', () => {
       'quotaDeck.configureMiniMax',
       'quotaDeck.configureProviders',
       'quotaDeck.configureQwen',
+      'quotaDeck.loginQwen',
       'quotaDeck.openDashboard',
       'quotaDeck.openSettings',
       'quotaDeck.refresh',
@@ -39,6 +41,7 @@ describe('registerCommands', () => {
       configureMiniMax: async () => undefined,
       configureDeepSeek: async () => undefined,
       configureQwen: async () => undefined,
+      loginQwen: async () => undefined,
       configureProviders: async () => undefined,
       showHelp: async () => undefined,
       openSettings: async () => {

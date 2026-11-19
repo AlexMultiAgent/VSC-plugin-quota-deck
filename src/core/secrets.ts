@@ -9,6 +9,7 @@ const CREDENTIAL_PART: Record<CredentialKind, string> = {
   'web-cookie': 'webCookie',
   'access-key-id': 'accessKeyId',
   'access-key-secret': 'accessKeySecret',
+  'management-token': 'managementToken',
 };
 
 function secretKey(providerId: ProviderId, credential: CredentialKind): string {

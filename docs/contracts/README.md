@@ -8,7 +8,7 @@ available.
 - [MiniMax](minimax.md): plan, subscription and token usage verified against a live Token Plan
   key; the points capability was removed in v0.2.11 because it needed a web-session Cookie.
 - [DeepSeek](deepseek.md): balance verified; detailed usage and billing stay on the official website.
-- [Qwen / Model Studio](qwen.md): account balance integrated; public usage APIs
+- [Qwen / Model Studio](qwen.md): account balance and personal Token Plan quota integrated; public usage APIs remain candidates
   and `bl quota show` recorded as stronger candidate sources.
 
 Fixtures under `src/test/fixtures/` are sanitized, anonymized, and guarded
