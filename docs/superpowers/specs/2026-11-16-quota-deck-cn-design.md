@@ -1,5 +1,13 @@
 # QuotaDeck CN Design
 
+> **Status.** Revised on 2026-11-19 against the shipped v0.2.13 implementation. The original
+> V1 design is preserved in the repository history (`0f97686`, `6d5c5cd`).
+>
+> This document describes **what the extension does now** and **what is deliberately deferred**.
+> Where it disagrees with the code, the code is right and this document is the defect. The
+> verified per-provider response contracts live in [`docs/contracts/`](../../contracts/) and take
+> precedence over any field name mentioned here.
+
 ## 1. Product Definition
 
 **Brand:** QuotaDeck
@@ -8,48 +16,90 @@
 **Extension identifier:** `alexmultiagent.quota-deck`
 **Positioning:** 国产大模型额度，一处看全。
 
-QuotaDeck CN is a read-only VS Code extension for monitoring quota, balance, usage, and reset windows across MiniMax, DeepSeek, and Qwen. It does not proxy model requests and does not provide chat completion.
+QuotaDeck CN is a read-only VS Code extension for monitoring quota, balance, usage, and reset
+windows across MiniMax, DeepSeek, and Qwen. It does not proxy model requests and does not provide
+chat completion.
 
-One brand name is used everywhere. The marketplace listing adds the provider names purely as a discovery aid; the extension UI itself uses the brand only. The extension identifier contains `quota-deck` and never changes for rebranding or for adding a provider.
+One brand name is used everywhere. The marketplace listing adds the provider names purely as a
+discovery aid; the extension UI itself uses the brand only. The extension identifier contains
+`quota-deck` and never changes for rebranding or for adding a provider.
 
-The extension follows the successful interaction pattern used by established quota extensions: a compact status bar item, a detailed hover tooltip, and an optional dashboard for analysis. The status bar and tooltip are the primary experience. The dashboard is opened only by the user and is never required to inspect current quota.
+The extension follows the successful interaction pattern used by established quota extensions: a
+compact status bar item, a detailed hover tooltip, an Activity Bar overview tree, and an optional
+dashboard for analysis. The status bar and tooltip are the primary experience. The dashboard is
+opened only by the user and is never required to inspect current quota.
 
 ### Marketplace discovery
 
-- The display name lists the three current providers so marketplace search matches Chinese LLM names.
+- The display name lists the three current providers so marketplace search matches Chinese LLM
+  names.
 - Description: 国产大模型额度监控 · MiniMax、DeepSeek、Qwen 余额、用量与重置倒计时.
-- Keywords include `minimax`, `deepseek`, `qwen`, `quota`, `usage`, `balance`, `token usage`, `额度监控`, and `国产大模型`.
-- The extension identifier contains `quota-deck`; future branding or display-name changes do not require a new extension. Adding a provider is a display-name change only.
+- Keywords include `minimax`, `deepseek`, `qwen`, `quota`, `usage`, `balance`, `token usage`,
+  `额度监控`, and `国产大模型`.
+- The extension identifier contains `quota-deck`; future branding or display-name changes do not
+  require a new extension. Adding a provider is a display-name change only.
 
-## 2. Goals and Scope
+### Surfaces
 
-### V1 goals
+| Surface | Manifest contribution | Implementation |
+| --- | --- | --- |
+| Status bar | — | `presentation/statusBar.ts` |
+| Hover tooltip | — | `presentation/tooltip.ts` |
+| Activity Bar overview tree | `contributes.viewsContainers.activitybar` + `contributes.views.quotaDeck.overview` | `presentation/overview/provider.ts`, `presentation/overview/model.ts` |
+| Dashboard | — | `presentation/dashboard/` |
 
-1. Show MiniMax domestic and international Token Plan quotas.
-2. Show MiniMax points, subscription expiry, and available media quotas.
-3. Show DeepSeek account balance and detailed official-platform usage statistics.
-4. Ship a Qwen adapter placeholder with an explicit capability matrix. Qwen performs no network request in V1 and shows no metric.
-5. Let users show all providers in the status bar or focus on one.
-6. Keep the hover tooltip useful without opening another view.
-7. Provide an optional dashboard for range switching, charts, model breakdowns, and settings.
-8. Store every credential in VS Code Secret Storage.
-9. Support Simplified Chinese and English.
-10. Use `Asia/Shanghai` and CNY by default while preserving provider-reported currencies.
-11. Produce an installable, publishable `.vsix`.
+All four render **the same coordinator snapshot**. `refreshAll()` in `src/extension.ts` is the only
+place that pushes a snapshot into a surface; a surface added without a line there shows data that
+no other surface contradicts, so it looks right until it is stale. Each surface then renders that
+snapshot through its own derived view model (`buildOverviewItems`, `buildDashboardModel`).
 
-### V1 non-goals
+## 2. Scope
+
+### 2.1 Shipped scope
+
+1. MiniMax domestic and international Token Plan quota, subscription expiry, and token usage.
+2. DeepSeek account balance by currency.
+3. Qwen / Model Studio account balance through the Alibaba Cloud Billing OpenAPI.
+4. A status bar that shows every configured provider, or only the primary one.
+5. A hover tooltip that is useful without opening another view.
+6. An Activity Bar overview tree with per-provider detail.
+7. An optional dashboard with a range selector, per-provider detail, and MiniMax history usage.
+8. Every credential in VS Code Secret Storage.
+9. Simplified Chinese and English.
+10. `Asia/Shanghai` and CNY by default while preserving provider-reported currencies.
+11. An installable, publishable `.vsix`.
+
+### 2.2 Deferred scope
+
+Four capability families are **not implemented**. They are optional work, not gaps: each one
+becomes schedulable only after the feasibility gate in §4.5 is satisfied. They are listed here so
+the argument that justified dropping them is not lost.
+
+| Deferred | Would provide | Gate |
+| --- | --- | --- |
+| `minimax.points` | MiniMax points balance | D1 |
+| `deepseek.usageAmount` / `deepseek.usageCost` / `deepseek.accountSummary` | Per-key cost, request and token series, cache breakdown, model breakdown, account-level totals | D2 |
+| Dashboard usage charts and the model / usage tables | Time-series figures and per-model tables | D3 — downstream of D2 |
+| `qwen.modelQuota` / `qwen.consumption` | Model-level quota and consumption detail | D4 |
+
+The capability ids and their display labels are **reserved**, not deleted. `src/presentation/labels.ts`
+still maps `qwen.modelQuota`, `qwen.consumption`, and `qwen.accessKeyValidation` to localized
+names, so a future adapter can be dropped in without changing the UI contract.
+
+### 2.3 Non-goals
 
 - API proxying, model chat, prompt execution, or token counting by intercepting requests.
 - Treating local estimates or token-derived prices as official account data.
 - Automatic extraction of browser cookies.
-- Qwen, Alibaba Cloud Bailian, or any other provider integration. The Qwen adapter contract is reserved; no Qwen credential is accepted in V1.
+- **Accepting a browser session as a credential.** No capability may be enabled by a cookie
+  header pasted by the user — see §3.2.
 - Kimi, GLM, Doubao, Baidu Qianfan, or other provider integrations.
 - Currency conversion or combining amounts from different currencies.
 - Automatic purchases, recharge, quota resets, or account changes.
 
 ## 3. Product Principles
 
-### Source integrity
+### 3.1 Source integrity
 
 Every user-visible value has exactly one provenance:
 
@@ -57,169 +107,256 @@ Every user-visible value has exactly one provenance:
 - **Local:** computed from data persisted or imported by the extension.
 - **Estimated:** calculated from tokens and a versioned price table.
 
-Provenance and authentication method are orthogonal axes and are labeled separately:
+Provenance and the credential kind are orthogonal axes and are labeled separately: the source badge
+shows 账户 / 本地 / 估算 (account / local / estimated), and the credential badge shows which
+credential produced the value (API Key vs AccessKey). The UI never labels an estimate as account
+quota. A generic `0%` or `0.00` is never used to mask a failed or unavailable request.
 
-- The **source badge** shows provenance: 账户 / 本地 / 估算 (account / local / estimated).
-- The **session badge** shows how the value was reached: API Key or Web Session.
+### 3.2 A failed fetch is a state, not a number
 
-The UI never labels an estimate as account quota, and never marks a web-session value as a stable developer-API value. A generic `0%` or `0.00` is never used to mask a failed or unavailable request. Unavailable is a state, not a number.
+Capability states are `ok | stale | unconfigured | unsupported | failed`.
 
-### Read-only security
+- A missing number is never substituted with `0`.
+- A refresh that fails while a previous value survives becomes `stale`: the value stays visible and
+  is marked as out of date, rather than the capability disappearing.
+- A capability that is not implemented is `unsupported`, not `failed`, and not `0`.
+
+### 3.3 Read-only security
 
 - API requests run only in the extension host.
-- The webview never receives raw credentials, raw cookies, or raw provider payloads.
-- Credentials are stored only in `context.secrets`.
-- Authorization headers, cookies, and response bodies containing credentials are never logged.
-- Network origins are fixed in provider code.
-- The webview uses a nonce-based CSP, fixed local resource roots, and message-schema validation.
-- Provider-controlled strings are HTML-escaped before entering tooltip or webview markup.
-- Each provider adapter declares an allow-list of cookie names. Only allow-listed cookies are sent to any endpoint; a pasted cookie header is never forwarded verbatim.
+- The webview never receives raw credentials or raw provider payloads.
+- Credentials are stored only in `context.secrets` — never in settings, global state, logs, or
+  webview HTML.
+- Authorization headers and response bodies containing credentials are never logged. The extension
+  writes no console output at all.
+- Network origins are fixed in `src/providers/endpoints.json`.
+- The webview uses a nonce-based CSP, fixed local resource roots, and exact-key message-schema
+  validation.
+- Provider-controlled strings are HTML-escaped before entering tooltip markup, and the dashboard
+  renders through the DOM API rather than by injecting provider strings into markup.
+
+**No browser-session credential is accepted.** The extension removed the web-session Cookie path
+in v0.2.11 together with the cookie allow-list layer (`src/providers/cookies.ts`). A capability
+that can only be reached with a browser session is therefore deferred (§4.5), not implemented with
+a cookie input.
 
 ## 4. Provider Data Contracts
 
+### 4.0 Capability matrix
+
+| Capability id | Provider | Credential | Provenance | State |
+| --- | --- | --- | --- | --- |
+| `minimax.plan` | MiniMax CN / Global | Token Plan Key | Account | shipped |
+| `minimax.subscription` | MiniMax CN / Global | Token Plan Key | Account | shipped |
+| `minimax.tokenUsage` | MiniMax CN / Global | Token Plan Key | Account | shipped |
+| `deepseek.balance` | DeepSeek | API Key | Account | shipped |
+| `qwen.accountBalance` | Qwen | AccessKey ID + Secret | Account | shipped |
+| `minimax.points` | MiniMax | — | Account | deferred (D1) |
+| `deepseek.usageAmount` | DeepSeek | — | Account | deferred (D2) |
+| `deepseek.usageCost` | DeepSeek | — | Account | deferred (D2) |
+| `deepseek.accountSummary` | DeepSeek | — | Account | deferred (D2) |
+| `qwen.modelQuota` | Qwen | — | Account | deferred (D4) |
+| `qwen.consumption` | Qwen | — | Account | deferred (D4) |
+| `qwen.accessKeyValidation` | Qwen | — | Account | deferred (D4) |
+
 ### 4.1 MiniMax
 
-Domestic and international accounts are separate provider instances with independent credentials and state. The instance id is `minimax-cn` or `minimax-global`; both use the `minimax` provider id family but never share state.
+Domestic and international accounts are separate provider instances with independent credentials
+and state. The instance id is `minimax-cn` or `minimax-global`; both use the `minimax` provider id
+family but never share state. One `MiniMaxProvider` class serves both, differing only in origin.
 
-**Credential types**
+**Credential**
 
-- Token Plan Key, required for plan and usage queries.
-- Web Session Cookie, optional and used only for points.
+- Token Plan Key, required. It authenticates plan, subscription and token-usage queries.
 
-**Capabilities**
+**Endpoints**
 
-| Capability id | Endpoint | Credential | Provenance | Required in V1 |
-| --- | --- | --- | --- | --- |
-| `minimax.plan` | `https://www.minimaxi.com/v1/api/openplatform/coding_plan/remains` | Token Plan Key | Account | yes |
-| `minimax.subscription` | `https://www.minimaxi.com/v1/api/openplatform/charge/combo/cycle_audio_resource_package` | Token Plan Key | Account | yes |
-| `minimax.tokenUsage` | `https://www.minimaxi.com/account/amount` | Token Plan Key | Account | yes |
-| `minimax.points` | `https://www.minimaxi.com/backend/account/token_plan_credit` | Web Session Cookie | Account | optional |
+| Capability id | Endpoint | Origin |
+| --- | --- | --- |
+| `minimax.plan` | `/v1/api/openplatform/coding_plan/remains` | `www.minimaxi.com` / `www.minimax.io` |
+| `minimax.subscription` | `/v1/api/openplatform/charge/combo/cycle_audio_resource_package` | same |
+| `minimax.tokenUsage` | `/account/amount?page=1&limit=100&aggregate=false` | same |
 
-The international instance uses the same capability ids with `https://www.minimax.io` origins. Only the origin differs; parsing is shared.
-
-All provider paths are centralized and covered by parser fixtures. If an account endpoint changes, only that provider adapter changes.
+All endpoints and credential environment variables live in `src/providers/endpoints.json`, which is
+the single source for both the extension and `scripts/capture-fixture.mjs`.
 
 **Quota normalization**
 
 - Remaining percentage has a strict precedence:
-  1. If both a total count and a used count are present, remaining percent is computed from them.
-  2. Otherwise the `current_interval_remaining_percent` field is used as-is and the value is tagged `remainingPercentSource: 'field'`.
-  3. If neither is available, the capability is not reported as a percentage at all. It becomes `failed` or `unsupported` — never `0%`.
-- The `current_interval_remaining_percent` field is treated as remaining percentage, matching the current MiniMax platform response. Because this is an interpretation of a field name rather than a documented contract, it is verified against the platform UI during contract verification (§11, S1) and every fixture carries an explicit `remainingPercentSource` annotation.
-- Usage percentage is calculated only when total and used counts are both available.
-- Missing weekly total with a weekly percentage means the weekly allowance remains meaningful and is not reported as unlimited.
-- Unlimited is shown only when the response explicitly lacks a meaningful weekly quota and exposes enough evidence to support that state.
-- Model rows are normalized into categories: text/general, video, image, Hailuo, music/lyrics, speech, and other.
-- Cards are generated for returned models only. The extension does not invent an entitlement for a plan.
-- Reset time is stored as an absolute timestamp. Relative countdown text is rendered from that timestamp in `Asia/Shanghai`.
+  1. If a total count and a remaining count are both present, the percentage is computed from them
+     and tagged `remainingPercentSource: 'computed'`.
+  2. Otherwise `current_interval_remaining_percent` is used as-is and tagged
+     `remainingPercentSource: 'field'`.
+  3. If neither is available the capability reports no percentage at all — `failed` or
+     `unsupported`, never `0%`.
+- `current_interval_usage_count` is the count **still left**, not the count already spent. The same
+  record carries `current_interval_remaining_percent` next to it. A video allowance of 3 with a
+  usage count of 3 means 3 remaining. A Token Plan key reports zero counts and only the percentage
+  fields, which is why `remainingPercentSource` exists.
+- Reset time is read from the epoch-millisecond field (`current_subscribe_end_time_ts`,
+  `current_interval_end_time`), never from the locale date string, and is rendered in
+  `quotaDeck.timeZone`.
+- Cards are generated for returned models only. The extension does not invent an entitlement for a
+  plan.
+- Model rows are normalized into categories: text/general, video, image, Hailuo, music/lyrics,
+  speech, and other.
 
 **Displayed MiniMax data**
 
-- 5-hour remaining percentage, used/total counts when available, and reset countdown.
-- Weekly remaining percentage, used/total counts when available, and reset countdown.
+- 5-hour and weekly remaining percentage, used/total counts when available, and reset countdown.
 - Video, image, Hailuo, music, speech, and other returned quota cards.
 - Plan expiry and days remaining.
-- Token usage summary for yesterday, the last seven days, and the current month when billing records are available.
-- Points balance from the optional web session.
+- Token usage history for the selected range when billing records are available.
 
 ### 4.2 DeepSeek
 
-Balance and usage are separate capabilities with separate credentials and are fetched independently. A missing session credential degrades only the usage capabilities; balance keeps working.
+**Credential**
 
-**Credentials**
+- DeepSeek API Key, required. `Authorization: Bearer <API Key>`.
 
-- DeepSeek API Key, required for official balance.
-- Platform Session Token, optional, required for detailed usage.
-- Platform Cookie, optional, required by the current account usage endpoints.
+**Endpoint**
 
-**Capabilities**
-
-| Capability id | Endpoint | Credential | Provenance | Required in V1 |
-| --- | --- | --- | --- | --- |
-| `deepseek.balance` | `GET https://api.deepseek.com/user/balance` | API Key | Account | yes |
-| `deepseek.usageAmount` | `GET https://platform.deepseek.com/api/v0/usage/by_api_key/amount` | Session Token + Cookie | Account | optional |
-| `deepseek.usageCost` | `GET https://platform.deepseek.com/api/v0/usage/by_api_key/cost` | Session Token + Cookie | Account | optional |
-| `deepseek.accountSummary` | `GET https://platform.deepseek.com/api/v0/users/get_user_summary` | Session Token + Cookie | Account | optional |
+| Capability id | Endpoint |
+| --- | --- |
+| `deepseek.balance` | `GET https://api.deepseek.com/user/balance` |
 
 **Balance**
 
-- Authentication: `Authorization: Bearer <API Key>`.
 - Show availability, total balance, granted balance, and topped-up balance.
 - Preserve every returned currency as a separate value.
-- CNY is the default display currency when available.
+- CNY is the default display currency when available; other currencies keep their ISO code and are
+  never converted or added.
 
-**Detailed usage**
+**Peak / off-peak pricing hint**
 
-- Authentication uses the platform Session Token and Cookie.
-- These are official DeepSeek web-account endpoints, not a stable public developer API. The UI marks them as **Web Session** and provides a session-expired recovery path.
+- A bundled JSON calendar (`src/providers/deepseek/pricing-calendar.json`) carries `version`,
+  `coverageStart`, `coverageEnd`, the UTC peak windows, and the Chinese public holidays.
+- Peak windows are UTC Monday–Friday `01:00–04:00` and `06:00–10:00`. Weekends and Chinese public
+  holidays are entirely off-peak.
+- The **Shanghai date** decides holiday and weekend; the **UTC minute-of-day** decides the peak
+  window. The two calendars are deliberately mixed.
+- The calendar is a hint only. Account-reported values always win over a computed price.
+- `coverageEnd` must be extended before it lapses; the release gate fails the build when it is
+  under 30 days out.
 
-**Account-level aggregation rule**
-
-`by_api_key` endpoints are scoped to a single API key, while `get_user_summary` is account-level. The two are never added together and are never presented as one number.
-
-- When the platform exposes the account's full API key list, account-level totals are the sum of the per-key rows. The dashboard labels these values 汇总 (aggregated) and shows the key count.
-- When the key list cannot be enumerated, account-level totals come solely from `get_user_summary`, and the per-key views are marked unavailable.
-- The dashboard never mixes a summary total with a summed per-key total in the same figure or the same table.
-- The specific key-set discovery mechanism is resolved during contract verification (§11, S4).
-
-**Time ranges**
-
-Ranges are constructed in `Asia/Shanghai`. `start` and `end` are epoch **seconds** (UTC instants) and `tz` is the IANA name `Asia/Shanghai`. `end` is exclusive; `start` is inclusive. The parameter encoding is confirmed during contract verification (§11, S4).
-
-| Range | Start | End | Bucket |
-| --- | --- | --- | --- |
-| Today | today 00:00:00 | now | hour |
-| Yesterday | yesterday 00:00:00 | today 00:00:00 | day |
-| Last 7 days | today 00:00:00 minus 6 days | now | day |
-| Last 30 days | today 00:00:00 minus 29 days | now | day |
-| This month | first day of the current month 00:00:00 | now | day |
-| Last month | first day of the previous month 00:00:00 | first day of the current month 00:00:00 | day |
-
-The bucket column is the client-side aggregation granularity. If the API returns its own series, the client aggregates into these buckets. Month boundaries and year boundaries are handled in `Asia/Shanghai`, not in UTC.
-
-**Usage metrics**
-
-- Cost by currency.
-- API request count.
-- Total tokens.
-- Input tokens that hit the prompt cache.
-- Input tokens that missed the prompt cache.
-- Output tokens.
-- Cache hit rate.
-- Cost, request, and token series by time bucket.
-- Usage by model.
-
-Currencies are never added together. Cost charts show one selected currency at a time. Token and request totals are currency-independent.
-
-**Pricing guidance**
-
-- Use account-reported cost whenever available.
-- Show DeepSeek peak/off-peak status for the current `Asia/Shanghai` time.
-- Use a versioned local pricing and holiday calendar for hints only.
-- The calendar is a bundled JSON file with `version` and `coverageEnd` fields. It is refreshed before each release, and the release checklist records who refreshed it. A user-supplied calendar is out of scope for V1.
-- If the pricing calendar does not cover the current date, show `pricing calendar unavailable` rather than assuming standard rates.
-- When price must be calculated from tokens, label the result **Estimated** and include the price-table version.
+**Detailed usage is not integrated.** The per-key usage and account-summary endpoints require a
+DeepSeek platform session, which the extension does not accept. Users are pointed at
+`platform.deepseek.com` instead. See D2 in §4.5.
 
 ### 4.3 Qwen
 
-V1 ships a Qwen adapter placeholder. It performs **no network request**, accepts **no credential**, and shows **no metric**.
+Qwen ships a real adapter. It calls the **Alibaba Cloud Billing OpenAPI**, not a Model Studio API
+key.
 
-The capability matrix is defined now so that a future Bailian adapter can be dropped in without changing the UI contract:
+**Credentials**
 
-| Capability id | V1 state | Note |
+- Alibaba Cloud AccessKey ID and AccessKey Secret, stored only in Secret Storage.
+- The RAM user needs only the `bss:QueryAccountBalance` permission.
+
+**Endpoint**
+
+| Capability id | Endpoint | Auth |
 | --- | --- | --- |
-| `qwen.accountBalance` | `unsupported` | Bailian account endpoint not implemented |
-| `qwen.modelQuota` | `unsupported` | Rate-limit and quota endpoint not implemented |
-| `qwen.consumption` | `unsupported` | Usage endpoint not implemented |
-| `qwen.accessKeyValidation` | `unsupported` | Access-key signing not implemented |
+| `qwen.accountBalance` | `POST https://business.aliyuncs.com/` (BSS `QueryAccountBalance`) | ACS3-HMAC-SHA256 |
 
-The Qwen dashboard card shows the matrix with every row marked 不支持 / not supported in V1, plus a one-line statement of what a future release would add. No `0`, no `—%`, no fabricated quota.
+**Account balance**
 
-The adapter uses the `CapabilityState` vocabulary from §5. Only one state is reachable in V1:
+- Show available amount, cash amount, credit amount (including the Mybank credit line), and the
+  quota limit, each as returned by the API.
+- Show the balance update time returned by the API.
+- Model-level quota is **not** integrated; it belongs in the Model Studio console.
+- Consumption detail needs the separate BSS bill APIs, extra permissions, and pagination, so it is
+  not implemented and is never approximated by the balance or by a local estimate.
 
-- `unsupported` — the V1 state. Every Qwen capability resolves to `unsupported` with the reason "not implemented in V1".
-- `unconfigured` — reserved for a future release that exposes credential input but has none.
-- `ok` — reserved for a future adapter implementation.
+### 4.4 Ranges
+
+The dashboard's history range is a first-class dimension, not a display filter.
+
+```ts
+type RangeId = 'today' | 'yesterday' | 'last7' | 'last30' | 'thisMonth' | 'lastMonth';
+```
+
+- Ranges are constructed in `quotaDeck.timeZone`; month and year boundaries are handled in that
+  zone, not in UTC.
+- The range flows through `coordinator.refreshAll(range)`,
+  `provider.fetchSnapshot(signal, range, timeZone)` and `SnapshotCache.load/save(providerId, range)`.
+- The cache key is `quotaDeck.snapshot.<providerId>.<range>`, so every range has its own cache entry.
+- Only MiniMax consumes the range. DeepSeek and Qwen ignore it, because neither exposes a
+  range-scoped endpoint today.
+- Selecting a range in the dashboard triggers a full refresh; it is never a client-side filter over
+  data that was fetched for a different range.
+- The range scopes **history usage only**. Account balances and the 5-hour and weekly windows are
+  always current live values, and the dashboard says so.
+
+### 4.5 Deferred capabilities and their feasibility gates
+
+A deferred capability is not scheduled work. It becomes schedulable when its gate is met, and the
+gate is a question about the provider, not about the extension's effort.
+
+**D1 — `minimax.points`**
+
+*What it would provide:* the MiniMax points balance, from
+`/backend/account/token_plan_credit`.
+
+*Why it is deferred:* the endpoint is authenticated by a web-session Cookie. The extension does
+not accept browser sessions (§3.3), so the capability was retired in v0.2.11.
+`src/core/cache.ts` lists it in `RETIRED_MINIMAX_CAPABILITIES` and strips it from snapshots cached
+before the removal.
+
+**Gate:** all of the following must hold before it is scheduled.
+
+1. A credential that is **not** a browser session exists — either a documented, server-issued
+   token whose lifetime the user can manage, or the points value becomes reachable from an
+   endpoint that accepts the Token Plan key.
+2. The required credential names are confirmed by a live capture, and the session lifetime is long
+   enough to justify a configuration step. A session that expires hourly is not a credential.
+3. A fixture is captured and sanitized through §11, and the allow-list is enforced per capability
+   rather than by forwarding a pasted header.
+
+**D2 — `deepseek.usageAmount` / `deepseek.usageCost` / `deepseek.accountSummary`**
+
+*What they would provide:* per-API-key cost, request and token totals, cache hit/miss breakdown,
+model-level breakdown, and account-level totals, plus the range-scoped series that the dashboard
+charts would draw.
+
+*Why it is deferred:* all three endpoints live on `platform.deepseek.com` and require a Platform
+Session Token plus a Platform Cookie — a browser session.
+
+**Gate:**
+
+1. The platform exposes the same data through a documented endpoint that the API key already
+   authenticates. If it does not, D2 stays deferred permanently and the console stays the answer.
+2. The account-level aggregation question (OQ1) is answered: whether the account's API key list
+   can be enumerated decides whether account totals are summed per key or taken from the account
+   summary alone. The two are never added together.
+3. Session expiry produces a distinguishable `auth` error rather than a malformed-response error,
+   and a recovery path exists.
+
+**D3 — Dashboard usage charts and the model / usage tables**
+
+*Why it is deferred:* the chart and table surfaces were removed in v0.2.11 because there was no
+live data behind them; the localization keys survive in the bundles, unused.
+
+**Gate:** D3 is downstream of D2 and has no independent gate. It is scheduled with, or after, D2.
+While D2 is deferred the dashboard shows real account values only — a range selector with no
+history tiles behind it is not shown either.
+
+**D4 — `qwen.modelQuota` / `qwen.consumption`**
+
+*What they would provide:* Model Studio model-level quota, and consumption detail.
+
+*Why it is deferred:* the Model Studio Usage API (`/usage/summary`, `/usage/trend`) and the `bl
+quota show` CLI are recorded as stronger candidate sources, but their authentication, response
+fields, and pagination are not contract-verified. The BSS bill APIs need extra permissions and
+pagination.
+
+**Gate:**
+
+1. The Usage API's authentication and response fields are contract-verified against a live
+   account, with a sanitized fixture committed.
+2. Pagination and the per-model shape are confirmed.
+3. The result is demonstrably stronger than the account balance for the question being answered;
+   otherwise the balance stays the only source.
 
 ## 5. Provider Identity and Capability Model
 
@@ -228,17 +365,30 @@ The adapter uses the `CapabilityState` vocabulary from §5. Only one state is re
 ```text
 ProviderId      = 'minimax-cn' | 'minimax-global' | 'deepseek' | 'qwen'
 CredentialKind  = 'token-plan-key' | 'api-key' | 'session-token' | 'web-cookie'
+                | 'access-key-id' | 'access-key-secret'
 CapabilityId    = '<provider>.<capability>'   // e.g. 'minimax.plan', 'deepseek.balance'
 ```
 
-- A **provider instance** is identified by its `ProviderId`. `minimax-cn` and `minimax-global` are two instances of the same provider family with entirely separate credentials, caches, and snapshots.
-- The provider switcher always lists all four `ProviderId` values, each showing its own configured/unconfigured state. No provider is hidden merely because it is unconfigured.
-- `quotaDeck.statusBar.primaryProvider` accepts any of the four values. `minimax-global` is a valid primary provider.
-- `quotaDeck.statusBar.providerOrder` is an ordered list of `ProviderId` values with no duplicates. The default is `['minimax-cn', 'minimax-global', 'deepseek', 'qwen']`.
+`session-token` and `web-cookie` remain in the `CredentialKind` union so that the legacy secrets
+of an upgraded installation can be deleted, and so that a future gate in §4.5 can be implemented
+without changing the type. **No provider reads them.** `src/presentation/credentials.ts` only
+deletes them when a credential is reconfigured.
+
+- A **provider instance** is identified by its `ProviderId`. `minimax-cn` and `minimax-global` are
+  two instances of the same provider family with entirely separate credentials, caches, and
+  snapshots.
+- The provider switcher lists all four `ProviderId` values, each showing its own
+  configured/unconfigured state. No provider is hidden merely because it is unconfigured.
+- `quotaDeck.statusBar.primaryProvider` accepts any of the four values.
+- `quotaDeck.statusBar.providerOrder` is an ordered list of `ProviderId` values with no
+  duplicates. The default is `['minimax-cn', 'minimax-global', 'deepseek', 'qwen']`. It decides
+  **which providers appear and in what order** across all four surfaces; removing a provider from
+  the list hides it. An empty or entirely invalid list falls back to the default order.
 
 ### Capability state
 
-Every capability resolves to exactly one state. This is what lets one provider be partially available — balance without usage, plan without points.
+Every capability resolves to exactly one state. This is what lets one provider be partially
+available — balance without usage, plan without points.
 
 ```ts
 type CapabilityState =
@@ -255,7 +405,8 @@ interface ProviderSnapshot {
 }
 ```
 
-`stale` carries the last known value plus its original fetch time. `failed` may carry `lastGood` so the UI can show the last known value together with an error marker.
+`stale` carries the last known value plus its original fetch time. `failed` may carry `lastGood`
+so the UI can show the last known value together with an error marker.
 
 ### Provider interface
 
@@ -282,7 +433,7 @@ interface QuotaProvider {
   readonly displayName: string;
   getCapabilities(): ProviderCapabilities;
   connect(secrets: SecretReader): Promise<ConnectionState>;
-  fetchSnapshot(signal: AbortSignal): Promise<ProviderSnapshot>;
+  fetchSnapshot(signal: AbortSignal, range?: RangeId, timeZone?: string): Promise<ProviderSnapshot>;
   dispose(): void;                   // clears in-memory credentials and aborts pending work
 }
 
@@ -296,9 +447,13 @@ interface NormalizedError {
 }
 ```
 
-`connect` reports which capabilities the currently stored credentials can reach. `fetchSnapshot` always returns a snapshot covering every declared capability, using `unconfigured` or `unsupported` for the ones that cannot be fetched — it never omits a capability and never throws for a single capability failure.
+`connect` reports which capabilities the currently stored credentials can reach. `fetchSnapshot`
+always returns a snapshot covering every declared capability, using `unconfigured` or
+`unsupported` for the ones that cannot be fetched — it never omits a capability and never throws
+for a single capability failure.
 
-`dispose` is called when a credential is cleared or the extension is deactivated. It wipes in-memory credential material and aborts in-flight requests for that provider.
+`dispose` is called when a credential is cleared or the extension is deactivated. It wipes
+in-memory credential material and aborts in-flight requests for that provider.
 
 ## 6. Architecture
 
@@ -306,63 +461,72 @@ interface NormalizedError {
 
 ```text
 src/
-  extension.ts
+  extension.ts                     activation, command wiring, refreshAll
   core/
-    coordinator.ts
-    cache.ts
-    secrets.ts
-    settings.ts
-    time.ts
-    types.ts            // ProviderId, CapabilityState, QuotaProvider, NormalizedError
-    errors.ts           // error normalization
+    coordinator.ts                 serial refresh, failure isolation, snapshot aggregation
+    cache.ts                       parsed snapshot in globalState, per provider and range
+    secrets.ts                     Secret Storage access
+    settings.ts                    setting coercion and clamping
+    time.ts                        zoned parts, ranges, countdowns, time-zone validation
+    types.ts                       ProviderId, CapabilityState, QuotaProvider, NormalizedError
+    errors.ts                      error normalization
+    http.ts                        HTTP client, timeouts, abort handling
+    scheduler.ts                   refresh timer, focus pause, manual debounce
+    capability.ts                  typed capability reader
   providers/
-    minimax/
-      cn.ts
-      global.ts
-      parse.ts
-      cookies.ts
-    deepseek/
-      parse.ts
-      cookies.ts
-      timeRange.ts
-    qwen/
-      capabilities.ts
+    endpoints.json                 single source for every endpoint URL and credential env var
+    endpoints.ts                   typed view over endpoints.json
+    registry.ts                    buildProviders()
+    shape.ts                       vendor-neutral parsing primitives
+    minimax/                       provider.ts + shape.ts
+    deepseek/                      provider.ts + shape.ts + usage.ts + aggregate.ts + pricing.ts
+    qwen/                          provider.ts + shape.ts + request.ts (ACS3 signing)
   presentation/
-    statusBar.ts
-    tooltip.ts
-    onboarding.ts
-    quickPickFallback.ts
-    dashboard/
-      panel.ts
-      main.ts
-      render/
+    statusBar.ts  tooltip.ts  labels.ts  display.ts  quotaTone.ts
+    commands.ts  credentials.ts  switcher.ts  onboarding.ts  quickPickFallback.ts
+    overview/                      model.ts + provider.ts (Activity Bar tree)
+    dashboard/                     panel.ts + protocol.ts + viewModel.ts + webview/
   localization/
-    index.ts
-    zh-cn.ts
-    en-us.ts
+    messages.ts (key registry) + index.ts + en-us.ts + zh-cn.ts
   test/
-    fixtures/
-package.nls.json
-package.nls.zh-cn.json
+    __mocks__/vscode.ts  fixtures/  helpers/
 ```
 
 ### Provider layer
 
-Each provider adapter owns its endpoints, its cookie allow-list, its parsers, and its fixtures. The adapter is the only place that knows a raw payload shape.
+Each provider adapter owns its endpoints, its parsers, and its fixtures. The adapter is the only
+place that knows a raw payload shape. Within an adapter, `shape.ts` reads the raw payload and
+`provider.ts` assembles the capabilities over the endpoints; DeepSeek additionally splits raw
+parsing (`usage.ts`) from higher-level aggregation (`aggregate.ts`).
 
 ### Coordinator
 
 The coordinator is responsible for:
 
-- Serial refresh execution.
+- Serial refresh execution, de-duplicated per in-flight range.
 - Per-capability and per-provider failure isolation.
-- Combining account instances into one aggregated state.
-- Applying request timeouts and short-lived rate limiting.
-- Saving the last successful snapshot without credentials.
-- Emitting one aggregated state to the status bar, tooltip, and dashboard.
+- Saving the last successful snapshot without credentials, per provider and range.
+- Emitting one aggregated state to the status bar, tooltip, Activity Bar tree, and dashboard.
 - Calling `dispose` on providers whose credentials were cleared.
 
-The presentation layer consumes the normalized snapshot. It does not know provider endpoints, secrets, or raw payload shapes.
+### Cache
+
+`src/core/cache.ts` persists the **parsed** snapshot in `globalState`, not the raw provider
+payload. Changing how a provider parses a field therefore changes the meaning of every snapshot
+already on disk, and the cache is painted at startup before the first refresh lands. The cache
+drops what it no longer trusts — `withoutRetiredCapabilities()` for retired DeepSeek and MiniMax
+capabilities, `withoutLegacyMiniMaxPlan()` for a MiniMax plan cached under the old count rule —
+so a parsing change needs its own rule there, or a stale number reaches the UI before the first
+refresh replaces it.
+
+### Presentation layer
+
+The presentation layer consumes the normalized snapshot. It does not know provider endpoints,
+secrets, or raw payload shapes. It reads capability data through `capabilityValue` and never
+through a hand-written cast. Shared display helpers live in `presentation/display.ts`
+(`formatMoney`, `selectPrimaryCurrency`, `providerDisplayName`, `pickTightestWindow`,
+`remainingBar`) and the shared severity function is `quotaTone(percent, warningThresholdPercent)`
+in `presentation/quotaTone.ts`, used by all four surfaces.
 
 ## 7. Credential and Configuration Model
 
@@ -370,24 +534,26 @@ The presentation layer consumes the normalized snapshot. It does not know provid
 
 ```text
 quotaDeck.minimax.cn.tokenPlan
-quotaDeck.minimax.cn.webCookie
 quotaDeck.minimax.global.tokenPlan
-quotaDeck.minimax.global.webCookie
 quotaDeck.deepseek.apiKey
-quotaDeck.deepseek.sessionToken
-quotaDeck.deepseek.cookie
+quotaDeck.qwen.accessKeyId
+quotaDeck.qwen.accessKeySecret
 ```
 
-Qwen secret keys are not created, stored, or read in V1. The names `quotaDeck.qwen.accessKeyId` and `quotaDeck.qwen.accessKeySecret` are reserved for a future release and do not appear in the V1 manifest, so no user is prompted to configure them.
+The legacy keys `quotaDeck.minimax.*.webCookie`, `quotaDeck.deepseek.sessionToken` and
+`quotaDeck.deepseek.cookie` are deleted when the corresponding credential is reconfigured.
 
-### Cookie credential shape
+### Credential shape
 
-A web-cookie credential is a **complete cookie header string**, for example `sessionId=abc; acw_tc=def`. It is parsed into name/value pairs at capture time and stored as the original string in Secret Storage.
+A credential is a single opaque string entered in a password-style input box. It is stored
+verbatim in Secret Storage and read back only to sign or authenticate a request.
 
-- Each provider adapter declares the cookie names it requires, for example `minimax.points` requires `[{ name: 'token_plan_session' }]` and the DeepSeek usage capabilities require `[{ name: 'sessionId' }, { name: 'acw_tc' }]`. The exact names are confirmed during contract verification (§11, S2 and S5).
-- Only allow-listed cookie names are sent to any endpoint. The stored header is never forwarded verbatim.
-- If a required cookie name is missing, the affected capability resolves to `unconfigured` with a reason naming the missing cookie.
-- The raw header string is never logged, never echoed back to the user, never written to a fixture, and never sent to the webview.
+- Existing values are pre-filled into the masked input box so the user can keep them; pressing
+  `Enter` keeps the value, `Ctrl+A` followed by a new value replaces it.
+- A credential value is never echoed to the user, never written to a fixture, never written to
+  global state or settings, and never sent to the webview.
+- `QuotaDeck CN: Clear Credential` offers the credentials that are actually stored and deletes the
+  picked one after a confirmation.
 
 ### Non-secret settings
 
@@ -399,9 +565,15 @@ A web-cookie credential is a **complete cookie header string**, for example `ses
 | `quotaDeck.statusBar.mode` | `all`, `focused` | `all` |
 | `quotaDeck.statusBar.primaryProvider` | `minimax-cn`, `minimax-global`, `deepseek`, `qwen` | `minimax-cn` |
 | `quotaDeck.statusBar.providerOrder` | ordered `ProviderId` list, no duplicates | `['minimax-cn', 'minimax-global', 'deepseek', 'qwen']` |
+| `quotaDeck.statusBar.warningThresholdPercent` | 11–99 | 20 |
 | `quotaDeck.timeZone` | IANA zone name | `Asia/Shanghai` |
 
-No secret is accepted as a VS Code setting.
+No secret is accepted as a VS Code setting, and `scripts/release-gate.mjs` fails the build if
+`package.json` declares any setting whose name matches `/cookie|secret|password|token|apikey|session/i`.
+
+Every setting is **coerced and clamped by the extension itself**. The VS Code settings API does
+not guarantee a type, and a wrong-typed value must not reach `Intl.DateTimeFormat` or an array
+index.
 
 ### Commands
 
@@ -412,157 +584,175 @@ No secret is accepted as a VS Code setting.
 | `quotaDeck.switchProvider` | QuotaDeck CN: Switch Provider | QuotaDeck CN: 切换服务商 |
 | `quotaDeck.configureMiniMax` | QuotaDeck CN: Configure MiniMax | QuotaDeck CN: 配置 MiniMax |
 | `quotaDeck.configureDeepSeek` | QuotaDeck CN: Configure DeepSeek | QuotaDeck CN: 配置 DeepSeek |
+| `quotaDeck.configureQwen` | QuotaDeck CN: Configure Qwen | QuotaDeck CN: 配置 Qwen |
+| `quotaDeck.configureProviders` | QuotaDeck CN: Configure Providers | QuotaDeck CN: 配置服务商 |
+| `quotaDeck.openSettings` | QuotaDeck CN: Extension Settings | QuotaDeck CN: 插件设置 |
+| `quotaDeck.clearCredential` | QuotaDeck CN: Clear Credential | QuotaDeck CN: 清除凭据 |
 | `quotaDeck.showHelp` | QuotaDeck CN: Show Help | QuotaDeck CN: 查看帮助 |
 
-Titles are declared in `package.json` as `%command.<id>.title%` placeholders and resolved from `package.nls.json` (English) and `package.nls.zh-cn.json` (Chinese).
+Titles are declared in `package.json` as `%command.<id>.title%` placeholders and resolved from
+`package.nls.json` (English) and `package.nls.zh-cn.json` (Chinese).
 
-Credential commands use password-style input boxes. Existing values are never prefilled or echoed. Users can clear individual credentials.
+The Activity Bar overview is a **manifest contribution, not a command**: `package.json` declares
+`contributes.viewsContainers.activitybar`, `contributes.views.quotaDeck.overview` and the
+`view/title` menu; the tree itself is `presentation/overview/provider.ts`, registered in
+`src/extension.ts`. `scripts/activity-bar.test.ts` asserts that manifest shape.
 
 ### Onboarding
 
-Onboarding is a **QuickPick flow**, not a webview. Keeping it in the extension host means no credential ever enters a webview, it works identically on every platform, and it is testable without a browser.
+Onboarding is a **QuickPick flow**, not a webview. Keeping it in the extension host means no
+credential ever enters a webview, it works identically on every platform, and it is testable
+without a browser.
 
-The flow is launched when the status bar item is left-clicked while no provider is configured, and from `Show Help`:
+1. Pick a provider to configure: MiniMax CN, MiniMax Global, DeepSeek, Qwen.
+2. Enter the required credential in a password input box.
+3. A summary lists which credentials are now present, with actions to configure another provider,
+   refresh, open the dashboard, or finish.
 
-1. Pick a provider to configure: MiniMax CN, MiniMax Global, DeepSeek.
-2. Enter the required credential in a password input box, then optionally the optional credentials. Each step offers a Skip action.
-3. A summary QuickPick lists which credentials are now present, with actions: Configure another, Refresh now, Open dashboard, Finish.
-
-A provider counts as configured when the credentials required by its `required: true` capabilities are present.
+A provider counts as configured when the credentials required by its `required: true` capabilities
+are present.
 
 ## 8. Interaction Design
 
 ### Status bar
 
-`all` mode renders one segment per provider in `providerOrder`. Every provider in the list gets a segment, including unconfigured ones.
+`all` mode renders one segment per provider in `providerOrder`. MiniMax CN and MiniMax Global
+share a single slot, so the bar shows at most three segments.
 
 ```text
-$(pulse) CN Quota  MM 42%  MG —  DS ¥112.80  QW —
+$(pulse) MM 42% · 2h15m  DS ¥112.80  QW ¥50.00
 ```
 
 ```text
-$(pulse) CN Quota  MM 42% · 2h15m
+$(pulse) MM 42%
 ```
 
 **Segment legend**
 
 | Segment | Meaning | Notes |
 | --- | --- | --- |
-| `MM` | MiniMax domestic remaining quota | The tighter of the 5-hour and weekly windows. A window that is unlimited is excluded from the comparison. If only one window is available, that one is used. |
-| `MG` | MiniMax international remaining quota | Same rule as `MM`. `MG` appears only when `minimax-global` is in `providerOrder`. |
+| `MM` | MiniMax remaining quota | The tighter of the 5-hour and weekly windows. An unlimited window is excluded from the comparison. The MiniMax slot shows the primary region, falling back to the other configured region. |
 | `DS` | DeepSeek account balance | A balance, not a remaining quota. |
-| `QW` | Qwen | `—` in V1: the adapter is not implemented. |
-| `· 25m` | Time until the next reset of that segment's quota window | `< 60m` → `Nm`; `< 24h` → `NhMm`; otherwise `NdNh`. |
+| `QW` | Qwen account balance | A balance, not a remaining quota. |
 
 **Balance currency rule**
 
-CNY renders with the symbol, for example `¥112.80`. Every other currency renders with its ISO code, for example `USD 12.30`. When a provider returns several currencies, the status bar shows exactly one, chosen deterministically: CNY first, then USD, EUR, then remaining currencies in ascending ISO code order. The tooltip shows all of them.
+CNY renders with the symbol, for example `¥112.80`. Every other currency renders with its ISO
+code, for example `USD 12.30`. When a provider returns several currencies, the status bar shows
+exactly one, chosen deterministically: CNY first, then USD, EUR, then remaining currencies in
+ascending ISO code order. The tooltip shows all of them.
+
+**Countdown rule**
+
+`formatCountdown` renders the time until the next reset: `< 60m` → `25m`; `< 24h` → `2h15m`;
+otherwise → `3d4h`.
 
 **Truncation rule**
 
-If the rendered text exceeds the available status bar width, segments are dropped from the right in reverse `providerOrder` priority and a `+N` marker is appended, where `N` is the number of dropped segments. The marker is plain text, not a separate click target; the dashboard lists every provider.
+The bar keeps at most three segments. If more are rendered, segments are dropped from the right in
+reverse `providerOrder` priority and a `+N` marker is appended, where `N` is the number of dropped
+segments. The marker is plain text, not a separate click target; the dashboard lists every
+provider.
+
+**Severity**
+
+`quotaTone(percent, warningThresholdPercent)` returns `positive | caution | warning | critical`.
+`critical` is 5 % and below, `warning` is below the user's `warningThresholdPercent`, and
+`caution` is below 50 %. The same function drives the status bar, the tooltip, the Activity Bar
+tree and the dashboard, so the four surfaces can never disagree about severity.
 
 **Interaction**
 
 - Left click opens the dashboard, or opens onboarding when no provider is configured at all.
 - Hover shows the tooltip immediately.
-- If setup is incomplete, the item remains visible and the unconfigured provider segment shows its unconfigured state.
-- A failed provider shows an error marker without clearing valid values from other providers. A failed capability marks only its own card, not the whole provider.
-- The extension's actions — Refresh, Switch Provider, Settings, Help — are reachable from the Command Palette and from the dashboard. VS Code's `StatusBarItem` exposes a single click command and has no right-click hook, so V1 does not provide a separate status bar context menu.
+- If setup is incomplete, the item remains visible and the unconfigured provider segment shows its
+  unconfigured state.
+- A failed provider shows an error marker without clearing valid values from other providers. A
+  failed capability marks only its own card, not the whole provider.
+- The extension's actions are reachable from the Command Palette. The Activity Bar title bar
+  additionally carries Refresh, Open Dashboard and Extension Settings.
 
 ### Hover tooltip
 
-The header shows the brand `QuotaDeck CN`, a models badge, and a localized subtitle. The models badge is 国产模型 in Chinese and `CN MODELS` in English. The subtitle is 国产大模型额度 in Chinese and `Chinese LLM quota` in English.
+The header shows the brand `QuotaDeck CN`, a models badge, and a localized subtitle. The models
+badge is 国产模型 in Chinese and `CN MODELS` in English.
 
-The tooltip always shows all configured provider summaries in `providerOrder`. It uses compact two-row cards inspired by MiniMax Status:
+The tooltip always shows all configured provider summaries in `providerOrder`, using compact
+two-row cards:
 
-1. Provider, region, source badge, session badge, and status.
+1. Provider, region, source badge, and status.
 2. Key metric, remaining percentage, reset countdown, and last update.
 
-MiniMax cards use geometric progress bars because VS Code tooltip rendering strips much of the CSS. The bars use U+2588 `█` for filled and U+2591 `░` for empty, both of which are present in the Windows default UI font. The filled count is `round(remainingPercent / 10)`, with a minimum of one filled cell when remaining is greater than zero. The dashboard uses real CSS bars.
+MiniMax cards use text progress bars because VS Code tooltip rendering strips much of the CSS. Every
+bar is 16 cells of U+2588 `█`, with the filled and the empty part distinguished by color rather
+than by character, so every bar keeps exactly the same rendered length under a substituted font.
+The dashboard uses real CSS meters.
 
-DeepSeek provides a compact summary in the tooltip:
+The tooltip is rendered as a `MarkdownString` with `supportHtml = true` and `isTrusted = false`;
+every provider-controlled string is HTML-escaped before it enters the markup.
 
-- Balance by currency.
-- Today and last-seven-day spend.
-- Today and last-seven-day requests and tokens.
-- Cache hit rate.
-- Session-expired warning when detailed usage is unavailable.
+### Activity Bar overview tree
 
-The tooltip footer shows the last successful refresh time in `Asia/Shanghai` and a hint to open the dashboard for deeper analysis.
+The tree lists each configured provider as a collapsible item with its detail rows — quota
+windows, balances, reset times — and its severity. It renders the same snapshot as the other
+surfaces through `buildOverviewItems`. Clicking a provider opens the dashboard.
 
 ### Dashboard
 
-The dashboard is an optional singleton webview panel titled `QuotaDeck CN — 用量与洞察` in Chinese and `QuotaDeck CN — Usage & Insights` in English.
+The dashboard is an optional singleton webview panel titled `QuotaDeck CN — 用量与洞察` in Chinese
+and `QuotaDeck CN — Usage & Insights` in English.
 
 **Overview**
 
-- Lowest remaining quota.
+- Lowest remaining quota as the hero figure.
 - Account balance.
-- Today tokens and cost.
 - Provider health.
 - Last successful data by provider.
-- Data source legend showing both the source badge and the session badge vocabulary.
 
 **MiniMax**
 
-- Domestic/international tabs.
-- 5-hour and weekly quota cards.
-- Media and bonus quota cards.
-- Points.
+- 5-hour and weekly quota meters with reset countdowns.
+- Media quota cards.
 - Plan expiry.
-- Token usage summary.
-- Model-level detail table.
+- Token usage history for the selected range, shown only when MiniMax actually returned consumption
+  records.
 
 **DeepSeek**
 
-- Balance breakdown by currency.
-- Usage range selector.
-- Cost, requests, and tokens charts.
-- Cache hit/miss/output breakdown.
-- Model-level table.
+- Account status, balance, granted balance and topped-up balance, per currency.
 - Current peak/off-peak pricing hint.
+- A pointer to `platform.deepseek.com` for the detail the extension does not have.
 
 **Qwen**
 
-- The capability matrix with every row marked not supported in V1.
-- No fabricated values.
+- Available amount, cash amount, credit amount, Mybank credit, quota limit, and the update time
+  returned by the API.
+- A pointer to the Model Studio and Alibaba Cloud billing consoles for what it does not have.
 
 **Settings**
 
-- Language.
-- Refresh interval.
-- Status bar mode and provider order.
-- Credential configuration and clearing through extension commands.
+- Language, refresh interval, status bar mode, provider order, warning threshold, time zone.
+- Credential configuration and clearing through the extension commands.
 
-**Dashboard charts**
+**No empty figures.** A tile, a chart or a range selector without data behind it is not rendered.
+The dashboard shows real values only.
 
-Every figure is chosen for the job the data does, and every chart has a table-view twin.
+**Message protocol**
 
-| Data | Form | Notes |
-| --- | --- | --- |
-| Overview headline numbers | KPI row of stat tiles | Lowest remaining quota, balance, today tokens, today cost. One hero figure per view: the lowest remaining quota. |
-| A remaining percentage against its limit | Meter | A quota card is a meter, not a bar chart. The unfilled track is a lighter step of the same hue. |
-| Cost, requests, or tokens over time | Single-series line with a 10% area wash | One series, so no legend box; the card title names what is plotted. |
-| Cache hit, cache miss, and output tokens | Stacked bar, three series | Series colors are blue `#2a78d6`, orange `#eb6834`, and aqua `#1baf7a` in light mode and `#3987e5`, `#d95926`, `#199e70` in dark mode. A legend is always present. |
-| Usage by model | Table | More than seven models carry meaning, so they become a table rather than more colors. |
-| Balance by currency | Table | Currencies are never added together. |
+`src/presentation/dashboard/protocol.ts` validates every host↔webview message against an
+exact-key schema, in both directions, including the range selection the webview sends back. The
+validator is extended whenever a message shape changes. The webview renders through the DOM API
+and never injects a provider-controlled string into markup.
 
-- The usage range selector is one filter row above every chart it scopes. All charts, tiles, and tables re-render against the same slice.
-- Charts hover with a crosshair that snaps to the nearest data position, and every value a tooltip shows is also reachable from the table view. A tooltip never gates a value.
-- While data reloads, the previous render is held at reduced opacity. No skeleton, no layout jump.
-- Marks are thin: 2px lines, a 4px rounded data-end on bars, an 8px marker with a 2px surface ring, and a 2px surface gap between touching fills.
-- Gridlines and axes are solid hairlines one step off the surface, never dashed.
-- Text never wears a series color. Identity comes from a colored mark beside the text.
-
-The dashboard supports VS Code light, dark, and high-contrast themes, keyboard navigation, responsive layout, and reduced motion. A QuickPick fallback exposes provider summaries and refresh actions if the webview fails.
+The dashboard supports VS Code light, dark, and high-contrast themes. A QuickPick fallback exposes
+provider summaries and refresh actions if the webview fails to load.
 
 ### Provider switching and color semantics
 
-- The provider switcher lists MiniMax CN, MiniMax Global, DeepSeek, and Qwen, each with its configured state.
-- The dashboard card order follows `providerOrder`.
-- The status bar default displays all segments in `providerOrder`.
-- Focused mode displays only the primary provider.
+- The provider switcher lists MiniMax CN, MiniMax Global, DeepSeek, and Qwen, each with its
+  configured state.
+- The card order follows `providerOrder`.
+- `focused` mode displays only the primary provider.
 
 Quota status always uses semantic colors:
 
@@ -572,85 +762,122 @@ Quota status always uses semantic colors:
 - Not configured or unsupported: muted gray.
 - Stale data: yellow warning.
 
-Provider identity accents are separate from status and are limited to card headings, dots, and border strips:
+Provider identity accents are separate from status and are limited to card headings, dots, and
+border strips:
 
 - MiniMax: teal — `#1baf7a` light, `#199e70` dark.
 - DeepSeek: blue — `#2a78d6` light, `#3987e5` dark.
 - Qwen: orange — `#eb6834` light, `#d95926` dark.
 
-The three accents are validated as a set against both the light and the dark surface. The worst all-pairs colorblind separation is ΔE 9.2 light and 9.4 dark, and the worst normal-vision separation is ΔE 24.0 light and 20.9 dark. A previous violet accent for Qwen was rejected because violet and blue measured ΔE 10.5, below the ΔE 15 floor for telling two accents apart.
-
-Text labels and icons always accompany color so meaning is not color-dependent. The teal accent sits below 3:1 against a light surface, so the relief rule applies: the provider name is always rendered next to the accent.
+Text labels and icons always accompany color so meaning is not color-dependent.
 
 ## 9. Refresh and Failure Behavior
 
 - Data refresh interval defaults to five minutes.
-- Countdown labels update every 30 seconds from cached reset timestamps without another network request.
 - Manual refresh is debounced to prevent request bursts.
 - Background refresh pauses when the window is unfocused by default.
 - On focus, refresh immediately if data is older than the configured interval.
-- Requests use per-provider timeouts and exponential backoff after transient failures.
-- HTTP 401/403 opens a re-authentication action; it does not retry aggressively. A failure on one capability does not disable the provider's other capabilities.
-- HTTP 429 stops that capability's automatic refresh until backoff expires.
-- Malformed or structurally changed responses stop parsing that capability and preserve the last successful snapshot.
+- Requests use a per-refresh timeout and per-provider failure isolation.
+- A rate-limit response stops that capability's automatic refresh until the backoff expires.
+- Malformed or structurally changed responses stop parsing that capability and preserve the last
+  successful snapshot.
 - A stale snapshot includes its original fetch time and a visible stale badge.
-- The extension never writes provider errors at a level that includes cookies or authorization headers.
+- The extension writes no console output, so no credential can reach a log.
+- The refresh timer is disposed with the extension's subscriptions.
 
 ## 10. Localization and Time
 
-- All command titles, status text, tooltips, dashboard labels, errors, and onboarding are localized in `zh-CN` and `en-US`.
-- Command titles are localized through `package.nls.json` and `package.nls.zh-cn.json`; in-app strings are localized through `src/localization/`.
+- All command titles, status text, tooltips, dashboard labels, errors, and onboarding are localized
+  in `zh-CN` and `en-US`.
+- Command titles are localized through `package.nls.json` and `package.nls.zh-cn.json`; in-app
+  strings are localized through `src/localization/`.
 - `auto` follows the VS Code display language.
-- Default time zone is `Asia/Shanghai`.
-- Relative reset countdowns use absolute timestamps.
-- Absolute dates and times include the `Asia/Shanghai` label where ambiguity is possible.
-- Number notation adapts by locale while preserving exact values in detailed views.
-- CNY is the default currency presentation; USD or other API-reported currencies are shown separately and never silently converted.
+- The default time zone is `Asia/Shanghai`, and it is user-editable through `quotaDeck.timeZone`.
+- A user-supplied time zone is validated before it reaches `Intl.DateTimeFormat`, which throws
+  `RangeError` for an unknown IANA zone.
+- Absolute dates are assembled with `formatToParts()`, never `format()`, because `.format()` output
+  depends on the ICU data the runtime ships.
+- `hourCycle: 'h23'` is used rather than `hour12: false`, because `hour12: false` can render
+  midnight as hour `24` and the zoned-parts reader reads that field.
+- Relative reset countdowns are derived from absolute timestamps.
+- CNY is the default currency presentation; other API-reported currencies are shown separately and
+  never silently converted.
 
 ## 11. Endpoint Contract Verification
 
-Every provider endpoint in §4 is an external contract that the extension does not control. The behavior described in this document depends on field names, semantics, parameter encodings, and cookie requirements that are not published as a stable API. Verification is therefore a prerequisite for implementation, not a test-suite afterthought.
+Every provider endpoint in §4 is an external contract that the extension does not control.
+Verification is therefore a prerequisite for implementation, not a test-suite afterthought.
+
+The verified contracts live in [`docs/contracts/`](../../contracts/):
+
+| Provider | Verified | Not integrated |
+| --- | --- | --- |
+| MiniMax | `minimax.plan`, `minimax.subscription`, `minimax.tokenUsage` | `minimax.points` (D1), international host |
+| DeepSeek | `deepseek.balance` | the three usage capabilities (D2) |
+| Qwen | `qwen.accountBalance` | `qwen.modelQuota`, `qwen.consumption` (D4) |
 
 ### Verification spikes
 
-Each spike runs against a dedicated test account, produces a captured fixture, and has an explicit exit criterion. A spike that fails converts the affected capability into `unsupported` in V1 rather than shipping a fabricated or guessed value.
+Each spike runs against a dedicated test account, produces a captured fixture, and has an explicit
+exit criterion. A spike that fails converts the affected capability into `unsupported` rather than
+shipping a fabricated or guessed value.
 
 | Spike | Question | Exit criterion |
 | --- | --- | --- |
 | S1 | MiniMax plan response: exact field names, whether total/used counts exist, the meaning of `current_interval_remaining_percent`, the reset timestamp format and zone, how an unlimited window is represented | Two fixtures (with and without totals) parse; computed and field-derived remaining percentages agree with the platform UI within one percentage point |
-| S2 | MiniMax subscription, token-amount, and points responses; the cookie names the points endpoint requires | Each capability parses from a fixture; the required cookie list is recorded in the adapter |
+| S2 | MiniMax subscription and token-amount responses | Each capability parses from a fixture |
 | S3 | DeepSeek balance response: currency fields, granted versus topped-up fields, multi-currency shape | A multi-currency fixture parses into separate currency values |
-| S4 | DeepSeek usage: `start`/`end`/`tz` encoding, inclusivity, returned series granularity, cache-hit and cache-miss field names, model-level response shape, and whether the account's API key list can be enumerated | Time ranges in §4 produce a response; the aggregation rule in §4.2 is confirmed or revised |
+| S4 | DeepSeek usage: parameter encoding, inclusivity, returned series granularity, cache fields, model-level shape, and whether the account's API key list can be enumerated | Time ranges produce a response; the aggregation rule is confirmed or revised |
 | S5 | DeepSeek session auth: required headers and cookies, session lifetime, error codes on expiry | An expired session produces a distinguishable `auth` error rather than a malformed-response error |
+
+S1, S2 and S3 are done. S4 and S5 belong to D2 and are not scheduled until its gate is met.
 
 ### Fixture pipeline
 
-Fixtures are the bridge between the spikes and the test suite, and they are the most likely place for a credential to leak. The pipeline is:
+Fixtures are the bridge between the spikes and the test suite, and they are the most likely place
+for a credential to leak. The pipeline is:
 
-1. **Capture** — a dev-only script under `scripts/` fetches a live endpoint and writes the raw response. The script is never imported by `src/` and is never bundled.
-2. **Sanitize** — the script replaces the value of every declared sensitive key with a placeholder, and replaces any string matching a token-like pattern (long base64 or hex runs, `sk-` prefixed values, `Bearer` headers, cookie values) with `<redacted>`. Types and structure are preserved so parsers are still exercised.
-3. **Annotate** — each fixture records `capturedAt`, the source host, and, for MiniMax plan fixtures, an explicit `remainingPercentSource`.
-4. **Review** — fixtures are committed to `src/test/fixtures/<provider>/<capability>/<case>.json` only through a reviewed change.
-5. **Guard** — a CI check scans committed fixtures for secret-shaped strings and fails the build on a match. The check runs on fixtures and on the packaged `.vsix`.
+1. **Capture** — a dev-only script under `scripts/` fetches a live endpoint and writes the raw
+   response. The script is never imported by `src/` and is never bundled. Credentials come from
+   environment variables only, never from a file or a command-line argument.
+2. **Sanitize** — the script replaces the value of every declared sensitive key with a placeholder,
+   and replaces any string matching a token-like pattern (long base64 or hex runs, `sk-` prefixed
+   values, `Bearer` headers, cookie values) with `<redacted>`. Types and structure are preserved so
+   parsers are still exercised.
+3. **Annotate** — each fixture records `capturedAt`, the source host, and, for MiniMax plan
+   fixtures, an explicit `remainingPercentSource`.
+4. **Review** — fixtures are committed to `src/test/fixtures/<provider>/<capability>/<case>.json`
+   only through a reviewed change.
+5. **Guard** — a check scans committed fixtures for secret-shaped strings and non-zero financial
+   values and fails the build on a match.
+
+Sanitization preserves structure but zeroes financial fields, so a fixture is proof of **shape**,
+never proof of a real balance.
 
 ### Contract drift
 
-A live response that no longer matches a committed fixture is a signal, not an error to swallow. The runtime marks that capability `failed` with a `malformed` error and preserves the last good snapshot. The fixture is then updated deliberately in a reviewed commit. Fixtures are never auto-updated at runtime, and the runtime never writes to the fixtures directory.
+A live response that no longer matches a committed fixture is a signal, not an error to swallow.
+The runtime marks that capability `failed` with a `malformed` error and preserves the last good
+snapshot. The fixture is then updated deliberately in a reviewed commit. Fixtures are never
+auto-updated at runtime, and the runtime never writes to the fixtures directory.
+
+**Never invent a provider payload.** A hand-written test payload only encodes the guess it was
+written from, so it cannot catch a misread field — the MiniMax video quota stayed inverted through
+several releases because the fixture that "proved" it was invented the same way.
 
 ## 12. Testing and Verification
 
 ### Unit tests
 
 - MiniMax plan parsing, remaining-percent precedence, unlimited detection, and reset timestamps.
-- MiniMax media category mapping and points parsing.
+- MiniMax media category mapping and the remaining-count rule.
 - DeepSeek balance parser with multiple currencies.
-- DeepSeek usage parsers for today, multi-day, month boundaries, cache fields, and model aggregation.
-- Account-level aggregation rule: summary totals and summed per-key totals are never combined.
-- Multi-currency separation.
-- Time-range construction in `Asia/Shanghai`, including month and year boundaries, and bucket assignment.
-- Error normalization for authentication, rate limit, timeout, malformed JSON, and changed response shape.
+- Multi-currency separation; a missing amount is never shown as `0`.
+- Time-range construction in `quotaDeck.timeZone`, including month and year boundaries.
+- Error normalization for authentication, rate limit, timeout, malformed JSON, and changed response
+  shape.
 - Capability state resolution: partial credentials, unsupported capability, stale carry-over.
-- Cookie allow-list enforcement: a non-allow-listed cookie is never attached to a request.
+- Setting coercion: a wrong-typed or out-of-range setting falls back to a valid value.
 - HTML escaping and webview message validation.
 - Status bar formatting: segment order, balance currency selection, countdown format, truncation.
 
@@ -660,8 +887,10 @@ A live response that no longer matches a committed fixture is a signal, not an e
 - Status bar creation and text updates from fixture snapshots.
 - Tooltip rendering from mixed valid, stale, failed, and unconfigured states.
 - Dashboard message flow using a mocked extension host.
-- Secret clearing and re-authentication paths, including that `dispose` clears in-memory credentials.
-- Onboarding QuickPick flow, including the skip paths.
+- Secret clearing and re-authentication paths, including that `dispose` clears in-memory
+  credentials.
+- The credential picker offering only the credentials that are actually stored.
+- Onboarding QuickPick flow.
 
 Tests never use real credentials and never require live provider accounts.
 
@@ -669,30 +898,36 @@ Tests never use real credentials and never require live provider accounts.
 
 - Install the packaged `.vsix` into a clean VS Code profile.
 - Configure no credentials: onboarding and no-data states are clear and error-free.
-- Configure MiniMax domestic: quota cards, points unavailable state, and countdowns render.
+- Configure MiniMax domestic: quota cards, countdowns and reset times render.
 - Configure MiniMax international: region-specific values do not mix.
-- Configure DeepSeek balance only: balance renders while detailed usage explains missing session credentials.
-- Configure DeepSeek Web Session: range switching, charts, model totals, and multi-currency states render.
+- Configure DeepSeek: balance renders per currency.
+- Configure Qwen: the account balance fields and the update time render.
 - Expire or corrupt a credential: only the affected provider and capability report an error.
+- Change `quotaDeck.timeZone`: the reset times and the dashboard update immediately.
 - Toggle light, dark, high-contrast, Chinese, English, and narrow editor widths.
-- Confirm the status bar progress bars render as blocks with no missing-glyph boxes under the Windows default font, and that the status bar icon codicon renders.
+- Confirm the status bar progress bars render as blocks with no missing-glyph boxes under the
+  Windows default font, and that the status bar icon codepoint renders.
 - Confirm no credential appears in output logs, global state, settings, or webview HTML.
 
 ### Build gates
 
 - TypeScript strict type check passes.
 - Unit and integration tests pass.
-- The locale key sets in `package.nls.json` and `package.nls.zh-cn.json` match, and every `%...%` placeholder in `package.json` resolves in both.
-- No committed fixture contains a secret-shaped value.
-- Extension and webview bundles build with `sourcemap: false`, and `.vscodeignore` excludes `**/*.map`, `src/**`, and `**/*.ts`.
+- The locale key sets in `package.nls.json` and `package.nls.zh-cn.json` match, and every
+  `%...%` placeholder in `package.json` resolves in both.
+- No committed fixture contains a secret-shaped value or a non-zero financial value.
+- Extension and webview bundles build with `sourcemap: false`, and `.vscodeignore` excludes
+  `**/*.map`, `src/**`, and `**/*.ts`.
 - The packaged `.vsix` contains no absolute local path and no secret-shaped string.
 - The packaged `package.json` contains no credential key names and no secret-like setting.
-- `@vscode/vsce package` produces `quota-deck-*.vsix`.
-- `code --install-extension` succeeds for the generated package during local verification.
+- The pricing calendar `coverageEnd` is at least 30 days out.
+- The `package.json` version, the `package-lock.json` version and the newest `CHANGELOG.md` heading
+  agree, and the release tag sits on the commit that writes that section.
 
 ## 13. Packaging and Marketplace Checklist
 
-The extension is published to the Visual Studio Marketplace. The manifest must satisfy the marketplace submission requirements before the first publish.
+The extension is published to the Visual Studio Marketplace. The manifest must satisfy the
+marketplace submission requirements.
 
 **Manifest**
 
@@ -701,65 +936,78 @@ The extension is published to the Visual Studio Marketplace. The manifest must s
 - `description` is the Chinese description from §1.
 - `categories` includes `Other` and `Visualization`.
 - `keywords` matches §1.
-- `icon` is a 128×128 PNG.
+- `icon` is a 128×128 PNG generated by `npm run icon` — never hand-edited.
 - `galleryBanner` is set.
 - `license` is MIT and a `LICENSE` file is included.
 - `repository`, `bugs`, and `homepage` point at the project.
 - `engines.vscode` pins the minimum supported VS Code version.
 - `pricing` is `Free`.
-- `telemetry` declares no collector; the extension makes no network request other than to the fixed provider origins in §4.
-- `main` points at the bundled extension entry; `browser` is omitted because the extension is Node-based.
+- `telemetry` declares no collector; the extension makes no network request other than to the
+  fixed provider origins in §4.
+- `main` points at the bundled extension entry; `browser` is omitted because the extension is
+  Node-based.
 
 **Repository files**
 
-- `README.md` describing what the extension does, what it does not do, the credential model, and a privacy statement covering telemetry and the fixed request origins.
+- `README.md` describing what the extension does, what it does not do, the credential model, and a
+  privacy statement covering telemetry and the fixed request origins.
 - `LICENSE`.
 - `CHANGELOG.md`.
-- `CONTRIBUTING.md` is optional.
 - `.vscodeignore` excludes source, tests, fixtures, and maps from the package.
 - `.vscodeignore` and the package review are checked with `vsce ls` before packaging.
 
 **Publishing**
 
 - The extension is signed with a publisher certificate.
-- A release tag and a `CHANGELOG.md` entry are created before the first publish.
-- The pricing calendar coverage (§4.2) is refreshed and the refresher is recorded in the release notes.
+- A release tag and a `CHANGELOG.md` entry are created before each publish.
+- The pricing calendar coverage (§4.2) is refreshed and the refresher is recorded in the release
+  notes.
 
 ## 14. Acceptance Criteria
 
-V1 is complete when:
+The current release is complete when:
 
 1. The extension installs and activates without credentials.
 2. MiniMax domestic and international plan data can be configured independently.
-3. MiniMax points render when the optional web session is valid.
-4. MiniMax dynamic quota cards and reset countdowns render from account data.
-5. DeepSeek balance renders from an API Key.
-6. DeepSeek detailed usage renders from an optional platform session.
-7. DeepSeek supports all six time ranges and shows cost, requests, tokens, cache details, models, and currencies.
-8. Qwen is visible as an adapter placeholder with an honest, fully-unavailable capability matrix and performs no network request.
-9. The status bar can show all providers or a focused provider, and can switch the primary provider between any of the four provider ids.
+3. MiniMax quota windows, media quotas and reset countdowns render from account data.
+4. MiniMax token history renders for the selected range when consumption records exist.
+5. DeepSeek balance renders from an API Key, per currency.
+6. Qwen account balance renders from an AccessKey pair, including the update time.
+7. DeepSeek's peak/off-peak status is shown consistently across the surfaces.
+8. The status bar shows at most three segments, combines the two MiniMax regions into one slot,
+   and truncates with a `+N` marker.
+9. The provider order decides which providers appear, and in what order, across every surface.
 10. Hover presents a complete summary without requiring the dashboard.
-11. The dashboard is optional, singleton, theme-aware, and keyboard accessible.
-12. All credentials use Secret Storage, and clearing a credential wipes it from the provider instance.
+11. The dashboard is optional, singleton, theme-aware, and shows no figure without data behind it.
+12. All credentials use Secret Storage, can be cleared, and clearing one wipes it from the provider
+    instance.
 13. Chinese and English UI strings are complete, including command titles.
-14. Beijing time and currency labels are correct.
+14. The configured time zone and currency labels are correct, and a change takes effect immediately.
 15. Partial failures preserve last-known data and never affect unrelated providers or capabilities.
-16. Every capability in §4 has a committed fixture captured and sanitized through §11, or is explicitly marked `unsupported`.
+16. Every capability in §4.0 is either shipped with a committed fixture, or explicitly deferred
+    with its gate in §4.5.
 17. A verified `.vsix` is produced that satisfies §13.
 
 ## 15. Marketplace References
 
-The interaction model was informed by the current marketplace implementations and installation counts on 2026-11-16:
+The interaction model was informed by the current marketplace implementations and installation
+counts on 2026-11-16:
 
 - `growthjack.claude-code-usage`: status bar, quota tooltip, and click-through dashboard.
 - `jlcodes.antigravity-cockpit`: Webview dashboard with QuickPick fallback and status bar.
 - `wwenc6621.codebuddy-usage`: status bar plus hover tooltip.
 - `n2ns.antigravity-panel`: sidebar/panel analysis plus status bar hover.
-- `JochenYang.minimax-status-vscode`: status bar, detailed tooltip, domestic/international MiniMax accounts.
+- `JochenYang.minimax-status-vscode`: status bar, detailed tooltip, domestic/international MiniMax
+  accounts.
 
-These are references for **interaction patterns only**, not for the quota model. Most of them track a Claude Code or Antigravity subscription allowance, whereas QuotaDeck CN tracks API balance and platform usage. The status bar layout, tooltip density, dashboard structure, and QuickPick fallback are the borrowed ideas; the semantics of what is displayed are designed for the Chinese LLM providers.
+These are references for **interaction patterns only**, not for the quota model. Most of them track
+a Claude Code or Antigravity subscription allowance, whereas QuotaDeck CN tracks API balance and
+platform usage. The status bar layout, tooltip density, dashboard structure, and QuickPick fallback
+are the borrowed ideas; the semantics of what is displayed are designed for the Chinese LLM
+providers.
 
-The implementation will use these patterns as product references. Source code is not copied; provider clients, parsers, presentation, tests, and assets are implemented specifically for QuotaDeck CN.
+Source code is not copied; provider clients, parsers, presentation, tests, and assets are
+implemented specifically for QuotaDeck CN.
 
 ## 16. Risks and Open Questions
 
@@ -768,16 +1016,23 @@ The implementation will use these patterns as product references. Source code is
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
 | Provider endpoints are undocumented web APIs and can change without notice | A capability stops working for every user | Fixture-gated parsing, per-capability failure isolation, last-good snapshot retention, contract verification in §11 |
-| The `current_interval_remaining_percent` interpretation is wrong | Users see a wrong remaining percentage | Strict precedence in §4.1, `remainingPercentSource` annotation, verification against the platform UI in spike S1 |
-| Session cookies expire frequently | Detailed usage disappears for users who configured it | Capability-level `auth` errors, a re-authentication action, an explicit unavailable state instead of a blank card |
-| The DeepSeek pricing and holiday calendar expires | Peak/off-peak hints become wrong | `coverageEnd` field, an explicit "pricing calendar unavailable" state, a release-checklist item |
-| MiniMax domestic and international responses diverge | Parsers mis-handle one region | Separate instances, shared parsing with per-origin fixtures, spike S1 covers both origins |
-| Provider strings break the webview or tooltip rendering | Injection or malformed layout | HTML escaping, message-schema validation, a fixed CSP |
+| `current_interval_usage_count` is misread as "already spent" | Users see an inverted video allowance | Strict precedence in §4.1, the `remainingPercentSource` annotation, the verified contract in `docs/contracts/minimax.md` |
+| A MiniMax credential is rejected with HTTP 200 | A revoked key reads as a malformed response | `credentialRejection()` runs before the shape parsers and maps `base_resp.status_code` to an `auth` failure |
+| The DeepSeek pricing and holiday calendar expires | Peak/off-peak hints become wrong | `coverageEnd` field, an explicit unavailable state, a release-gate check |
+| MiniMax domestic and international responses diverge | Parsers mis-handle one region | Separate instances, shared parsing with per-origin fixtures |
+| Provider strings break the webview or tooltip rendering | Injection or malformed layout | HTML escaping, exact-key message validation, a fixed CSP, DOM rendering in the webview |
 | Marketplace naming assumptions are wrong | Weak discovery | The extension identifier is stable; renaming is a manifest-only change |
 
 ### Open questions
 
-- OQ1: Does the DeepSeek platform expose the account's API key list? The answer decides whether account-level totals are summed per key or taken from the account summary alone.
-- OQ2: Does the DeepSeek usage endpoint return its own series, or only aggregates? This decides whether client-side bucketing is required.
-- OQ3: Which cookie names does the MiniMax points endpoint require? A single stored header may need to carry more than one.
-- OQ4: Does the DeepSeek balance endpoint ever return a non-CNY currency for CNY accounts? This affects the status bar currency selection rule.
+- OQ1: Does the DeepSeek platform expose the account's API key list? The answer decides whether
+  account-level totals are summed per key or taken from the account summary alone. Deferred with
+  D2.
+- OQ2: Does the DeepSeek usage endpoint return its own series, or only aggregates? This decides
+  whether client-side bucketing is required. Deferred with D2.
+- OQ3: Which credential names does the MiniMax points endpoint require, and is there one that is
+  not a browser session? Deferred with D1.
+- OQ4: Does the DeepSeek balance endpoint ever return a non-CNY currency for CNY accounts? This
+  affects the status bar currency selection rule.
+- OQ5: Can the MiniMax international host be verified with the same Token Plan key shape as the
+  domestic host?

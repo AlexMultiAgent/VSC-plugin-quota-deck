@@ -90,8 +90,8 @@ provider must have supplied a number (a missing one is contract drift and throws
 number.
 
 `src/presentation/display.ts` holds the shared display helpers: `formatMoney`,
-`selectPrimaryCurrency`, `providerDisplayName`, `pickTightestWindow`, `remainingBar`. Use them
-instead of writing another copy. `src/presentation/quotaTone.ts` is the shared severity function
+`selectPrimaryCurrency`, `providerDisplayName`, `pickTightestWindow`. Use them instead of writing
+another copy. `src/presentation/quotaTone.ts` is the shared severity function
 (`quotaTone(percent, warningThresholdPercent)` → `positive | caution | warning | critical`) used by
 the status bar, the dashboard and the Activity Bar tree — the `warning` line follows the user's
 `warningThresholdPercent`, but `caution` is hard-coded at 50 % and `critical` at 5 %.
@@ -162,10 +162,12 @@ These are product and security rules, not implementation details — do not trad
   `## X.Y.Z` heading in `CHANGELOG.md` all agree, and unless the tag `v<version>` does not already
   exist at an earlier commit. Re-cutting a version that was already tagged therefore fails on
   purpose — bump all three files before packaging again.
-- **The design spec's file tree is aspirational, not the layout.**
-  `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md` §6 lists `providers/minimax/cn.ts`,
-  `global.ts`, `cookies.ts`; the implementation uses one `provider.ts` + `shape.ts` per vendor
-  folder, and the cookie layer the spec implies no longer exists. Read the code, not the spec tree.
+- **The design spec gates the deferred capabilities.** `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md`
+  §4.5 gates `minimax.points`, the DeepSeek usage capabilities, the dashboard charts and the Qwen
+  model capabilities behind questions about the *provider*, not about effort. Each gate needs a
+  captured fixture and a verified contract in `docs/contracts/` before the capability is scheduled.
+  The extension accepts no browser-session credential, so none of them can be enabled by adding a
+  cookie input.
 - **Provider endpoints mix public and web APIs.** Qwen account balance and DeepSeek balance use
   public APIs. MiniMax's account endpoints are undocumented web APIs; the domestic plan,
   subscription and usage calls are now verified (`docs/contracts/minimax.md`), but the global host
@@ -255,9 +257,9 @@ Release tags are annotated, named `vX.Y.Z`, and placed on the commit that writes
 
 ## Reference
 
-- `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md` — the original product intent. It is
-  frozen and still describes the cookie-based capability set that v0.2.11 removed; `docs/contracts/`
-  is the living source of what the extension actually does.
+- `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md` — the product design: what the
+  extension does, what is deferred, and behind which gate (§4.5). Revised against the shipped
+  implementation; where it disagrees with the code, the code is right.
 - `docs/superpowers/specs/2026-11-18-quota-deck-activity-bar-design.md` — intent for the Activity Bar overview
 - `docs/contracts/` — the verified response contract per provider; read it before changing a parser
 - `docs/superpowers/plans/` — the historical implementation plans (structure has since drifted)
