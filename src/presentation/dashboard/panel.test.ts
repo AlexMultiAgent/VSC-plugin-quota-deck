@@ -5,28 +5,78 @@ import { buildDashboardModel } from './viewModel';
 import { DashboardPanel } from './panel';
 
 const t = translatorFor('en-US');
+const englishLocalization = {
+  language: 'en-US',
+  title: 'QuotaDeck CN',
+  loading: 'Loading quota data…',
+  reloading: 'Reloading quota data…',
+  loadFailed: 'Quota data is temporarily unavailable.',
+  retry: 'Reload',
+} as const;
+const chineseLocalization = {
+  language: 'zh-CN',
+  title: 'QuotaDeck CN — 用量与洞察',
+  loading: '正在加载额度数据…',
+  reloading: '正在重新加载额度数据…',
+  loadFailed: '暂时无法接收额度数据。',
+  retry: '重新加载',
+} as const;
 
 describe('DashboardPanel', () => {
   beforeEach(() => __reset());
 
   it('creates a webview panel with a nonce content security policy', () => {
-    const panel = new DashboardPanel(Uri.file('/ext'), 'QuotaDeck CN', () => undefined);
+    const panel = new DashboardPanel(Uri.file('/ext'), englishLocalization, () => undefined);
     panel.show();
     const html = state.webviewPanels[0]!.webview.html;
     expect(html).toContain("default-src 'none'");
     expect(html).toMatch(/nonce-[A-Za-z0-9+/=]+/);
     expect(html).toContain('vscode-resource:');
-    expect(html).toContain('正在加载额度数据');
+    expect(html).toContain('<html lang="en-US">');
+    expect(html).toContain('data-title="QuotaDeck CN"');
+    expect(html).toContain('Loading quota data');
   });
 
   it('uses the localized title', () => {
-    const panel = new DashboardPanel(Uri.file('/ext'), 'QuotaDeck CN — 用量与洞察', () => undefined);
+    const panel = new DashboardPanel(Uri.file('/ext'), chineseLocalization, () => undefined);
     panel.show();
     expect(state.webviewPanels[0]!.title).toBe('QuotaDeck CN — 用量与洞察');
   });
 
+  it('updates an open panel when the localization changes', async () => {
+    const panel = new DashboardPanel(Uri.file('/ext'), chineseLocalization, () => undefined);
+    panel.show();
+    panel.setLocalization(englishLocalization);
+    await Promise.resolve();
+
+    const webview = state.webviewPanels[0]!.webview;
+    expect(state.webviewPanels[0]!.title).toBe('QuotaDeck CN');
+    expect(webview.postedMessages.at(-1)).toEqual({
+      kind: 'locale',
+      localization: englishLocalization,
+    });
+  });
+
+  it('posts localization before state when the webview is ready', async () => {
+    const panel = new DashboardPanel(Uri.file('/ext'), englishLocalization, () => undefined);
+    panel.show();
+    const model = buildDashboardModel({ snapshots: {}, order: ['deepseek'], t, range: 'last7', pricing: 'peak' });
+    panel.update(model);
+    const webview = state.webviewPanels[0]!.webview;
+    webview.postedMessages.length = 0;
+
+    webview.receiveMessage({ kind: 'ready' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(webview.postedMessages.map((message) =>
+      typeof message === 'object' && message !== null && 'kind' in message
+        ? message.kind
+        : undefined,
+    )).toEqual(['locale', 'state']);
+  });
+
   it('never injects a provider string into the html', () => {
-    const panel = new DashboardPanel(Uri.file('/ext'), 'QuotaDeck CN', () => undefined);
+    const panel = new DashboardPanel(Uri.file('/ext'), englishLocalization, () => undefined);
     panel.show();
     const model = buildDashboardModel({ snapshots: {}, order: ['deepseek'], t, range: 'last7', pricing: 'peak' });
     panel.update(model);
@@ -34,14 +84,14 @@ describe('DashboardPanel', () => {
   });
 
   it('is a singleton', () => {
-    const panel = new DashboardPanel(Uri.file('/ext'), 'QuotaDeck CN', () => undefined);
+    const panel = new DashboardPanel(Uri.file('/ext'), englishLocalization, () => undefined);
     panel.show();
     panel.show();
     expect(state.webviewPanels).toHaveLength(1);
   });
 
   it('posts the model to the webview', () => {
-    const panel = new DashboardPanel(Uri.file('/ext'), 'QuotaDeck CN', () => undefined);
+    const panel = new DashboardPanel(Uri.file('/ext'), englishLocalization, () => undefined);
     panel.show();
     const model = buildDashboardModel({ snapshots: {}, order: ['deepseek'], t, range: 'last7', pricing: 'peak' });
     panel.update(model);
@@ -50,7 +100,7 @@ describe('DashboardPanel', () => {
 
   it('hands a range change to the host', () => {
     const seen: string[] = [];
-    const panel = new DashboardPanel(Uri.file('/ext'), 'QuotaDeck CN', (range) => {
+    const panel = new DashboardPanel(Uri.file('/ext'), englishLocalization, (range) => {
       seen.push(range);
     });
     panel.show();
@@ -62,7 +112,7 @@ describe('DashboardPanel', () => {
     let requested = 0;
     const panel = new DashboardPanel(
       Uri.file('/ext'),
-      'QuotaDeck CN',
+      englishLocalization,
       () => undefined,
       () => { requested += 1; },
     );
@@ -75,7 +125,7 @@ describe('DashboardPanel', () => {
     let requested = 0;
     const panel = new DashboardPanel(
       Uri.file('/ext'),
-      'QuotaDeck CN',
+      englishLocalization,
       () => undefined,
       () => undefined,
       () => { requested += 1; },
@@ -87,7 +137,7 @@ describe('DashboardPanel', () => {
 
   it('ignores malformed messages', () => {
     const seen: string[] = [];
-    const panel = new DashboardPanel(Uri.file('/ext'), 'QuotaDeck CN', (range) => {
+    const panel = new DashboardPanel(Uri.file('/ext'), englishLocalization, (range) => {
       seen.push(range);
     });
     panel.show();
@@ -97,7 +147,7 @@ describe('DashboardPanel', () => {
   });
 
   it('can reopen after the host panel is closed', () => {
-    const panel = new DashboardPanel(Uri.file('/ext'), 'QuotaDeck CN', () => undefined);
+    const panel = new DashboardPanel(Uri.file('/ext'), englishLocalization, () => undefined);
     panel.show();
     state.webviewPanels[0]!.dispose();
     panel.show();

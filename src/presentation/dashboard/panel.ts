@@ -3,8 +3,21 @@ import { randomBytes } from 'node:crypto';
 import { isWebviewMessage } from './protocol';
 import type { RangeId } from '../../core/time';
 import type { DashboardModel } from './viewModel';
+import type { DashboardLocalization } from './locale';
 
 const VIEW_TYPE = 'quotaDeck.dashboard';
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => {
+    switch (character) {
+      case '&': return '&amp;';
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '"': return '&quot;';
+      default: return '&#39;';
+    }
+  });
+}
 
 function nonce(): string {
   return randomBytes(24).toString('base64');
@@ -17,7 +30,7 @@ export class DashboardPanel {
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly title: string,
+    private localization: DashboardLocalization,
     private readonly onRangeChange: (range: RangeId) => void,
     private readonly onConfigure: () => void = () => undefined,
     private readonly onRefresh: () => void = () => undefined,
@@ -30,7 +43,7 @@ export class DashboardPanel {
     }
     this.panel = vscode.window.createWebviewPanel(
       VIEW_TYPE,
-      this.title,
+      this.localization.title,
       vscode.ViewColumn.Active,
       {
         enableScripts: true,
@@ -45,7 +58,7 @@ export class DashboardPanel {
     this.panel.webview.onDidReceiveMessage((message: unknown) => {
       if (!isWebviewMessage(message)) return;
       if (message.kind === 'ready') {
-        void this.push();
+        void this.bootstrap();
         return;
       }
       if (message.kind === 'setRange') {
@@ -71,7 +84,14 @@ export class DashboardPanel {
   update(model: DashboardModel): void {
     this.model = model;
     this.range = model.range;
-    void this.push();
+    void this.pushState();
+  }
+
+  setLocalization(localization: DashboardLocalization): void {
+    this.localization = localization;
+    if (this.panel === undefined) return;
+    this.panel.title = localization.title;
+    void this.pushLocalization();
   }
 
   dispose(): void {
@@ -79,7 +99,20 @@ export class DashboardPanel {
     this.panel = undefined;
   }
 
-  private async push(): Promise<void> {
+  private async bootstrap(): Promise<void> {
+    await this.pushLocalization();
+    await this.pushState();
+  }
+
+  private async pushLocalization(): Promise<void> {
+    if (this.panel === undefined) return;
+    await this.panel.webview.postMessage({
+      kind: 'locale',
+      localization: this.localization,
+    });
+  }
+
+  private async pushState(): Promise<void> {
     if (this.panel === undefined || this.model === undefined) return;
     await this.panel.webview.postMessage({ kind: 'state', model: this.model, range: this.range });
   }
@@ -93,14 +126,20 @@ export class DashboardPanel {
       : this.panel.webview.asWebviewUri(localScript).toString();
     return (
       '<!DOCTYPE html>' +
-      '<html lang="en">' +
+      `<html lang="${escapeHtml(this.localization.language)}">` +
       '<head>' +
       '<meta charset="UTF-8" />' +
       `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${styleNonce}'; script-src 'nonce-${scriptNonce}'; img-src data:; font-src 'none';">` +
-      '<title>QuotaDeck CN</title>' +
+      `<title>${escapeHtml(this.localization.title)}</title>` +
       `<style nonce="${styleNonce}">${DASHBOARD_STYLES}</style>` +
       '</head>' +
-      '<body><div id="app"><div class="webview-status" role="status">正在加载额度数据…</div></div>' +
+      `<body data-dashboard-language="${escapeHtml(this.localization.language)}"` +
+      ` data-title="${escapeHtml(this.localization.title)}"` +
+      ` data-loading-label="${escapeHtml(this.localization.loading)}"` +
+      ` data-reloading-label="${escapeHtml(this.localization.reloading)}"` +
+      ` data-load-failed-label="${escapeHtml(this.localization.loadFailed)}"` +
+      ` data-retry-label="${escapeHtml(this.localization.retry)}">` +
+      `<div id="app"><div class="webview-status" role="status">${escapeHtml(this.localization.loading)}</div></div>` +
       `<script nonce="${scriptNonce}" src="${scriptUri}"></script>` +
       '</body></html>'
     );

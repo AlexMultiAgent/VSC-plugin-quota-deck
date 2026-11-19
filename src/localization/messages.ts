@@ -37,6 +37,10 @@ export const MESSAGES = {
 
 
   'dashboard.title': 'QuotaDeck CN — 用量与洞察',
+  'dashboard.webview.loading': '正在加载额度数据…',
+  'dashboard.webview.reloading': '正在重新加载额度数据…',
+  'dashboard.webview.loadFailed': '暂时无法接收额度数据。',
+  'dashboard.webview.retry': '重新加载',
   'dashboard.configureProviders': '配置服务商',
   'dashboard.refreshNow': '立即刷新',
   'dashboard.historyRange': '历史用量范围',

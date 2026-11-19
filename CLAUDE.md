@@ -15,9 +15,10 @@ npm run build            # esbuild → dist/extension.js + dist/webview.js
 npm run watch            # rebuild both bundles on change
 npm run icon             # regenerate media/icon.png from scripts/make-icon.mjs
 npm run check:locales    # package.nls*.json key parity + manifest %placeholder% resolution
+npm run check:i18n       # production sources must not contain hardcoded Chinese UI text
 npm run guard:fixtures   # committed fixtures: no secret-shaped or non-zero financial values
 npm run guard:package    # shipped files: no secrets, no absolute local paths, activity-bar icon present
-npm run package          # build → guard:fixtures → release-gate → vsce package → guard:package
+npm run package          # build → locale/i18n checks → guard:fixtures → release-gate → vsce package → guard:package
 ```
 
 `guard:package` reads `dist/extension.js` and `dist/webview.js` and runs `npx vsce ls`, so it is

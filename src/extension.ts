@@ -19,6 +19,7 @@ import {
   pickStoredCredential,
 } from './presentation/credentials';
 import { DashboardPanel } from './presentation/dashboard/panel';
+import { dashboardLocalization } from './presentation/dashboard/locale';
 import { buildDashboardModel, type DashboardModel } from './presentation/dashboard/viewModel';
 import { runOnboarding } from './presentation/onboarding';
 import { buildOverviewItems } from './presentation/overview/model';
@@ -30,7 +31,8 @@ import { renderTooltip } from './presentation/tooltip';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   let settings = readSettings();
-  let t = translatorFor(resolveLanguage(settings.language, vscode.env.language));
+  let language = resolveLanguage(settings.language, vscode.env.language);
+  let t = translatorFor(language);
   const cache = new SnapshotCache({
     get: (key) => context.globalState.get(key),
     set: (key, value) => context.globalState.update(key, value),
@@ -60,7 +62,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   let range: RangeId = 'last7';
   let lastRefreshIso: string | undefined;
-  const dashboard = new DashboardPanel(context.extensionUri, t('dashboard.title'), (next) => {
+  const dashboard = new DashboardPanel(context.extensionUri, dashboardLocalization(language, t), (next) => {
     void selectRange(next);
   }, () => {
     void configureProviders();
@@ -264,8 +266,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (!event.affectsConfiguration('quotaDeck')) return;
       settings = readSettings();
-      t = translatorFor(resolveLanguage(settings.language, vscode.env.language));
+      language = resolveLanguage(settings.language, vscode.env.language);
+      t = translatorFor(language);
       statusBar.setTranslator(t);
+      dashboard.setLocalization(dashboardLocalization(language, t));
       coordinator.setTimeZone(settings.timeZone);
       scheduler.reconfigure({
         refreshIntervalMinutes: settings.refreshIntervalMinutes,

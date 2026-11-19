@@ -26,6 +26,31 @@ describe('host messages', () => {
     expect(isHostMessage({ kind: 'state', model: emptyModel(), range: 'last7' })).toBe(true);
   });
 
+  it('accepts a localization message', () => {
+    expect(isHostMessage({
+      kind: 'locale',
+      localization: {
+        language: 'en-US',
+        title: 'QuotaDeck CN',
+        loading: 'Loading quota data…',
+        reloading: 'Reloading quota data…',
+        loadFailed: 'Quota data is temporarily unavailable.',
+        retry: 'Reload',
+      },
+    })).toBe(true);
+  });
+
+  it('rejects an incomplete localization message', () => {
+    expect(isHostMessage({
+      kind: 'locale',
+      localization: {
+        language: 'en-US',
+        title: 'QuotaDeck CN',
+        loading: 'Loading quota data…',
+      },
+    })).toBe(false);
+  });
+
   it('accepts a hero with a live percentage', () => {
     const model: DashboardModel = {
       ...emptyModel(),

@@ -1,4 +1,6 @@
 {
+  "extension.displayName": "QuotaDeck CN — MiniMax DeepSeek Qwen",
+  "extension.description": "国产大模型额度监控 · MiniMax、DeepSeek、Qwen 余额、用量与重置倒计时",
   "command.openDashboard.title": "打开仪表盘",
   "command.refresh.title": "刷新",
   "command.switchProvider.title": "切换服务商",

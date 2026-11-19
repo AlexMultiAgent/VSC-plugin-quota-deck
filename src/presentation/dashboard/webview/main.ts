@@ -1,5 +1,6 @@
 import { isHostMessage } from '../protocol';
 import type { DashboardModel } from '../viewModel';
+import type { DashboardLocalization } from '../locale';
 import { renderDashboard } from './render';
 
 declare const acquireVsCodeApi: () => {
@@ -12,28 +13,71 @@ const vscode = acquireVsCodeApi();
 const app = document.getElementById('app');
 let current: DashboardModel | undefined;
 let retryTimer: ReturnType<typeof setTimeout> | undefined;
+type StatusKind = 'loading' | 'reloading' | 'failed';
+let statusKind: StatusKind | undefined = 'loading';
+
+const fallbackLocalization: DashboardLocalization = {
+  language: 'en-US',
+  title: 'QuotaDeck CN',
+  loading: 'Loading quota data…',
+  reloading: 'Reloading quota data…',
+  loadFailed: 'Quota data is temporarily unavailable.',
+  retry: 'Reload',
+};
+
+function readLocalization(): DashboardLocalization {
+  const data = document.body.dataset;
+  return {
+    language: data.dashboardLanguage === 'zh-CN' ? 'zh-CN' : 'en-US',
+    title: data.title ?? fallbackLocalization.title,
+    loading: data.loadingLabel ?? fallbackLocalization.loading,
+    reloading: data.reloadingLabel ?? fallbackLocalization.reloading,
+    loadFailed: data.loadFailedLabel ?? fallbackLocalization.loadFailed,
+    retry: data.retryLabel ?? fallbackLocalization.retry,
+  };
+}
+
+let localization = readLocalization();
 
 function requestState(): void {
   vscode.postMessage({ kind: 'ready' });
 }
 
-function showStatus(message: string, retryLabel?: string): void {
+function showStatus(kind: StatusKind): void {
   if (!app || current) return;
+  statusKind = kind;
   const status = document.createElement('div');
   status.className = 'webview-status';
   status.setAttribute('role', 'status');
-  status.textContent = message;
+  status.textContent =
+    kind === 'loading'
+      ? localization.loading
+      : kind === 'reloading'
+        ? localization.reloading
+        : localization.loadFailed;
   app.replaceChildren(status);
-  if (retryLabel === undefined) return;
+  if (kind !== 'failed') return;
   const retry = document.createElement('button');
   retry.className = 'action-button';
   retry.type = 'button';
-  retry.textContent = retryLabel;
+  retry.textContent = localization.retry;
   retry.addEventListener('click', () => {
-    showStatus('正在重新加载额度数据…');
+    showStatus('reloading');
     requestState();
   });
   app.appendChild(retry);
+}
+
+function applyLocalization(next: DashboardLocalization): void {
+  localization = next;
+  document.documentElement.lang = next.language;
+  document.body.dataset.dashboardLanguage = next.language;
+  document.body.dataset.title = next.title;
+  document.body.dataset.loadingLabel = next.loading;
+  document.body.dataset.reloadingLabel = next.reloading;
+  document.body.dataset.loadFailedLabel = next.loadFailed;
+  document.body.dataset.retryLabel = next.retry;
+  if (statusKind !== undefined) showStatus(statusKind);
 }
 
 function scheduleInitialRetry(): void {
@@ -42,7 +86,7 @@ function scheduleInitialRetry(): void {
     requestState();
     retryTimer = setTimeout(() => {
       if (current) return;
-      showStatus('暂时无法接收额度数据。', '重新加载');
+      showStatus('failed');
     }, 3_000);
   }, 1_200);
 }
@@ -51,6 +95,7 @@ function draw(): void {
   if (!app || !current) return;
   if (retryTimer !== undefined) clearTimeout(retryTimer);
   document.body.dataset.loading = 'false';
+  statusKind = undefined;
   renderDashboard(app, current, {
     onRangeChange: (range) => {
       document.body.dataset.loading = 'true';
@@ -66,7 +111,11 @@ function draw(): void {
 }
 
 window.addEventListener('message', (event: MessageEvent<unknown>) => {
-  if (!isHostMessage(event.data) || event.data.kind !== 'state') return;
+  if (!isHostMessage(event.data)) return;
+  if (event.data.kind === 'locale') {
+    applyLocalization(event.data.localization);
+    return;
+  }
   current = event.data.model;
   vscode.setState({ range: event.data.range });
   draw();

@@ -1,7 +1,7 @@
 {
   "name": "quota-deck",
-  "displayName": "QuotaDeck CN — MiniMax DeepSeek Qwen",
-  "description": "国产大模型额度监控 · MiniMax、DeepSeek、Qwen 余额、用量与重置倒计时",
+  "displayName": "%extension.displayName%",
+  "description": "%extension.description%",
   "version": "0.2.16",
   "publisher": "alexmultiagent",
   "license": "MIT",
@@ -264,10 +264,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:locales": "node scripts/check-locales.mjs",
+    "check:i18n": "node scripts/check-ui-localization.mjs",
     "guard:package": "node scripts/guard-package.mjs",
     "guard:fixtures": "node scripts/guard-fixtures.mjs",
     "vscode:prepublish": "npm run build",
-    "package": "npm run build && npm run guard:fixtures && node scripts/release-gate.mjs && vsce package --no-dependencies && npm run guard:package"
+    "package": "npm run build && npm run check:locales && npm run check:i18n && npm run guard:fixtures && node scripts/release-gate.mjs && vsce package --no-dependencies && npm run guard:package"
   },
   "devDependencies": {
     "@types/node": "^20.16.0",

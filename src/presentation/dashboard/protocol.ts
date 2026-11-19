@@ -1,10 +1,11 @@
 import type { DashboardModel } from './viewModel';
+import type { DashboardLocalization } from './locale';
 import { PROVIDER_IDS } from '../../core/types';
 import { RANGE_IDS, type RangeId } from '../../core/time';
 
 export type HostMessage =
   | { readonly kind: 'state'; readonly model: DashboardModel; readonly range: RangeId }
-  | { readonly kind: 'locale'; readonly strings: Record<string, string> };
+  | { readonly kind: 'locale'; readonly localization: DashboardLocalization };
 
 export type WebviewMessage =
   | { readonly kind: 'ready' }
@@ -189,6 +190,26 @@ function isDashboardModel(value: unknown): value is DashboardModel {
   );
 }
 
+function isDashboardLocalization(value: unknown): value is DashboardLocalization {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, [
+      'language',
+      'title',
+      'loading',
+      'reloading',
+      'loadFailed',
+      'retry',
+    ]) &&
+    (value.language === 'zh-CN' || value.language === 'en-US') &&
+    typeof value.title === 'string' &&
+    typeof value.loading === 'string' &&
+    typeof value.reloading === 'string' &&
+    typeof value.loadFailed === 'string' &&
+    typeof value.retry === 'string'
+  );
+}
+
 export function isHostMessage(value: unknown): value is HostMessage {
   if (!isRecord(value)) return false;
   if (value.kind === 'state') {
@@ -197,9 +218,8 @@ export function isHostMessage(value: unknown): value is HostMessage {
       isDashboardModel(value.model);
   }
   if (value.kind === 'locale') {
-    return hasExactKeys(value, ['kind', 'strings']) &&
-      isRecord(value.strings) &&
-      Object.values(value.strings).every((entry) => typeof entry === 'string');
+    return hasExactKeys(value, ['kind', 'localization']) &&
+      isDashboardLocalization(value.localization);
   }
   return false;
 }
