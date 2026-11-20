@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2 — 2026-11-20
+
+- MiniMax 新增“积分”余额展示（订阅响应的 `credit_info.total_credit`），仪表盘、悬浮详情和 Activity Bar 树同步显示；树状图补上套餐名称。
+- MiniMax 无限额度窗口不再显示为“—”或 0%：仪表盘、悬浮详情、Activity Bar 和状态栏统一显示“无限”。
+- Qwen 悬浮详情精简为只显示账户余额与 Token Plan 摘要；可用现金、信控额度、额度上限等明细保留在仪表盘和 Activity Bar 中。
+
 ## 0.3.1 — 2026-11-20
 
 - 千问余额改用“登录千问AI平台”的设备码令牌查询，与 Token Plan 共用一次登录；不再需要阿里云 AccessKey，登录成功后自动清除旧 AccessKey。
