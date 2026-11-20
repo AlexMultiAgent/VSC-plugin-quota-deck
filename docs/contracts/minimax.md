@@ -40,6 +40,7 @@ international hosts answer the same shape.
 | `current_weekly_remaining_percent` | weekly remaining percentage |
 | `current_interval_status` / `current_weekly_status` | observed as `1`; the meaning of the other values is unverified |
 | `end_time` / `weekly_end_time` | window reset, epoch **milliseconds** |
+| `weekly_unlimited` | when true the weekly window has no meaningful percentage; the UI shows **Unlimited** |
 | `weekly_boost_permille` | present on the `general` entry, not used by the extension |
 
 ### `current_interval_usage_count` is the remaining count
@@ -72,6 +73,7 @@ Top-level keys: `cycle_resource_packages` (the catalogue of plans for sale),
 | `current_subscribe_end_time` | locale date string such as `"07/06/2027"` — ambiguous, and `Date.parse` resolves it to **local** midnight |
 | `current_subscribe_end_time_ts` | the same expiry as epoch milliseconds — this is the one to read |
 | `current_subscribe_title` | plan name, e.g. `TokenPlanMax-年度会员` |
+| `credit_info.total_credit` | prepaid credit balance (积分), a count, not currency; `0.00` when no credit pack is held |
 
 ## `minimax.tokenUsage`
 

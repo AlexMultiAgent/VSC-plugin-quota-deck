@@ -277,6 +277,27 @@ describe('renderStatusBarText', () => {
     expect(text).not.toContain('QW');
   });
 
+  it('shows an unlimited MiniMax window instead of a missing percentage', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'weekly', remainingPercent: null, resetAt: null, unlimited: true },
+            ],
+            models: [],
+          },
+        },
+      }),
+    };
+
+    expect(renderStatusBarText(snapshots, ['minimax-cn'], t)).toBe(
+      '$(pulse) MM $(check) Unlimited',
+    );
+  });
+
   it('shows a configured MiniMax Global account when MiniMax CN is the primary', () => {
     const snapshots = {
       'minimax-global': makeSnapshot('minimax-global', {

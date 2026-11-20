@@ -11,7 +11,7 @@ import type {
   QwenTokenPlanSubscription,
 } from '../providers/qwen/shape';
 import { pricingState, type PricingState } from '../providers/deepseek/pricing';
-import { formatMoney, providerDisplayName } from './display';
+import { formatCredits, formatMoney, providerDisplayName } from './display';
 
 const ESCAPES: Record<string, string> = {
   '&': '&amp;',
@@ -194,18 +194,10 @@ function providerRows(
     const qwenBalance = capabilityValue<QwenAccountBalance>(snapshot, 'qwen.accountBalance');
     let rows = '';
     if (qwenBalance !== undefined) {
-      rows += `<tr><td colspan="4">${escapeHtml(t('dashboard.accountBalance'))}</td></tr>`;
-      const row = (label: string, amount: number, suffix = '') =>
-        `<tr><td>${escapeHtml(label)}</td>` +
-        `<td>${escapeHtml(formatMoney(amount, qwenBalance.currency))}</td>` +
-        `<td class="t-muted">${escapeHtml(qwenBalance.currency)}${escapeHtml(suffix)}</td><td></td></tr>`;
-      rows =
-        row(t('dashboard.qwen.availableBalance'), qwenBalance.availableAmount) +
-        row(t('dashboard.qwen.availableCash'), qwenBalance.availableCashAmount) +
-        row(t('dashboard.qwen.credit'), qwenBalance.creditAmount);
-      if (qwenBalance.quotaLimit !== null) {
-        rows += row(t('dashboard.qwen.quotaLimit'), qwenBalance.quotaLimit);
-      }
+      rows +=
+        `<tr><td>${escapeHtml(t('dashboard.accountBalance'))}</td>` +
+        `<td>${escapeHtml(formatMoney(qwenBalance.availableAmount, qwenBalance.currency))}</td>` +
+        `<td class="t-muted">${escapeHtml(qwenBalance.currency)}</td><td></td></tr>`;
     }
     rows += qwenTokenPlanRows(snapshot, t, timeZone);
     if (rows.length > 0) return rows;
@@ -217,12 +209,20 @@ function providerRows(
       `<tr><td colspan="4">${escapeHtml(t('capability.minimax.plan'))}</td></tr>`,
     ];
     for (const window of plan.windows) {
-      if (window.remainingPercent === null) continue;
-      const remaining = Math.round(window.remainingPercent);
       const label =
         window.window === 'weekly'
           ? t('tooltip.window.weekly')
           : t('tooltip.window.fiveHour');
+      if (window.unlimited) {
+        rows.push(
+          `<tr><td>${escapeHtml(label)}</td>` +
+          `<td>${escapeHtml(t('tooltip.unlimited'))}</td>` +
+          `${resetCell(window.resetAt, timeZone, t)}</tr>`,
+        );
+        continue;
+      }
+      if (window.remainingPercent === null) continue;
+      const remaining = Math.round(window.remainingPercent);
       rows.push(
         `<tr><td>${escapeHtml(label)}</td>` +
         `<td>${bar(window.remainingPercent)}${quotaValue(`${remaining}%`)}</td>` +
@@ -263,6 +263,13 @@ function providerRows(
       rows.push(
         `<tr><td>${escapeHtml(t('tooltip.expires'))}</td>` +
         `<td>${escapeHtml(zonedTime(new Date(subscription.expiresAt).toISOString(), timeZone))}</td>` +
+        '<td></td><td></td></tr>',
+      );
+    }
+    if (typeof subscription?.totalCredit === 'number') {
+      rows.push(
+        `<tr><td>${escapeHtml(t('dashboard.minimax.credits'))}</td>` +
+        `<td>${escapeHtml(formatCredits(subscription.totalCredit))}</td>` +
         '<td></td><td></td></tr>',
       );
     }

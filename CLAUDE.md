@@ -229,6 +229,11 @@ These are product and security rules, not implementation details — do not trad
   official CLI has no refresh grant: an expired `expiresAt` means the user re-runs
   `QuotaDeck CN: 登录千问AI平台`. `per1MonthPercentage` is a **used** ratio in 0..1; monthly and
   weekly are independent. The verified contracts are in `docs/contracts/qwen.md`.
+- **MiniMax credits and unlimited windows are separate from the percentage quota.** The prepaid
+  credit balance is `credit_info.total_credit` on the subscription response and is a count, not
+  currency; the dashboard, tooltip and tree label it 积分 / Credits. A window with
+  `unlimited: true` has no meaningful percentage, so it renders as 无限 / Unlimited with no meter
+  track — never as `0%` or `—`. `pickTightestWindow()` already ignores unlimited windows.
 - **MiniMax rejects a credential with HTTP 200.** The refusal lives in `base_resp.status_code`
   (`1004` for a bad key), so `credentialRejection()` in `src/providers/minimax/provider.ts` runs
   before the shape parsers — otherwise a revoked key reads as a malformed response.

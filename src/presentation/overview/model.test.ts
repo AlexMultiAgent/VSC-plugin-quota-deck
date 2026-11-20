@@ -145,6 +145,64 @@ describe('buildOverviewItems', () => {
     expect(items[1]?.children.find((item) => item.label === 'Peak')).toBeDefined();
   });
 
+  it('shows an unlimited MiniMax window as Unlimited', () => {
+    const items = buildOverviewItems({
+      snapshots: {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.plan': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: {
+              windows: [
+                { window: 'fiveHour', remainingPercent: 100, resetAt: null, unlimited: false },
+                { window: 'weekly', remainingPercent: null, resetAt: null, unlimited: true },
+              ],
+              models: [],
+            },
+          },
+        }),
+      },
+      configured: { 'minimax-cn': true },
+      order: ['minimax-cn'],
+      t: zh,
+      pricing: 'offPeak',
+      timeZone: 'Asia/Shanghai',
+      warningThresholdPercent: 20,
+    });
+
+    const weekly = items[0]?.children.find((child) => child.label === '每周');
+    expect(weekly?.description).toBe('无限');
+    expect(weekly?.state).toBe('positive');
+  });
+
+  it('shows the MiniMax plan name and credit balance', () => {
+    const items = buildOverviewItems({
+      snapshots: {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.subscription': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: {
+              expiresAt: Date.parse('2027-07-05T00:00:00Z'),
+              planName: 'TokenPlanMax-年度会员',
+              totalCredit: 1234,
+            },
+          },
+        }),
+      },
+      configured: { 'minimax-cn': true },
+      order: ['minimax-cn'],
+      t: zh,
+      pricing: 'offPeak',
+      timeZone: 'Asia/Shanghai',
+      warningThresholdPercent: 20,
+    });
+
+    const children = items[0]?.children ?? [];
+    expect(children.map((child) => child.label)).toEqual(['套餐', '到期', '积分']);
+    expect(children[2]?.description).toBe('1,234');
+  });
+
   it('keeps MiniMax Global distinct from MiniMax CN', () => {
     const items = buildOverviewItems({
       snapshots: {

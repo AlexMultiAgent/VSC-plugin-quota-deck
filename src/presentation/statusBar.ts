@@ -44,8 +44,14 @@ function tightestWindow(snapshot: ProviderSnapshot | undefined): MiniMaxWindowVi
 }
 
 function preferredWindow(snapshot: ProviderSnapshot | undefined): MiniMaxWindowView | undefined {
-  const windows = miniMaxWindows(snapshot);
+  const windows = miniMaxWindows(snapshot).filter(
+    (window) => !window.unlimited && window.remainingPercent !== null,
+  );
   return windows.find((window) => window.window === 'fiveHour') ?? pickTightestWindow(windows);
+}
+
+function hasUnlimitedWindow(snapshot: ProviderSnapshot | undefined): boolean {
+  return miniMaxWindows(snapshot).some((window) => window.unlimited);
 }
 
 function deepSeekBalance(snapshot: ProviderSnapshot | undefined): BalanceView | undefined {
@@ -233,6 +239,9 @@ export function renderStatusBarText(
 
     const window = preferredWindow(snapshot);
     if (window === undefined) {
+      if (hasUnlimitedWindow(snapshot)) {
+        return `${label} ${STATUS_ICON.positive} ${t('tooltip.unlimited')}`;
+      }
       const state = unavailableState(snapshot, t);
       return `${label} ${state.icon} ${state.label}`;
     }

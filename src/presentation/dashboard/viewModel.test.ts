@@ -514,6 +514,50 @@ describe('buildDashboardModel', () => {
     expect(model.historyTiles).toEqual([]);
   });
 
+  it('renders an unlimited MiniMax window without a percentage or track', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['minimax-cn'],
+        snapshots: {
+          'minimax-cn': makeSnapshot('minimax-cn', {
+            'minimax.plan': {
+              kind: 'ok',
+              fetchedAt: '2026-11-16T00:00:00.000Z',
+              data: {
+                windows: [
+                  { window: 'fiveHour', remainingPercent: 100, resetAt: null, unlimited: false },
+                  { window: 'weekly', remainingPercent: null, resetAt: null, unlimited: true },
+                ],
+                models: [],
+              },
+            },
+          }),
+        },
+      }),
+    );
+
+    expect(model.providers[0]!.meters).toEqual([
+      {
+        key: 'fiveHour',
+        label: '5-hour',
+        percent: 100,
+        valueLabel: '100%',
+        resetLabel: null,
+        tone: 'positive',
+        unlimited: false,
+      },
+      {
+        key: 'weekly',
+        label: 'Weekly',
+        percent: null,
+        valueLabel: 'Unlimited',
+        resetLabel: null,
+        tone: 'positive',
+        unlimited: true,
+      },
+    ]);
+  });
+
   it('shows the MiniMax plan and expiry from the Token Plan API', () => {
     const model = buildDashboardModel(
       options({
@@ -527,6 +571,7 @@ describe('buildDashboardModel', () => {
               data: {
                 expiresAt: Date.parse('2027-07-05T16:00:00.000Z'),
                 planName: 'TokenPlanMax-年度会员',
+                totalCredit: 12.5,
               },
             },
           }),
@@ -536,6 +581,7 @@ describe('buildDashboardModel', () => {
     expect(model.providers[0]!.details).toEqual([
       { label: 'Plan', value: 'TokenPlanMax-年度会员' },
       { label: 'Expires', value: '2027-07-05 16:00' },
+      { label: 'Credits', value: '12.5' },
       { label: 'Updated', value: '2026-11-16 00:00' },
     ]);
   });

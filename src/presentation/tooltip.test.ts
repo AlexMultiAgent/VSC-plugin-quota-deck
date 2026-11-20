@@ -528,7 +528,7 @@ describe('renderTooltip', () => {
     expect(html).not.toContain('cache');
   });
 
-  it('shows Qwen available, cash, and credit amounts from the account balance', () => {
+  it('shows only the Qwen balance in the tooltip and leaves the breakdown to the dashboard', () => {
     const snapshots = {
       qwen: makeSnapshot('qwen', {
         'qwen.accountBalance': {
@@ -549,13 +549,38 @@ describe('renderTooltip', () => {
 
     const html = renderTooltip(snapshots, ['qwen'], t);
 
-    expect(html).toContain('Available balance');
+    expect(html).toContain('Account balance');
     expect(html).toContain('¥-12.34');
-    expect(html).toContain('Available cash');
-    expect(html).toContain('¥-18.34');
-    expect(html).toContain('Credit');
-    expect(html).toContain('¥5.00');
+    expect(html).not.toContain('Available cash');
+    expect(html).not.toContain('¥-18.34');
+    expect(html).not.toContain('Credit');
+    expect(html).not.toContain('¥5.00');
+    expect(html).not.toContain('Quota limit');
+    expect(html).not.toContain('¥1000.00');
     expect(html).not.toContain('AccessKey');
+  });
+
+  it('shows an unlimited MiniMax window as Unlimited', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 100, resetAt: null, unlimited: false },
+              { window: 'weekly', remainingPercent: null, resetAt: null, unlimited: true },
+            ],
+            models: [],
+          },
+        },
+      }),
+    };
+
+    const html = renderTooltip(snapshots, ['minimax-cn'], t);
+
+    expect(html).toContain('Unlimited');
+    expect(html).not.toContain('NaN');
   });
 
   it('shows the DeepSeek peak or off-peak period in hover details', () => {

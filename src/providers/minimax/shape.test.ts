@@ -85,6 +85,15 @@ describe('readMiniMaxSubscription', () => {
     });
     expect(subscription.planName).toBe('Token Plan Pro');
     expect(subscription.expiresAt).toBe(Date.parse('2027-03-01T00:00:00Z'));
+    expect(subscription.totalCredit).toBeNull();
+  });
+
+  it('reads the prepaid credit balance from credit_info', () => {
+    const subscription = readMiniMaxSubscription({
+      current_subscribe: { current_subscribe_title: 'Token Plan Pro' },
+      credit_info: { total_credit: '1234.50' },
+    });
+    expect(subscription.totalCredit).toBe(1234.5);
   });
 
   it('reads the expiry from the epoch field regardless of the machine time zone', () => {
@@ -94,6 +103,7 @@ describe('readMiniMaxSubscription', () => {
     expect(readMiniMaxSubscription(fixture.response).planName).toBe(
       'TokenPlanMax-年度会员',
     );
+    expect(readMiniMaxSubscription(fixture.response).totalCredit).toBe(0);
     const originalTimeZone = process.env.TZ;
     try {
       for (const timeZone of ['UTC', 'America/New_York', 'Asia/Shanghai']) {

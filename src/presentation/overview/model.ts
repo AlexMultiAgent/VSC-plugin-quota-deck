@@ -16,6 +16,7 @@ import type {
   QwenTokenPlanSubscription,
 } from '../../providers/qwen/shape';
 import {
+  formatCredits,
   formatMoney,
   pickTightestWindow,
   providerDisplayName,
@@ -223,15 +224,28 @@ function miniMaxChildren(
   const plan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
 
   for (const window of plan?.windows ?? []) {
-    if (window.remainingPercent === null) continue;
-    const percent = Math.round(window.remainingPercent);
-    const used = Math.max(0, 100 - percent);
     const label = windowLabel(window.window, options.t);
-    const quota = quotaRow(label, percent, options.warningThresholdPercent, options.t);
     const reset =
       window.resetAt === null
         ? undefined
         : `${options.t('tooltip.resetAt')} ${instantLabel(window.resetAt, options.timeZone) ?? ''}`;
+    if (window.unlimited) {
+      children.push({
+        id: `provider:${id}:window:${window.window}`,
+        label,
+        description: options.t('tooltip.unlimited'),
+        tooltip: detailTooltip(label, options.t('tooltip.unlimited'), reset),
+        state: 'positive',
+        stateLabel: options.t('state.ok'),
+        action: null,
+        children: [],
+      });
+      continue;
+    }
+    if (window.remainingPercent === null) continue;
+    const percent = Math.round(window.remainingPercent);
+    const used = Math.max(0, 100 - percent);
+    const quota = quotaRow(label, percent, options.warningThresholdPercent, options.t);
     children.push({
       id: `provider:${id}:window:${window.window}`,
       label,
@@ -293,6 +307,18 @@ function miniMaxChildren(
     snapshot,
     'minimax.subscription',
   );
+  if (subscription?.planName) {
+    children.push({
+      id: `provider:${id}:planName`,
+      label: options.t('dashboard.minimax.planName'),
+      description: subscription.planName,
+      tooltip: detailTooltip(options.t('dashboard.minimax.planName'), subscription.planName),
+      state: 'muted',
+      stateLabel: '',
+      action: null,
+      children: [],
+    });
+  }
   if (typeof subscription?.expiresAt === 'number') {
     const expiry = instantLabel(subscription.expiresAt, options.timeZone);
     if (expiry !== undefined) {
@@ -307,6 +333,19 @@ function miniMaxChildren(
         children: [],
       });
     }
+  }
+  if (typeof subscription?.totalCredit === 'number') {
+    const credits = formatCredits(subscription.totalCredit);
+    children.push({
+      id: `provider:${id}:credits`,
+      label: options.t('dashboard.minimax.credits'),
+      description: credits,
+      tooltip: detailTooltip(options.t('dashboard.minimax.credits'), credits),
+      state: 'muted',
+      stateLabel: '',
+      action: null,
+      children: [],
+    });
   }
 
   return children;
@@ -338,6 +377,11 @@ function miniMaxItem(
       stateLabel = quota.stateLabel;
       description = `${windowLabel(tightest.window, options.t)} ${percent}%`;
     }
+  } else if (
+    status.state === 'positive' &&
+    (plan?.windows ?? []).some((window) => window.unlimited)
+  ) {
+    description = options.t('tooltip.unlimited');
   }
 
   return providerItem(

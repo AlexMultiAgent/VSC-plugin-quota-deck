@@ -14,7 +14,7 @@ import type {
   QwenTokenPlan,
   QwenTokenPlanSubscription,
 } from '../../providers/qwen/shape';
-import { formatMoney, providerDisplayName, selectPrimaryCurrency } from '../display';
+import { formatCredits, formatMoney, providerDisplayName, selectPrimaryCurrency } from '../display';
 import { pricingPeriodLabel, rangeLabel } from '../labels';
 import { quotaTone } from '../quotaTone';
 
@@ -41,6 +41,8 @@ export interface QuotaMeter {
   readonly valueLabel: string | null;
   readonly resetLabel: string | null;
   readonly tone: 'positive' | 'caution' | 'warning' | 'critical' | 'muted';
+  /** An unlimited window has no percentage and renders without a track. */
+  readonly unlimited?: boolean;
   /** Optional section heading; consecutive meters with the same group share one. */
   readonly group?: string;
 }
@@ -352,6 +354,12 @@ function providerDetails(
         value: zonedDateTime(subscription.expiresAt, timeZone),
       });
     }
+    if (typeof subscription?.totalCredit === 'number') {
+      details.push({
+        label: t('dashboard.minimax.credits'),
+        value: formatCredits(subscription.totalCredit),
+      });
+    }
   }
   if (id === 'qwen') {
     const balance = capabilityValue<QwenAccountBalance>(snapshot, 'qwen.accountBalance');
@@ -473,22 +481,30 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
     const snapshot = snapshots[id];
     const state = health(snapshot);
     if (state === 'not-configured') return [];
-    const meters: QuotaMeter[] = windows(snapshot).map((window) => {
-      const percent = window.remainingPercent;
-      const meterTone: QuotaMeter['tone'] =
-        percent === null ? 'muted' : quotaTone(percent, warningThresholdPercent);
+    const meters: QuotaMeter[] = windows(snapshot).map((window): QuotaMeter => {
+      const percent = window.unlimited ? null : window.remainingPercent;
+      const meterTone: QuotaMeter['tone'] = window.unlimited
+        ? 'positive'
+        : percent === null
+          ? 'muted'
+          : quotaTone(percent, warningThresholdPercent);
       return {
         key: String(window.window),
         label: window.window === 'weekly'
           ? t('tooltip.window.weekly')
           : t('tooltip.window.fiveHour'),
         percent,
-        valueLabel: percent === null ? null : `${Math.round(percent)}%`,
+        valueLabel: window.unlimited
+          ? t('tooltip.unlimited')
+          : percent === null
+            ? null
+            : `${Math.round(percent)}%`,
         resetLabel:
           window.resetAt === null
             ? null
             : resetLabel(window.resetAt, timeZone, now, t),
         tone: meterTone,
+        unlimited: window.unlimited,
       };
     })
       .concat(mediaMeters(snapshot, warningThresholdPercent, timeZone, now, t))

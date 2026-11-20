@@ -31,6 +31,8 @@ export interface MiniMaxPlan {
 export interface MiniMaxSubscription {
   readonly expiresAt: number | null;
   readonly planName: string | null;
+  /** Prepaid credit balance (`credit_info.total_credit`), not quota percent. */
+  readonly totalCredit: number | null;
 }
 
 export interface MiniMaxTokenUsage {
@@ -182,9 +184,15 @@ export function readMiniMaxSubscription(response: unknown): MiniMaxSubscription 
   const expiresAt =
     asTimestamp(current.current_subscribe_end_time_ts) ??
     asTimestamp(current.current_subscribe_end_time ?? current.end_time);
+  const creditInfo = root.credit_info;
+  const totalCredit =
+    typeof creditInfo === 'object' && creditInfo !== null && !Array.isArray(creditInfo)
+      ? numberOrNull((creditInfo as Record<string, unknown>).total_credit)
+      : null;
   return {
     expiresAt,
     planName: typeof planName === 'string' ? planName : null,
+    totalCredit,
   };
 }
 
