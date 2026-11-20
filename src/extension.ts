@@ -16,7 +16,6 @@ import {
   clearCredential,
   configureDeepSeek,
   configureMiniMax,
-  configureQwen,
   pickStoredCredential,
 } from './presentation/credentials';
 import { DashboardPanel } from './presentation/dashboard/panel';
@@ -172,11 +171,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await reconnect('deepseek');
       await refreshAll();
     },
-    configureQwen: async (): Promise<void> => {
-      await configureQwen(secrets, t);
-      await reconnect('qwen');
-      await refreshAll();
-    },
     loginQwen: async (): Promise<void> => {
       const signedIn = await loginQwen(secrets, context, t, http, {
         origin: QWEN_AUTH_ORIGIN,
@@ -243,9 +237,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       },
       configureDeepSeek: async () => {
         await writer.configureDeepSeek();
-      },
-      configureQwen: async () => {
-        await writer.configureQwen();
       },
       loginQwen: async () => {
         await writer.loginQwen();

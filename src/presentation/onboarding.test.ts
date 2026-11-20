@@ -9,7 +9,6 @@ function writer(): CredentialWriter {
   return {
     configureMiniMax: vi.fn().mockResolvedValue(undefined),
     configureDeepSeek: vi.fn().mockResolvedValue(undefined),
-    configureQwen: vi.fn().mockResolvedValue(undefined),
     loginQwen: vi.fn().mockResolvedValue(undefined),
   };
 }
@@ -51,21 +50,12 @@ describe('runOnboarding', () => {
     expect(target.configureMiniMax).not.toHaveBeenCalled();
   });
 
-  it('configures the Qwen balance AccessKey when picked', async () => {
-    state.quickPickResults = ['Qwen', 'Configure balance AccessKey', 'Finish'];
-    const target = writer();
-    await runOnboarding(target, t);
-    expect(target.configureQwen).toHaveBeenCalled();
-    expect(target.loginQwen).not.toHaveBeenCalled();
-    expect(target.configureDeepSeek).not.toHaveBeenCalled();
-  });
-
-  it('signs in to Qianwen when that action is picked', async () => {
-    state.quickPickResults = ['Qwen', 'Sign in to Qianwen AI (Token Plan)', 'Finish'];
+  it('signs in to Qianwen when picked', async () => {
+    state.quickPickResults = ['Qwen', 'Finish'];
     const target = writer();
     await runOnboarding(target, t);
     expect(target.loginQwen).toHaveBeenCalled();
-    expect(target.configureQwen).not.toHaveBeenCalled();
+    expect(target.configureDeepSeek).not.toHaveBeenCalled();
   });
 
   it('shows the next-step summary', async () => {
@@ -96,7 +86,6 @@ describe('runOnboarding', () => {
     const target: CredentialWriter = {
       configureMiniMax: vi.fn(async () => { configured = true; }),
       configureDeepSeek: vi.fn(async () => { configured = true; }),
-      configureQwen: vi.fn(async () => { configured = true; }),
       loginQwen: vi.fn(async () => { configured = true; }),
     };
     state.quickPickResults = ['MiniMax CN', 'Finish'];

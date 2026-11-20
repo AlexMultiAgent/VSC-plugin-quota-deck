@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-11-19T22:10:23.249Z",
+  "capturedAt": "2026-11-19T23:58:06.518Z",
   "provider": "qwen",
   "capability": "qwen.tokenPlanSubscription",
   "case": "standard",
@@ -27,7 +27,7 @@
             "autoRenewFlag": false,
             "status": "VALID"
           },
-          "requestId": "790c7b82-91a5-9761-a6bc-def043982e82",
+          "requestId": "1e425584-b71b-952b-9a31-37c8f11b1072",
           "success": true
         }
       },
@@ -38,12 +38,12 @@
       "errorMsg": ""
     },
     "httpStatusCode": "200",
-    "requestId": "790c7b82-91a5-4761-a6bc-def043982e82",
+    "requestId": "1e425584-b71b-452b-9a31-37c8f11b1072",
     "successResponse": true
   },
   "steps": [
     {
-      "requestId": "01A1F5DA-C449-5784-A758-353B198EE454",
+      "requestId": "01A1F63E-FF9D-587E-87F2-EB2351FBAC33",
       "code": "200",
       "message": null,
       "action": null,
@@ -75,7 +75,7 @@
               "autoRenewFlag": false,
               "status": "VALID"
             },
-            "requestId": "790c7b82-91a5-9761-a6bc-def043982e82",
+            "requestId": "1e425584-b71b-952b-9a31-37c8f11b1072",
             "success": true
           }
         },
@@ -86,7 +86,7 @@
         "errorMsg": ""
       },
       "httpStatusCode": "200",
-      "requestId": "790c7b82-91a5-4761-a6bc-def043982e82",
+      "requestId": "1e425584-b71b-452b-9a31-37c8f11b1072",
       "successResponse": true
     }
   ]

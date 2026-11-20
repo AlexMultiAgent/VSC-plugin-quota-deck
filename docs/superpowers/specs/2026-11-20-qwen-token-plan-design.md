@@ -7,6 +7,11 @@
 > `bl workspace init`. The approved replacement is the **official Qianwen management OAuth device
 > flow**, which the live probe verified end to end. The verified response contract lives in
 > [`docs/contracts/qwen.md`](../../contracts/qwen.md) and takes precedence over this document.
+>
+> **Revision 2026-11-20 (v0.3.1).** The account balance also moved to the management token:
+> `BssOpenAPI-V3.GetFundAccountAvailableAmount` at `cli.qianwenai.com/data/v2/api.json`. The
+> AccessKey path and the `qwen-api` origin are retired; only the 网商信控额度 row is lost, while
+> `QuotaAmount` keeps the 额度上限 row. §4.4 is updated below.
 
 ## 1. Context
 
@@ -182,13 +187,13 @@ path with `/subscription` and adds `"commodityCode": "sfm_tokenplansolo_public_c
 
 `src/providers/endpoints.json` is the single source:
 
-- origins: `qwen-api` (BSS balance), `qwen-auth` (`https://t.qianwenai.com`), `qwen-cli`
+- origins: `qwen-auth` (`https://t.qianwenai.com`), `qwen-cli`
   (`https://cli.qianwenai.com`), `qwen-data` (`https://cs-data.qianwenai.com`);
 - endpoints: `qwen.deviceCode` (`/cli/device/code`), `qwen.devicePoll`
-  (`/cli/device/token`), `qwen.consoleAccess` (`/data/v2/api.json`),
+  (`/cli/device/token`), `qwen.consoleAccess` and `qwen.fundBalance` (`/data/v2/api.json`),
   `qwen.tokenPlanUsage`, `qwen.tokenPlanSubscription`;
 - no Qwen credential environment variable: the extension reads the management token from Secret
-  Storage and the balance AccessKey pair from Secret Storage.
+  Storage. Legacy AccessKey secrets are deleted by the login flow and never read.
 
 ## 5. Response envelope and parsing
 

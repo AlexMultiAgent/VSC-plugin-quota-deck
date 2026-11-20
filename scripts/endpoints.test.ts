@@ -43,6 +43,7 @@ describe('provider endpoints', () => {
     expect(ENDPOINTS['qwen.deviceCode']).toBe('/cli/device/code');
     expect(ENDPOINTS['qwen.devicePoll']).toBe('/cli/device/token');
     expect(ENDPOINTS['qwen.consoleAccess']).toBe('/data/v2/api.json');
+    expect(ENDPOINTS['qwen.fundBalance']).toBe('/data/v2/api.json');
     expect(ENDPOINTS['qwen.tokenPlanUsage']).toContain(
       'zeldaHttp.apikeyMgr.%2Ftokenplan%2Fpersonal%2Fapi%2Fv2%2Fusage',
     );

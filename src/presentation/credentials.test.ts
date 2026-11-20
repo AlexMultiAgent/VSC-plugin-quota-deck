@@ -6,7 +6,6 @@ import {
   clearCredential,
   configureDeepSeek,
   configureMiniMax,
-  configureQwen,
   pickStoredCredential,
 } from './credentials';
 
@@ -116,64 +115,6 @@ describe('configureDeepSeek', () => {
 
     expect(state.inputBoxOptions[0]!.validateInput?.('')).toBeDefined();
     expect(state.inputBoxOptions[0]!.validateInput?.('sk-valid')).toBeUndefined();
-  });
-});
-
-describe('configureQwen', () => {
-  beforeEach(() => __reset());
-
-  it('stores the AccessKey ID and secret only in SecretStorage', async () => {
-    state.quickPickResults = ['Continue with AccessKey'];
-    state.inputBoxResults = ['LTAI-test-id', 'access-secret'];
-    const store = new SecretStore(SecretStorage);
-
-    await configureQwen(store, t);
-
-    expect(await store.read('qwen', 'access-key-id')).toBe('LTAI-test-id');
-    expect(await store.read('qwen', 'access-key-secret')).toBe('access-secret');
-    expect(state.output.join('\n')).not.toContain('LTAI-test-id');
-    expect(state.output.join('\n')).not.toContain('access-secret');
-  });
-
-  it('explains that both fields are required and names the balance RAM permission', async () => {
-    state.quickPickResults = ['Continue with AccessKey'];
-    state.inputBoxResults = ['LTAI-test-id', undefined];
-    const store = new SecretStore(SecretStorage);
-
-    await configureQwen(store, t);
-
-    expect(state.inputBoxOptions[0]!.validateInput?.('')).toBeDefined();
-    expect(state.inputBoxOptions[1]!.validateInput?.('')).toBeDefined();
-    expect(state.inputBoxOptions[0]!.prompt).toContain('AccessKey');
-    expect(state.inputBoxOptions[0]!.prompt).toContain('bss:QueryAccountBalance');
-    expect(state.inputBoxOptions[0]!.prompt).toContain('SecretStorage');
-  });
-
-  it('shows setup guidance before asking for a credential', async () => {
-    state.quickPickResults = ['Continue with AccessKey'];
-    state.inputBoxResults = ['LTAI-test-id', 'access-secret'];
-    const store = new SecretStore(SecretStorage);
-
-    await configureQwen(store, t);
-
-    const choices = state.quickPickOffered[0] as Array<{ label: string; detail?: string }>;
-    expect(choices.map((choice) => choice.label)).toEqual([
-      'Continue with AccessKey',
-      'Open RAM console',
-    ]);
-    expect(choices[0]!.detail).toContain('bss:QueryAccountBalance');
-    expect(choices[0]!.detail).toContain('local development environment');
-    expect(choices[0]!.detail).toContain('not a Model Studio API Key');
-  });
-
-  it('opens the RAM console from the setup guidance', async () => {
-    state.quickPickResults = ['Open RAM console', 'Continue with AccessKey'];
-    state.inputBoxResults = ['LTAI-test-id', 'access-secret'];
-    const store = new SecretStore(SecretStorage);
-
-    await configureQwen(store, t);
-
-    expect(state.openedExternal).toEqual(['https://ram.console.aliyun.com/manage/ak']);
   });
 });
 

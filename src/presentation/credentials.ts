@@ -62,57 +62,6 @@ export async function configureDeepSeek(store: SecretStore, t: Translator): Prom
   await store.delete('deepseek', 'web-cookie');
 }
 
-export async function configureQwen(store: SecretStore, t: Translator): Promise<void> {
-  const continueWithAccessKey = t('credentials.qwen.setupContinue');
-  const openConsole = t('credentials.qwen.setupOpenConsole');
-  while (true) {
-    const setup = await vscode.window.showQuickPick(
-      [
-        {
-          label: continueWithAccessKey,
-          detail: t('credentials.qwen.setupDetail'),
-          action: 'continue',
-        },
-        {
-          label: openConsole,
-          description: 'ram.console.aliyun.com',
-          action: 'open',
-        },
-      ] as const,
-      { title: t('credentials.qwen.setupTitle') },
-    );
-    if (setup === undefined) return;
-    if (setup.action === 'continue') break;
-    await vscode.env.openExternal(
-      vscode.Uri.parse('https://ram.console.aliyun.com/manage/ak'),
-    );
-  }
-
-  const existingAccessKeyId = await store.read('qwen', 'access-key-id');
-  const existingAccessKeySecret = await store.read('qwen', 'access-key-secret');
-  const accessKeyId = await askSecret({
-    title: t('credentials.qwen.accessKeyId'),
-    placeHolder: t('credentials.qwen.accessKeyIdPlaceholder'),
-    prompt: t('credentials.qwen.accessKeyIdPrompt'),
-    ...(existingAccessKeyId !== undefined ? { existing: existingAccessKeyId } : {}),
-    validateInput: (value) =>
-      value.trim().length === 0 ? t('credentials.qwen.required') : undefined,
-  });
-  if (accessKeyId === undefined) return;
-  const accessKeySecret = await askSecret({
-    title: t('credentials.qwen.accessKeySecret'),
-    placeHolder: t('credentials.qwen.accessKeySecretPlaceholder'),
-    prompt: t('credentials.qwen.accessKeySecretPrompt'),
-    ...(existingAccessKeySecret !== undefined ? { existing: existingAccessKeySecret } : {}),
-    validateInput: (value) =>
-      value.trim().length === 0 ? t('credentials.qwen.required') : undefined,
-  });
-  if (accessKeySecret === undefined) return;
-
-  await store.write('qwen', 'access-key-id', accessKeyId.trim());
-  await store.write('qwen', 'access-key-secret', accessKeySecret.trim());
-}
-
 export async function clearCredential(
   store: SecretStore,
   providerId: ProviderId,

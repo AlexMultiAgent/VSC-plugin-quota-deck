@@ -55,6 +55,8 @@ export async function loginQwen(
           },
         });
         await store.write('qwen', 'management-token', serializeQwenManagementToken(login));
+        await store.delete('qwen', 'access-key-id');
+        await store.delete('qwen', 'access-key-secret');
       },
     );
     await vscode.window.showInformationMessage(t('credentials.qwen.loginSuccess'));

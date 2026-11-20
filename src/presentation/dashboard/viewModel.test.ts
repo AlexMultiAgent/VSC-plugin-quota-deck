@@ -67,7 +67,6 @@ describe('buildDashboardModel', () => {
                 availableAmount: 1,
                 availableCashAmount: 1,
                 creditAmount: 0,
-                mybankCreditAmount: 0,
                 quotaLimit: null,
                 currency: 'CNY',
               },
@@ -494,7 +493,6 @@ describe('buildDashboardModel', () => {
                 availableAmount: -12.34,
                 availableCashAmount: -18.34,
                 creditAmount: 5,
-                mybankCreditAmount: 6,
                 quotaLimit: 1000,
                 currency: 'CNY',
               },
@@ -509,7 +507,6 @@ describe('buildDashboardModel', () => {
     expect(provider.details).toEqual([
       { label: 'Available cash', value: '¥-18.34', group: 'Balance details' },
       { label: 'Credit', value: '¥5.00', group: 'Balance details' },
-      { label: 'Mybank credit', value: '¥6.00', group: 'Balance details' },
       { label: 'Quota limit', value: '¥1000.00', group: 'Balance details' },
       { label: 'Updated', value: '2026-11-16 08:00' },
     ]);
@@ -708,7 +705,6 @@ describe('groupHistoryTiles', () => {
                 availableAmount: 1,
                 availableCashAmount: 1,
                 creditAmount: 0,
-                mybankCreditAmount: 0,
                 quotaLimit: null,
                 currency: 'CNY',
               },

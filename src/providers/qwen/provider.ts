@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import type { HttpClient, JsonResult } from '../../core/http';
 import type {
   CapabilityDescriptor,
@@ -24,16 +23,14 @@ import {
   readQwenTokenPlan,
   readQwenTokenPlanSubscription,
 } from './shape';
-import { signAliyunRequest } from './request';
 
 const CAPABILITIES: readonly CapabilityDescriptor[] = [
-  { id: 'qwen.accountBalance', titleKey: 'capability.qwen.accountBalance', credential: 'access-key-id', required: true },
+  { id: 'qwen.accountBalance', titleKey: 'capability.qwen.accountBalance', credential: 'management-token', required: true },
   { id: 'qwen.tokenPlan', titleKey: 'capability.qwen.tokenPlan', credential: 'management-token', required: true },
   { id: 'qwen.tokenPlanSubscription', titleKey: 'capability.qwen.tokenPlanSubscription', credential: 'management-token', required: true },
 ];
 
 export interface QwenOrigins {
-  readonly balance: string;
   readonly cli: string;
   readonly data: string;
 }
@@ -49,6 +46,13 @@ const CONSOLE_CORNERSTONE = {
   consoleSite: 'QIANWENAI',
 } as const;
 
+const FUND_BALANCE_BODY = {
+  product: 'BssOpenAPI-V3',
+  action: 'GetFundAccountAvailableAmount',
+  region: 'cn-beijing',
+  params: {},
+} as const;
+
 const CONSOLE_TOKEN_BODY = {
   product: 'ModelStudioRegional',
   action: 'GenerateCLIAccessToken',
@@ -60,8 +64,6 @@ const CONSOLE_TOKEN_BODY = {
 export class QwenProvider implements QuotaProvider {
   readonly id = 'qwen' as const;
   readonly displayName = 'Qwen';
-  private accessKeyId: string | undefined;
-  private accessKeySecret: string | undefined;
   private managementTokenValue: string | undefined;
   private consoleToken: Promise<ConsoleToken> | undefined;
 
@@ -75,40 +77,12 @@ export class QwenProvider implements QuotaProvider {
   }
 
   async connect(secrets: SecretReader): Promise<ConnectionState> {
-    this.accessKeyId = await secrets.read(this.id, 'access-key-id');
-    this.accessKeySecret = await secrets.read(this.id, 'access-key-secret');
     this.managementTokenValue = await secrets.read(this.id, 'management-token');
-
-    const accessKeysReady =
-      this.accessKeyId !== undefined && this.accessKeySecret !== undefined;
-    const managementReady = this.managementTokenValue !== undefined;
-
-    if (!accessKeysReady && !managementReady) return { kind: 'not-configured' };
-
-    const capabilities: string[] = [];
-    const missing: { capability: string; credential: 'access-key-id' | 'access-key-secret' | 'management-token' }[] = [];
-
-    if (accessKeysReady) {
-      capabilities.push('qwen.accountBalance');
-    } else {
-      missing.push({
-        capability: 'qwen.accountBalance',
-        credential: this.accessKeyId === undefined ? 'access-key-id' : 'access-key-secret',
-      });
-    }
-
-    if (managementReady) {
-      capabilities.push('qwen.tokenPlan', 'qwen.tokenPlanSubscription');
-    } else {
-      missing.push(
-        { capability: 'qwen.tokenPlan', credential: 'management-token' },
-        { capability: 'qwen.tokenPlanSubscription', credential: 'management-token' },
-      );
-    }
-
-    return missing.length === 0
-      ? { kind: 'ready', capabilities }
-      : { kind: 'partial', capabilities, missing };
+    if (this.managementTokenValue === undefined) return { kind: 'not-configured' };
+    return {
+      kind: 'ready',
+      capabilities: ['qwen.accountBalance', 'qwen.tokenPlan', 'qwen.tokenPlanSubscription'],
+    };
   }
 
   async fetchSnapshot(signal: AbortSignal): Promise<ProviderSnapshot> {
@@ -116,17 +90,17 @@ export class QwenProvider implements QuotaProvider {
     const capabilities: Record<string, CapabilityState> = {};
     this.consoleToken = undefined;
 
-    capabilities['qwen.accountBalance'] = await this.fetchBalance(fetchedAt, signal);
-
     const management = parseQwenManagementToken(this.managementTokenValue);
     const unavailable = this.managementUnavailable(management);
     if (unavailable !== undefined) {
+      capabilities['qwen.accountBalance'] = unavailable;
       capabilities['qwen.tokenPlan'] = unavailable;
       capabilities['qwen.tokenPlanSubscription'] = unavailable;
       return { providerId: this.id, fetchedAt, capabilities };
     }
     const token = management as QwenManagementToken;
 
+    capabilities['qwen.accountBalance'] = await this.fetchBalance(token, fetchedAt, signal);
     capabilities['qwen.tokenPlan'] = await this.fetchTokenPlan(
       token,
       'qwen.tokenPlanUsage',
@@ -148,8 +122,6 @@ export class QwenProvider implements QuotaProvider {
   }
 
   dispose(): void {
-    this.accessKeyId = undefined;
-    this.accessKeySecret = undefined;
     this.managementTokenValue = undefined;
     this.consoleToken = undefined;
   }
@@ -167,33 +139,24 @@ export class QwenProvider implements QuotaProvider {
   }
 
   private async fetchBalance(
+    management: QwenManagementToken,
     fetchedAt: string,
     signal: AbortSignal,
   ): Promise<CapabilityState> {
-    if (this.accessKeyId === undefined || this.accessKeySecret === undefined) {
-      return { kind: 'unconfigured', reason: 'missing Alibaba Cloud AccessKey' };
-    }
-
-    const headers = signAliyunRequest({
-      method: 'POST',
-      pathname: '/',
-      query: {},
-      headers: {
-        host: new URL(this.origins.balance).host,
-        'content-type': 'application/json',
-        'x-acs-action': 'QueryAccountBalance',
-        'x-acs-date': new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
-        'x-acs-signature-nonce': randomUUID(),
-        'x-acs-version': '2017-12-14',
-      },
-      accessKeyId: this.accessKeyId,
-      accessKeySecret: this.accessKeySecret,
-    });
-    const result = await this.http.postJson(`${this.origins.balance}/`, undefined, {
-      headers,
+    const url = `${this.origins.cli}${ENDPOINTS['qwen.fundBalance']}`;
+    const result = await this.http.postJson(url, FUND_BALANCE_BODY, {
+      bearer: management.accessToken,
       signal,
     });
-    if (!result.ok) return { kind: 'failed', error: result.error };
+    if (!result.ok) {
+      return {
+        kind: 'failed',
+        error:
+          result.error.kind === 'auth'
+            ? { kind: 'auth', message: 'error.qwen.loginExpired' }
+            : result.error,
+      };
+    }
     try {
       return { kind: 'ok', fetchedAt, data: readQwenAccountBalance(result.body) };
     } catch {

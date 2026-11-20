@@ -368,11 +368,6 @@ function providerDetails(
           value: formatMoney(balance.creditAmount, balance.currency),
           group,
         },
-        {
-          label: t('dashboard.qwen.mybankCredit'),
-          value: formatMoney(balance.mybankCreditAmount, balance.currency),
-          group,
-        },
       );
       if (balance.quotaLimit !== null) {
         details.push({

@@ -3,7 +3,6 @@
     "minimax-cn": "https://www.minimaxi.com",
     "minimax-global": "https://www.minimax.io",
     "deepseek-api": "https://api.deepseek.com",
-    "qwen-api": "https://business.aliyuncs.com",
     "qwen-auth": "https://t.qianwenai.com",
     "qwen-cli": "https://cli.qianwenai.com",
     "qwen-data": "https://cs-data.qianwenai.com"
@@ -17,7 +16,8 @@
     "qwen.devicePoll": "/cli/device/token",
     "qwen.consoleAccess": "/data/v2/api.json",
     "qwen.tokenPlanUsage": "/cli/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaHttp.apikeyMgr.%2Ftokenplan%2Fpersonal%2Fapi%2Fv2%2Fusage",
-    "qwen.tokenPlanSubscription": "/cli/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaHttp.apikeyMgr.%2Ftokenplan%2Fpersonal%2Fapi%2Fv2%2Fsubscription"
+    "qwen.tokenPlanSubscription": "/cli/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaHttp.apikeyMgr.%2Ftokenplan%2Fpersonal%2Fapi%2Fv2%2Fsubscription",
+    "qwen.fundBalance": "/data/v2/api.json"
   },
   "credentials": {
     "minimax-cn": {

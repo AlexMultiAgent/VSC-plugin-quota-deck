@@ -202,8 +202,7 @@ function providerRows(
       rows =
         row(t('dashboard.qwen.availableBalance'), qwenBalance.availableAmount) +
         row(t('dashboard.qwen.availableCash'), qwenBalance.availableCashAmount) +
-        row(t('dashboard.qwen.credit'), qwenBalance.creditAmount) +
-        row(t('dashboard.qwen.mybankCredit'), qwenBalance.mybankCreditAmount);
+        row(t('dashboard.qwen.credit'), qwenBalance.creditAmount);
       if (qwenBalance.quotaLimit !== null) {
         rows += row(t('dashboard.qwen.quotaLimit'), qwenBalance.quotaLimit);
       }

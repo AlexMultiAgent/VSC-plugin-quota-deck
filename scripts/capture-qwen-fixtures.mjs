@@ -76,6 +76,24 @@ async function deviceLogin() {
   return accessToken;
 }
 
+async function fundBalance(accessToken) {
+  const url = `${CLI}${endpoints['qwen.fundBalance']}`;
+  const response = await postJson(
+    url,
+    JSON.stringify({
+      product: 'BssOpenAPI-V3',
+      action: 'GetFundAccountAvailableAmount',
+      region: 'cn-beijing',
+      params: {},
+    }),
+    { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+  );
+  if (response?.code !== '200') {
+    throw new Error(`GetFundAccountAvailableAmount failed: ${response?.code ?? 'unknown'}`);
+  }
+  return { response, url };
+}
+
 async function issueConsoleToken(accessToken) {
   const url = `${CLI}${endpoints['qwen.consoleAccess']}`;
   const response = await postJson(
@@ -143,8 +161,11 @@ function writeFixture(capability, caseName, consoleStep, gatewayStep) {
     case: caseName,
     sourceHost: new URL(gatewayStep.url).host,
     sourceUrls: [consoleStep.url, gatewayStep.url],
-    response: sanitizeValue(gatewayStep.response),
-    steps: [sanitizeValue(consoleStep.response), sanitizeValue(gatewayStep.response)],
+    response: sanitizeValue(gatewayStep.response, ['instanceCode']),
+    steps: [
+      sanitizeValue(consoleStep.response, ['instanceCode']),
+      sanitizeValue(gatewayStep.response, ['instanceCode']),
+    ],
   };
   const tail = capability.slice(capability.indexOf('.') + 1);
   const target = join(process.cwd(), 'src', 'test', 'fixtures', 'qwen', tail, `${caseName}.json`);
@@ -154,6 +175,36 @@ function writeFixture(capability, caseName, consoleStep, gatewayStep) {
 }
 
 const accessToken = await deviceLogin();
+const balance = await fundBalance(accessToken);
+const balanceFixture = {
+  capturedAt: new Date().toISOString(),
+  provider: 'qwen',
+  capability: 'qwen.accountBalance',
+  case: 'standard',
+  sourceHost: new URL(balance.url).host,
+  sourceUrls: [balance.url],
+  response: sanitizeValue(balance.response, [
+    'FundAccountId',
+    'FundAccountOwnerAccountId',
+  ]),
+  steps: [
+    sanitizeValue(balance.response, ['FundAccountId', 'FundAccountOwnerAccountId']),
+  ],
+};
+const balanceTarget = join(
+  process.cwd(),
+  'src',
+  'test',
+  'fixtures',
+  'qwen',
+  'accountBalance',
+  'standard.json',
+);
+mkdirSync(dirname(balanceTarget), { recursive: true });
+writeFileSync(balanceTarget, `${JSON.stringify(balanceFixture, null, 2)}
+`, 'utf8');
+console.log(`wrote ${relative(process.cwd(), balanceTarget)}`);
+
 const consoleStep = await issueConsoleToken(accessToken);
 const usage = await gateway(consoleStep.token, 'qwen.tokenPlan');
 writeFixture('qwen.tokenPlan', 'standard', { url: `${CLI}${endpoints['qwen.consoleAccess']}`, response: consoleStep.response }, usage);

@@ -6,7 +6,6 @@
   "command.switchProvider.title": "切换服务商",
   "command.configureMiniMax.title": "配置 MiniMax",
   "command.configureDeepSeek.title": "配置 DeepSeek",
-  "command.configureQwen.title": "配置 Qwen",
   "command.loginQwen.title": "登录千问AI平台",
   "command.configureProviders.title": "配置服务商",
   "command.showHelp.title": "查看帮助",

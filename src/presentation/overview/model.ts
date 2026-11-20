@@ -451,11 +451,6 @@ function qwenItem(options: OverviewOptions): OverviewItem {
         label: options.t('dashboard.qwen.credit'),
         amount: balance.creditAmount,
       },
-      {
-        id: 'mybank-credit',
-        label: options.t('dashboard.qwen.mybankCredit'),
-        amount: balance.mybankCreditAmount,
-      },
     ];
     if (balance.quotaLimit !== null) {
       fields.push({

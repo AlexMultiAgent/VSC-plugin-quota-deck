@@ -30,10 +30,9 @@ describe('buildProviders', () => {
     expect(new Set(providers.map((provider) => provider.id)).size).toBe(providers.length);
   });
 
-  it('gives Qwen the balance, CLI, and data origins', () => {
+  it('gives Qwen the CLI and data origins', () => {
     const providers = buildProviders({} as HttpClient);
     const qwen = providers.find((provider) => provider.id === 'qwen') as QwenProvider;
-    expect(qwen.origins.balance).toBe('https://business.aliyuncs.com');
     expect(qwen.origins.cli).toBe('https://cli.qianwenai.com');
     expect(qwen.origins.data).toBe('https://cs-data.qianwenai.com');
   });

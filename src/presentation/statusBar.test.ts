@@ -150,7 +150,6 @@ describe('renderStatusBarText', () => {
           data: {
             availableAmount: -12.34,
             creditAmount: 5,
-            mybankCreditAmount: 6,
             availableCashAmount: -18.34,
             quotaLimit: 1000,
             currency: 'CNY',
@@ -490,7 +489,6 @@ describe('StatusBarPresenter', () => {
           data: {
             availableAmount: -12.34,
             creditAmount: 5,
-            mybankCreditAmount: 6,
             availableCashAmount: -18.34,
             quotaLimit: 1000,
             currency: 'CNY',
@@ -523,7 +521,6 @@ describe('StatusBarPresenter', () => {
           data: {
             availableAmount: -12.34,
             creditAmount: 5,
-            mybankCreditAmount: 6,
             availableCashAmount: -18.34,
             quotaLimit: 1000,
             currency: 'CNY',

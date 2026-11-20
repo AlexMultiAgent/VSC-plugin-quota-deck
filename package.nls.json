@@ -6,7 +6,6 @@
   "command.switchProvider.title": "Switch Provider",
   "command.configureMiniMax.title": "Configure MiniMax",
   "command.configureDeepSeek.title": "Configure DeepSeek",
-  "command.configureQwen.title": "Configure Qwen",
   "command.loginQwen.title": "Sign in to Qianwen AI",
   "command.configureProviders.title": "Configure Providers",
   "command.showHelp.title": "Show Help",

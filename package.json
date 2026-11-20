@@ -79,11 +79,6 @@
         "category": "QuotaDeck CN"
       },
       {
-        "command": "quotaDeck.configureQwen",
-        "title": "%command.configureQwen.title%",
-        "category": "QuotaDeck CN"
-      },
-      {
         "command": "quotaDeck.loginQwen",
         "title": "%command.loginQwen.title%",
         "category": "QuotaDeck CN"
@@ -234,10 +229,6 @@
         },
         {
           "command": "quotaDeck.configureDeepSeek",
-          "when": "true"
-        },
-        {
-          "command": "quotaDeck.configureQwen",
           "when": "true"
         },
         {

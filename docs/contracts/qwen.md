@@ -1,6 +1,6 @@
 # Qwen / Model Studio contract inventory
 
-Checked on 2026-11-18.
+Checked on 2026-11-20.
 
 This document separates sources used by the extension from stronger Qwen /
 Model Studio sources that are available but not yet integrated. Listing a
@@ -11,15 +11,17 @@ this implementation environment.
 
 | Source | Capability | Credential | Status |
 | --- | --- | --- | --- |
-| Alibaba Cloud BSS `QueryAccountBalance` | Account available, cash, credit, and quota-limit amounts | Alibaba Cloud AccessKey ID and Secret | Integrated as `qwen.accountBalance` |
+| Qianwen management API `BssOpenAPI-V3.GetFundAccountAvailableAmount` | Account available, cash, credit, and quota-limit amounts | Qianwen management access token from `t.qianwenai.com` | Integrated as `qwen.accountBalance`; live-captured |
 | Qianwen management API (OAuth device flow) | Personal Token Plan usage window and subscription | Qianwen management access token from `t.qianwenai.com` | Integrated as `qwen.tokenPlan` / `qwen.tokenPlanSubscription`; live-captured |
 | Model Studio Usage API `GET /usage/summary` | Usage totals for a selected period | Not yet verified | Candidate runtime source |
 | Model Studio Usage API `GET /usage/trend` | Usage time series for a selected period | Not yet verified | Candidate runtime source |
 | Model Studio CLI `bl quota show` | Account quota inspection from a terminal | User-installed CLI session | Diagnostic/reference only |
 
-The balance query uses the BSS OpenAPI endpoint at
-`https://business.aliyuncs.com/`. The Usage API and CLI entries do not add any
-runtime network request in the current version.
+The balance query uses the Qianwen CLI flat API at
+`https://cli.qianwenai.com/data/v2/api.json`, authenticated by the same
+management token as the Token Plan. The Usage API and CLI entries do not add
+any runtime network request in the current version. The former Alibaba Cloud
+AccessKey `QueryAccountBalance` path is retired.
 
 ## Why the usage sources are stronger
 
@@ -44,7 +46,7 @@ and sanitize representative responses for all supported periods, then confirm:
 - field names and units for request, token, model, and cost totals;
 - pagination, rate limits, and empty-period behavior;
 - whether the endpoint reports free quota, paid usage, or both;
-- the RAM permissions required beyond `bss:QueryAccountBalance`.
+- whether the endpoint is reachable with the management token rather than a RAM AccessKey.
 
 Until those checks pass, the dashboard must not turn candidate usage data into
 zeros or present it as live account usage.
@@ -53,13 +55,39 @@ zeros or present it as live account usage.
 
 | Capability | Status |
 | --- | --- |
-| `qwen.accountBalance` | Implemented and unit-tested; not live-captured here |
+| `qwen.accountBalance` | Implemented; live-captured 2026-11-20 |
 | `qwen.tokenPlan` | Implemented; live-captured 2026-11-20 |
 | `qwen.tokenPlanSubscription` | Implemented; live-captured 2026-11-20 |
 | `qwen.usageSummary` | Candidate; not implemented |
 | `qwen.usageTrend` | Candidate; not implemented |
 | `qwen.quotaCli` | Reference only; not implemented |
 
+
+## Account balance (management login)
+
+`POST https://cli.qianwenai.com/data/v2/api.json` with
+`Authorization: Bearer <management access token>` and a JSON body:
+
+```json
+{ "product": "BssOpenAPI-V3", "action": "GetFundAccountAvailableAmount",
+  "region": "cn-beijing", "params": {} }
+```
+
+The flat envelope is `{ code: "200", data: { …fields } }`. The extension reads:
+
+| Response field | Display |
+| --- | --- |
+| `AvailableAmount` | 可用余额 |
+| `CashAmount` | 可用现金 |
+| `CreditAmount` | 信控额度 |
+| `QuotaAmount` | 额度上限 (nullable) |
+| `Currency` | Currency label |
+
+The live capture also returns `AvailableCreditAmount`, `QuotaConsumedAmount`,
+`UnclearedAmount`, `UnpaidAmount`, `FundAccountStatus`, and `FundAccountId`; none are surfaced.
+The fund-account response has **no** `MybankCreditAmount`, so the 网商信控额度 row is retired. The
+former AccessKey `QueryAccountBalance` response used `AvailableCashAmount` / `QuotaLimit`; those
+names are not used by this endpoint.
 
 ## Personal Token Plan quota (OAuth management login)
 
@@ -128,12 +156,15 @@ API and is not called.
 The management access token and `ExpireTime` are stored as JSON in VS Code Secret Storage under
 `qwen` / `management-token`. The token is never logged, shown, or written elsewhere. The official
 CLI has no refresh grant; an expired token means the user re-runs
-`QuotaDeck CN: 登录千问AI平台`. The account-balance capability keeps using the Alibaba Cloud
-AccessKey pair; the two credential groups fail independently.
+`QuotaDeck CN: 登录千问AI平台`. The same token queries the account balance and the Token Plan, so
+both capabilities fail together when it expires. Legacy `access-key-id` / `access-key-secret`
+secrets are no longer read; the login flow deletes them, and `quotaDeck.clearCredential` can
+delete any that remain.
 
 ### Capture
 
-`scripts/capture-qwen-fixtures.mjs` performs the device flow once and writes both fixtures under
-`src/test/fixtures/qwen/`. The committed fixtures were captured this way; `steps[0]` is the
-`GenerateCLIAccessToken` response with `data.cliAccessToken` redacted, and `response` is the
+`scripts/capture-qwen-fixtures.mjs` performs the device flow once and writes three fixtures under
+`src/test/fixtures/qwen/`: the fund-account response (`accountBalance`), plus both Token Plan
+fixtures. The committed fixtures were captured this way; for the Token Plan fixtures `steps[0]` is
+the `GenerateCLIAccessToken` response with `data.cliAccessToken` redacted, and `response` is the
 gateway response.

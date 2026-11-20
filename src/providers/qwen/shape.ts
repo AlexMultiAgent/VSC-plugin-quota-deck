@@ -2,47 +2,35 @@ import { ShapeError, asRecord, numberOrNull, requireNumber } from '../shape';
 
 export interface QwenAccountBalance {
   readonly availableAmount: number;
-  readonly creditAmount: number;
-  readonly mybankCreditAmount: number;
   readonly availableCashAmount: number;
+  readonly creditAmount: number;
   readonly quotaLimit: number | null;
   readonly currency: string;
 }
 
-function record(value: unknown): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new TypeError('expected an object');
-  }
-  return value as Record<string, unknown>;
-}
-
-function text(value: unknown): string {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new TypeError('expected a non-empty string');
-  }
+function balanceText(value: unknown, path: string): string {
+  if (typeof value !== 'string' || value.length === 0) throw new ShapeError(path);
   return value;
 }
 
-function amount(value: unknown): number {
-  const parsed = typeof value === 'number' ? value : Number(text(value));
-  if (!Number.isFinite(parsed)) throw new TypeError('expected a finite amount');
-  return parsed;
-}
-
+/**
+ * Parse the flat `BssOpenAPI-V3.GetFundAccountAvailableAmount` response. The
+ * login token queries the fund account directly, so `CashAmount` replaces the
+ * retired AccessKey `AvailableCashAmount` and there is no Mybank credit field.
+ */
 export function readQwenAccountBalance(response: unknown): QwenAccountBalance {
-  const root = record(response);
-  if (root.Code !== '200' || root.Success !== true) {
-    throw new Error('the balance query failed');
-  }
-  const data = record(root.Data);
-  const quotaLimit = data.QuotaLimit === undefined ? null : amount(data.QuotaLimit);
+  const root = asRecord(response, 'root');
+  if (root.code !== '200') throw new ShapeError('code');
+  const data = asRecord(root.data, 'data');
   return {
-    availableAmount: amount(data.AvailableAmount),
-    creditAmount: amount(data.CreditAmount),
-    mybankCreditAmount: amount(data.MybankCreditAmount),
-    availableCashAmount: amount(data.AvailableCashAmount),
-    quotaLimit,
-    currency: text(data.Currency),
+    availableAmount: requireNumber(data.AvailableAmount, 'AvailableAmount'),
+    availableCashAmount: requireNumber(data.CashAmount, 'CashAmount'),
+    creditAmount: requireNumber(data.CreditAmount, 'CreditAmount'),
+    quotaLimit:
+      data.QuotaAmount === undefined || data.QuotaAmount === null
+        ? null
+        : requireNumber(data.QuotaAmount, 'QuotaAmount'),
+    currency: balanceText(data.Currency, 'Currency'),
   };
 }
 

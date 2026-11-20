@@ -104,7 +104,6 @@ describe('buildOverviewItems', () => {
               availableAmount: 1.25,
               availableCashAmount: 0.5,
               creditAmount: 0.75,
-              mybankCreditAmount: 0,
               quotaLimit: 100,
               currency: 'CNY',
             },
@@ -131,14 +130,12 @@ describe('buildOverviewItems', () => {
       'Available balance',
       'Available cash',
       'Credit',
-      'Mybank credit',
       'Quota limit',
     ]);
     expect(balanceGroup?.children.map((item) => item.description)).toEqual([
       '¥1.25 CNY',
       '¥0.50 CNY',
       '¥0.75 CNY',
-      '¥0.00 CNY',
       '¥100.00 CNY',
     ]);
     expect(items[1]?.description).toBe('CNY ¥13.69');
@@ -259,7 +256,6 @@ describe('buildOverviewItems', () => {
               availableAmount: 1.25,
               availableCashAmount: 0.5,
               creditAmount: 0.75,
-              mybankCreditAmount: 0,
               quotaLimit: null,
               currency: 'CNY',
             },
@@ -318,7 +314,6 @@ describe('buildOverviewItems', () => {
               availableAmount: 1,
               availableCashAmount: 1,
               creditAmount: 0,
-              mybankCreditAmount: 0,
               quotaLimit: null,
               currency: 'CNY',
             },

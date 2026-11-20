@@ -5,7 +5,6 @@ import { loadFixture } from '../../test/helpers/fixture';
 import { QwenProvider } from './provider';
 
 const ORIGINS = {
-  balance: 'https://business.aliyuncs.com',
   cli: 'https://cli.example.com',
   data: 'https://data.example.com',
 };
@@ -23,27 +22,15 @@ function managementToken(expiresAt = '2099-01-01T00:00:00.000Z'): string {
   return JSON.stringify({ accessToken: 'oauth-token', expiresAt });
 }
 
-const BALANCE_RESPONSE = {
-  Code: '200',
-  Message: 'success',
-  RequestId: 'request-id',
-  Success: true,
-  Data: {
-    AvailableAmount: '-12.34',
-    CreditAmount: '5.00',
-    MybankCreditAmount: '6.00',
-    Currency: 'CNY',
-    AvailableCashAmount: '-18.34',
-    QuotaLimit: '1000.00',
-  },
-};
-
-function captured(capability: 'qwen.tokenPlan' | 'qwen.tokenPlanSubscription'): unknown {
+function captured(
+  capability: 'qwen.accountBalance' | 'qwen.tokenPlan' | 'qwen.tokenPlanSubscription',
+): unknown {
   return JSON.parse(
     JSON.stringify(loadFixture('qwen', capability, 'standard')),
   ).response;
 }
 
+const BALANCE_RESPONSE = captured('qwen.accountBalance');
 const TOKEN_RESPONSE = { code: '200', data: { cliAccessToken: 'console-token' } };
 const USAGE_RESPONSE = captured('qwen.tokenPlan');
 const SUBSCRIPTION_RESPONSE = captured('qwen.tokenPlanSubscription');
@@ -59,13 +46,16 @@ function client(options: ClientOptions = {}) {
   let tokenCalls = 0;
   let usageCalls = 0;
   let subscriptionCalls = 0;
-  const postJson = vi.fn().mockImplementation(async (url: string) => {
-    if (String(url).includes('cli.example.com')) {
+  const postJson = vi.fn().mockImplementation(
+    async (url: string, body: unknown): Promise<JsonResult> => {
+      const action = (body as { action?: string } | undefined)?.action;
+      if (action === 'GetFundAccountAvailableAmount') {
+        return options.balance ?? { ok: true, body: BALANCE_RESPONSE };
+      }
       tokenCalls += 1;
       return (options.token ?? (() => ({ ok: true, body: TOKEN_RESPONSE })))(tokenCalls);
-    }
-    return options.balance ?? { ok: true, body: BALANCE_RESPONSE };
-  });
+    },
+  );
   const postForm = vi.fn().mockImplementation(async (url: string) => {
     if (String(url).includes('usage')) {
       usageCalls += 1;
@@ -82,13 +72,7 @@ function client(options: ClientOptions = {}) {
 async function connected(options: ClientOptions = {}) {
   const mock = client(options);
   const provider = new QwenProvider(ORIGINS, mock.http);
-  await provider.connect(
-    secrets({
-      'access-key-id': 'access-id',
-      'access-key-secret': 'access-secret',
-      'management-token': managementToken(),
-    }),
-  );
+  await provider.connect(secrets({ 'management-token': managementToken() }));
   return { provider, ...mock };
 }
 
@@ -110,61 +94,46 @@ describe('QwenProvider', () => {
     ]);
   });
 
-  it('becomes ready when both credential groups are present', async () => {
+  it('becomes ready with the management token alone', async () => {
     const { provider } = await connected();
     expect(
-      await provider.connect(
-        secrets({
-          'access-key-id': 'access-id',
-          'access-key-secret': 'access-secret',
-          'management-token': managementToken(),
-        }),
-      ),
+      await provider.connect(secrets({ 'management-token': managementToken() })),
     ).toEqual({
       kind: 'ready',
       capabilities: ['qwen.accountBalance', 'qwen.tokenPlan', 'qwen.tokenPlanSubscription'],
     });
   });
 
-  it('reports a partial state with only the balance AccessKey pair', async () => {
+  it('ignores leftover AccessKey secrets', async () => {
     const { provider } = await connected();
     expect(
       await provider.connect(
-        secrets({ 'access-key-id': 'access-id', 'access-key-secret': 'access-secret' }),
+        secrets({
+          'access-key-id': 'access-id',
+          'access-key-secret': 'access-secret',
+        }),
       ),
-    ).toEqual({
-      kind: 'partial',
-      capabilities: ['qwen.accountBalance'],
-      missing: [
-        { capability: 'qwen.tokenPlan', credential: 'management-token' },
-        { capability: 'qwen.tokenPlanSubscription', credential: 'management-token' },
-      ],
-    });
+    ).toEqual({ kind: 'not-configured' });
   });
 
-  it('reports a partial state with only the management token', async () => {
-    const { provider } = await connected();
-    expect(
-      await provider.connect(secrets({ 'management-token': managementToken() })),
-    ).toEqual({
-      kind: 'partial',
-      capabilities: ['qwen.tokenPlan', 'qwen.tokenPlanSubscription'],
-      missing: [{ capability: 'qwen.accountBalance', credential: 'access-key-id' }],
-    });
-  });
-
-  it('reports not-configured when neither credential group is present', async () => {
+  it('reports not-configured without the management token', async () => {
     const { provider } = await connected();
     expect(await provider.connect(secrets({}))).toEqual({ kind: 'not-configured' });
   });
 
-  it('issues one console token and calls both gateway endpoints', async () => {
+  it('queries the fund account and both gateway endpoints with one login', async () => {
     const { provider, postJson, postForm } = await connected();
     const snapshot = await provider.fetchSnapshot(SIGNAL);
 
     expect(snapshot.capabilities['qwen.accountBalance']).toMatchObject({
       kind: 'ok',
-      data: { availableAmount: -12.34, currency: 'CNY' },
+      data: {
+        availableAmount: 0,
+        availableCashAmount: 0,
+        creditAmount: 0,
+        quotaLimit: 0,
+        currency: 'CNY',
+      },
     });
     expect(snapshot.capabilities['qwen.tokenPlan']).toMatchObject({ kind: 'ok' });
     expect(snapshot.capabilities['qwen.tokenPlanSubscription']).toMatchObject({ kind: 'ok' });
@@ -175,8 +144,23 @@ describe('QwenProvider', () => {
     ]);
 
     expect(postJson).toHaveBeenCalledTimes(2);
-    const tokenCall = postJson.mock.calls.find(([url]) =>
-      String(url).includes('cli.example.com'),
+    const balanceCall = postJson.mock.calls.find(
+      ([, body]) =>
+        (body as { action?: string } | undefined)?.action ===
+        'GetFundAccountAvailableAmount',
+    )!;
+    expect(balanceCall[0]).toBe('https://cli.example.com/data/v2/api.json');
+    expect(balanceCall[1]).toEqual({
+      product: 'BssOpenAPI-V3',
+      action: 'GetFundAccountAvailableAmount',
+      region: 'cn-beijing',
+      params: {},
+    });
+    expect(balanceCall[2]?.bearer).toBe('oauth-token');
+
+    const tokenCall = postJson.mock.calls.find(
+      ([, body]) =>
+        (body as { action?: string } | undefined)?.action === 'GenerateCLIAccessToken',
     )!;
     expect(tokenCall[0]).toBe('https://cli.example.com/data/v2/api.json');
     expect(tokenCall[1]).toEqual({
@@ -204,7 +188,9 @@ describe('QwenProvider', () => {
   it('retries once with a fresh console token after NotLogined', async () => {
     const { provider, postJson, postForm } = await connected({
       usage: (attempt) =>
-        attempt === 1 ? gatewayFailure('BailianGateway.Login.NotLogined') : { ok: true, body: USAGE_RESPONSE },
+        attempt === 1
+          ? gatewayFailure('BailianGateway.Login.NotLogined')
+          : { ok: true, body: USAGE_RESPONSE },
     });
 
     const snapshot = await provider.fetchSnapshot(SIGNAL);
@@ -232,16 +218,15 @@ describe('QwenProvider', () => {
     const mock = client();
     const provider = new QwenProvider(ORIGINS, mock.http);
     await provider.connect(
-      secrets({
-        'access-key-id': 'access-id',
-        'access-key-secret': 'access-secret',
-        'management-token': managementToken('2020-01-01T00:00:00.000Z'),
-      }),
+      secrets({ 'management-token': managementToken('2020-01-01T00:00:00.000Z') }),
     );
 
     const snapshot = await provider.fetchSnapshot(SIGNAL);
 
-    expect(snapshot.capabilities['qwen.accountBalance']).toMatchObject({ kind: 'ok' });
+    expect(snapshot.capabilities['qwen.accountBalance']).toEqual({
+      kind: 'failed',
+      error: { kind: 'auth', message: 'error.qwen.loginExpired' },
+    });
     expect(snapshot.capabilities['qwen.tokenPlan']).toEqual({
       kind: 'failed',
       error: { kind: 'auth', message: 'error.qwen.loginExpired' },
@@ -250,28 +235,28 @@ describe('QwenProvider', () => {
       kind: 'failed',
       error: { kind: 'auth', message: 'error.qwen.loginExpired' },
     });
-    expect(mock.postJson).toHaveBeenCalledTimes(1);
+    expect(mock.postJson).not.toHaveBeenCalled();
     expect(mock.postForm).not.toHaveBeenCalled();
   });
 
-  it('reports the plan as unconfigured when only the balance is configured', async () => {
+  it('reports every capability unconfigured without a management token', async () => {
     const mock = client();
     const provider = new QwenProvider(ORIGINS, mock.http);
-    await provider.connect(
-      secrets({ 'access-key-id': 'access-id', 'access-key-secret': 'access-secret' }),
-    );
+    await provider.connect(secrets({}));
 
     const snapshot = await provider.fetchSnapshot(SIGNAL);
 
-    expect(snapshot.capabilities['qwen.accountBalance']).toMatchObject({ kind: 'ok' });
-    expect(snapshot.capabilities['qwen.tokenPlan']).toEqual({
-      kind: 'unconfigured',
-      reason: 'missing Qianwen management token',
-    });
-    expect(snapshot.capabilities['qwen.tokenPlanSubscription']).toEqual({
-      kind: 'unconfigured',
-      reason: 'missing Qianwen management token',
-    });
+    for (const capability of [
+      'qwen.accountBalance',
+      'qwen.tokenPlan',
+      'qwen.tokenPlanSubscription',
+    ]) {
+      expect(snapshot.capabilities[capability]).toEqual({
+        kind: 'unconfigured',
+        reason: 'missing Qianwen management token',
+      });
+    }
+    expect(mock.postJson).not.toHaveBeenCalled();
     expect(mock.postForm).not.toHaveBeenCalled();
   });
 
@@ -299,14 +284,14 @@ describe('QwenProvider', () => {
 
     expect(snapshot.capabilities['qwen.accountBalance']).toEqual({
       kind: 'failed',
-      error: { kind: 'auth', message: 'error.auth' },
+      error: { kind: 'auth', message: 'error.qwen.loginExpired' },
     });
     expect(snapshot.capabilities['qwen.tokenPlan']).toMatchObject({ kind: 'ok' });
   });
 
   it('reports an unexpected balance response as malformed', async () => {
     const { provider } = await connected({
-      balance: { ok: true, body: { Success: false } },
+      balance: { ok: true, body: { code: '500' } },
     });
 
     const snapshot = await provider.fetchSnapshot(SIGNAL);

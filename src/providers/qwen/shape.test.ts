@@ -10,77 +10,60 @@ import {
 } from './shape';
 
 describe('readQwenAccountBalance', () => {
-  it('parses every documented balance amount and keeps a negative available balance', () => {
-    expect(
-      readQwenAccountBalance({
-        Code: '200',
-        Message: 'success',
-        RequestId: 'request-id',
-        Success: true,
-        Data: {
-          AvailableAmount: '-12.34',
-          CreditAmount: '5.00',
-          MybankCreditAmount: '6.00',
-          Currency: 'CNY',
-          AvailableCashAmount: '-18.34',
-          QuotaLimit: '1000.00',
-        },
-      }),
-    ).toEqual({
+  function response(): any {
+    return JSON.parse(
+      JSON.stringify(loadFixture('qwen', 'qwen.accountBalance', 'standard')),
+    ).response;
+  }
+
+  it('parses the captured fund-account amounts', () => {
+    const body = response();
+    body.data.AvailableAmount = '-12.34';
+    body.data.CashAmount = '-18.34';
+    body.data.CreditAmount = '5.00';
+    body.data.QuotaAmount = '1000.00';
+
+    expect(readQwenAccountBalance(body)).toEqual({
       availableAmount: -12.34,
-      creditAmount: 5,
-      mybankCreditAmount: 6,
       availableCashAmount: -18.34,
+      creditAmount: 5,
       quotaLimit: 1000,
       currency: 'CNY',
     });
   });
 
-  it('allows an omitted quota limit', () => {
-    const balance = readQwenAccountBalance({
-      Code: '200',
-      Message: 'success',
-      RequestId: 'request-id',
-      Success: true,
-      Data: {
-        AvailableAmount: '10.00',
-        CreditAmount: '0.00',
-        MybankCreditAmount: '0.00',
-        Currency: 'CNY',
-        AvailableCashAmount: '10.00',
-      },
+  it('parses the captured zero balance without inventing values', () => {
+    expect(readQwenAccountBalance(response())).toEqual({
+      availableAmount: 0,
+      availableCashAmount: 0,
+      creditAmount: 0,
+      quotaLimit: 0,
+      currency: 'CNY',
     });
+  });
 
-    expect(balance.quotaLimit).toBeNull();
+  it('allows an omitted quota limit', () => {
+    const body = response();
+    delete body.data.QuotaAmount;
+    expect(readQwenAccountBalance(body).quotaLimit).toBeNull();
   });
 
   it('rejects a business failure even when the HTTP request succeeded', () => {
-    expect(() =>
-      readQwenAccountBalance({
-        Code: '401',
-        Message: 'InvalidAccessKeyId',
-        RequestId: 'request-id',
-        Success: false,
-      }),
-    ).toThrow();
+    const body = response();
+    body.code = '401';
+    expect(() => readQwenAccountBalance(body)).toThrow();
+  });
+
+  it('rejects a missing cash amount instead of substituting zero', () => {
+    const body = response();
+    delete body.data.CashAmount;
+    expect(() => readQwenAccountBalance(body)).toThrow();
   });
 
   it('rejects a non-numeric amount instead of rendering it as zero', () => {
-    expect(() =>
-      readQwenAccountBalance({
-        Code: '200',
-        Message: 'success',
-        RequestId: 'request-id',
-        Success: true,
-        Data: {
-          AvailableAmount: 'unavailable',
-          CreditAmount: '0.00',
-          MybankCreditAmount: '0.00',
-          Currency: 'CNY',
-          AvailableCashAmount: '10.00',
-        },
-      }),
-    ).toThrow();
+    const body = response();
+    body.data.AvailableAmount = 'unavailable';
+    expect(() => readQwenAccountBalance(body)).toThrow();
   });
 });
 
