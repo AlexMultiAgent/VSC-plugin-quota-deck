@@ -50,7 +50,7 @@ src/
                  qwen/ parse and assemble inside shape.ts + provider.ts; qwen/auth.ts parses the
                  management device flow and stored token, qwen/login.ts runs it
   presentation/  statusBar, tooltip, overview/ (Activity Bar tree), onboarding, commands, credentials,
-                 switcher, labels, display, quotaTone, quickPickFallback, dashboard/
+                 qwenLogin, switcher, labels, display, quotaTone, quickPickFallback, dashboard/
   localization/  messages.ts (key registry) + en-us.ts / zh-cn.ts bundles + index.ts (resolver)
   test/          __mocks__/vscode.ts, fixtures/, helpers/
 ```
@@ -61,9 +61,11 @@ place that knows a raw payload shape, `provider.ts` assembles capabilities over 
 normalized snapshots and never touches endpoints, secrets, or raw payloads.
 
 The status bar, the hover tooltip, the Activity Bar tree (`presentation/overview/`) and the dashboard
-all render the *same* coordinator snapshot. `refreshAll()` in `src/extension.ts` is the only place
-that pushes a snapshot into a surface — a new surface added without a line there shows data that no
-other surface contradicts, so it looks right until it is stale.
+all render the *same* coordinator snapshot. `refreshAll()` is the main paint path but not the only
+one: the startup block after `scheduler.start()` paints every surface from the cache before the
+first refresh, `switchProvider` repaints only the status bar and tooltip, and `openDashboard`
+repaints the dashboard before refreshing. A new surface needs a paint line in `refreshAll()` **and**
+in the startup cache block, or it stays empty until the first refresh and then lags the rest.
 
 Each surface renders that snapshot through its own derived view model:
 `presentation/overview/model.ts` (`buildOverviewItems`) and
@@ -95,7 +97,7 @@ provider must have supplied a number (a missing one is contract drift and throws
 `numberOrNull` when the provider may legitimately omit it. Never substitute `0` for a missing
 number.
 
-`src/presentation/display.ts` holds the shared display helpers: `formatMoney`,
+`src/presentation/display.ts` holds the shared display helpers: `formatMoney`, `formatCredits`,
 `selectPrimaryCurrency`, `providerDisplayName`, `pickTightestWindow`. Use them instead of writing
 another copy. `src/presentation/quotaTone.ts` is the shared severity function
 (`quotaTone(percent, warningThresholdPercent)` → `positive | caution | warning | critical`) used by
@@ -172,7 +174,9 @@ These are product and security rules, not implementation details — do not trad
   does not implement, add it to the mock — do not import the real module.
 - **Localization is a three-file edit, and no UI text may be hardcoded.** Add the key to
   `src/localization/messages.ts`, then to both `en-us.ts` and `zh-cn.ts`. `MessageBundle =
-  Record<MessageKey, string>` makes a missing bundle key a compile error. `npm run check:i18n`
+  Record<MessageKey, string>` makes a missing bundle key a compile error. `quotaDeck.language`
+  selects the bundle (`auto` follows `vscode.env.language`); any `quotaDeck.*` configuration change
+  re-resolves the translator and re-runs `refreshAll()`. `npm run check:i18n`
   fails the build on any Chinese string literal in a production source, so a label written straight
   into `tooltip.ts` breaks the build. Manifest strings live separately in `package.nls.json` /
   `package.nls.zh-cn.json` and must stay key-identical; `displayName` and `description` are
