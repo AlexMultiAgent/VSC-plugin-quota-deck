@@ -24,6 +24,10 @@ npm run package          # build → locale/i18n checks → guard:fixtures → r
 `guard:package` reads `dist/extension.js` and `dist/webview.js` and runs `npx vsce ls`, so it is
 **not** a standalone check — run `npm run build` first. `npm run package` does this for you.
 
+`npm run package` writes `quota-deck-<version>.vsix` to the repo root; it does not publish.
+Marketplace publishing is `npx vsce publish --packagePath quota-deck-<version>.vsix` and needs a
+Marketplace PAT (`VSCE_PAT`).
+
 ## Architecture
 
 Two esbuild bundles, two targets:
@@ -80,6 +84,10 @@ belongs in the view model, not in the surface.
 `quotaDeck.statusBar.providerOrder` decides **which** providers appear and in what order — the
 four painted surfaces and the connection-check report filter by it, so removing a provider from
 the list hides it everywhere. It is not an ordering-only preference.
+
+The MiniMax status-bar segment labels both windows — `5小时` / `周` in zh, `5h` / `Week` in en — and
+takes its icon and colour from the tighter of the two. The reset countdown lives in the tooltip,
+the dashboard and the tree, not in the status bar.
 
 Snapshots are fetched per **range** (`RangeId` in `src/core/time.ts`:
 `today | yesterday | last7 | last30 | thisMonth | lastMonth`). The range flows through
