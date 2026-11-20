@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.7 — 2026-11-20
+
+- 新增 `QuotaDeck CN: 检查连接`：先刷新，再在输出面板列出每个服务商的凭据状态、上次刷新时间和各 capability 的 `ok` / `stale` / `failed` / `unconfigured` 状态。
+- MiniMax 与 Qwen 的订阅到期时间旁显示“剩余 N 天”，到期后显示“已过期”；悬浮详情、Activity Bar 概览与 MiniMax 仪表盘同步。
+- README 与帮助命令加入 GitHub Star 提示：如果 QuotaDeck 帮到了你，欢迎在 GitHub 点个 Star。
+
 ## 0.3.6 — 2026-11-20
 
 - 移除 MiniMax“积分”展示：控制台积分只能通过 Cookie 会话读取，API key 无法访问；原字段 `credit_info.total_credit` 并非控制台积分，显示为 0 会误导。仪表盘与悬浮栏改为提示积分需在 MiniMax 控制台查看。
