@@ -1,6 +1,6 @@
 # DeepSeek verified contract
 
-Checked on 2026-11-17 with `DEEPSEEK_API_KEY`. Account values in the committed
+Checked on 2026-11-17 and re-probed on 2026-11-20 with `DEEPSEEK_API_KEY`. Account values in the committed
 fixture are anonymized to zero while preserving the response shape and JSON
 types.
 
@@ -19,6 +19,21 @@ Authentication: `Authorization: Bearer <api key>`.
 | Granted balance field | `granted_balance` |
 | Topped-up balance field | `topped_up_balance` |
 | Currencies observed | `CNY` |
+
+## What the API key can and cannot reach (probed 2026-11-20)
+
+| Route | Result with the API key |
+| --- | --- |
+| `GET /user/balance` and `GET /v1/user/balance` | Both return the same balance payload |
+| `GET /models` and `GET /v1/models` | Public model metadata (`deepseek-flash`, `deepseek-v4-pro`, context window, modalities); not account data and not shown |
+| `GET /user/usage`, `GET /user/bills` | 404; not public routes |
+| `platform.deepseek.com/api/v0/users/get_user_summary` | HTTP 200 with `{"code":40003,"msg":"Authorization Failed (invalid token)"}` |
+| `platform.deepseek.com/api/v0/usage/by_api_key/amount` and `/cost` | Same `40003` rejection |
+
+The platform usage routes require the browser session's `userToken`, not an API
+key. The extension will not request or forward that token, so detailed usage,
+per-model cost, per-key spending, and quota windows remain console-only. The
+API-key balance endpoint is account-level; it does not expose a per-key budget.
 
 ## capability status
 
