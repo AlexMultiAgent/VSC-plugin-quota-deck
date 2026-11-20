@@ -4,7 +4,7 @@
 
 不用在三个厂商控制台之间来回切换。QuotaDeck CN 把已配置账户的实时摘要放在编辑器里；悬停查看完整信息，需要明细时再打开可选仪表盘。
 
-[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck) · [问题反馈](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/issues) · [MIT](LICENSE) · 无遥测
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck) · [问题反馈](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/issues) · [⭐ Star](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck) · [MIT](LICENSE) · 无遥测
 
 ## 预览
 
@@ -71,6 +71,7 @@ QuotaDeck CN keeps MiniMax, DeepSeek, and Qwen account data in your VS Code stat
 - MiniMax 国内版与国际版账号独立配置。
 - DeepSeek 官方余额查询；详细用量与账单请前往 DeepSeek 官网。
 - 取数失败时保留上一次的数据并标注“数据已过期”，而不是显示为未配置。
+- “检查连接”命令会先刷新，再在输出面板列出每个服务商的凭据状态、上次刷新时间和各 capability 状态。
 - 凭据只保存在 VS Code Secret Storage。
 - 简体中文与英文界面。
 - 时间默认按 `Asia/Shanghai` 显示，可在 `quotaDeck.timeZone` 改为任意 IANA 时区；金额默认使用人民币格式。
@@ -152,6 +153,7 @@ Qwen / 百炼余额与 Token Plan 获取方式：
 | `QuotaDeck CN: Configure Providers` | 从仪表盘之外统一打开配置流程 |
 | `QuotaDeck CN: Extension Settings` | 打开本插件的原生设置页 |
 | `QuotaDeck CN: Clear Credential` | 清除已保存的凭据 |
+| `QuotaDeck CN: 检查连接` | 先刷新，再在输出面板列出凭据、上次刷新时间和各能力状态 |
 | `QuotaDeck CN: Show Help` | 查看帮助 |
 
 ## Known limitations
@@ -163,6 +165,12 @@ Qwen / 百炼余额与 Token Plan 获取方式：
 - DeepSeek 节假日日历目前覆盖至 `2026-12-31`，超出覆盖范围时显示“时段未知”。
 - 不代理模型请求，不提供对话补全，也不把本地估算当成账户余额或官方额度。
 - 不请求或保存网页 Cookie，不做货币换算，也不合并不同币种的金额。
+
+## 支持这个项目
+
+如果 QuotaDeck 帮到了你，欢迎在 [GitHub 点个 Star ⭐](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck)，这对我们意义重大。
+
+If QuotaDeck has been useful to you, please consider [starring it on GitHub ⭐](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck) — it means a lot to us.
 
 ## License
 

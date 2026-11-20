@@ -24,6 +24,19 @@ export const MESSAGES = {
   'state.failed': '获取失败',
   'state.partial': '部分可用',
   'state.ok': '正常',
+  'health.title': 'QuotaDeck CN — 连接状态',
+  'health.checking': '正在检查连接…',
+  'health.checkedAt': '检查时间',
+  'health.credentials': '凭据',
+  'health.credentialsReady': '已保存',
+  'health.credentialsPartial': '部分缺失',
+  'health.credentialsMissing': '未配置',
+  'health.credentialsError': '检查失败',
+  'health.lastRefresh': '上次刷新',
+  'health.neverRefreshed': '尚未刷新',
+  'health.missingLabel': '缺少凭据的能力',
+  'health.unknown': '未知',
+  'health.noProviders': '没有可检查的服务商。',
   'overview.state.caution': '注意',
   'overview.state.warning': '额度偏低',
   'overview.state.critical': '额度严重不足',
@@ -121,6 +134,7 @@ export const MESSAGES = {
   'tooltip.window.weekly': '每周',
   'tooltip.resetAt': '下次重置',
   'tooltip.expires': '到期',
+  'tooltip.expired': '已过期',
   'tooltip.balance': '余额',
   'tooltip.model.video': '视频',
   'tooltip.remaining': '剩余',
@@ -160,7 +174,8 @@ export const MESSAGES = {
   'switcher.configured': '已配置',
   'switcher.notConfigured': '未配置',
 
-  'command.showHelp.message': 'QuotaDeck CN — 国产大模型额度监控。点击状态栏图标打开仪表盘。',
+  'command.showHelp.message': 'QuotaDeck CN — 国产大模型额度监控。点击状态栏图标打开仪表盘。如果 QuotaDeck 帮到了你，欢迎在 GitHub 点个 Star，这对我们意义重大。',
+  'command.showHelp.star': '在 GitHub 点个 Star',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

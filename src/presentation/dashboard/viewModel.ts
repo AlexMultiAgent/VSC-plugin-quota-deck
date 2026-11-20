@@ -15,7 +15,12 @@ import type {
   QwenTokenPlan,
   QwenTokenPlanSubscription,
 } from '../../providers/qwen/shape';
-import { formatMoney, providerDisplayName, selectPrimaryCurrency } from '../display';
+import {
+  formatExpiryRemaining,
+  formatMoney,
+  providerDisplayName,
+  selectPrimaryCurrency,
+} from '../display';
 import { pricingPeriodLabel, rangeLabel } from '../labels';
 import { quotaTone } from '../quotaTone';
 
@@ -339,6 +344,7 @@ function providerDetails(
   snapshot: ProviderSnapshot | undefined,
   t: Translator,
   timeZone: string,
+  now: number,
 ): ProviderDetail[] {
   const details: ProviderDetail[] = [];
   if (id === 'minimax-cn' || id === 'minimax-global') {
@@ -352,7 +358,9 @@ function providerDetails(
     if (typeof subscription?.expiresAt === 'number') {
       details.push({
         label: t('tooltip.expires'),
-        value: zonedDateTime(subscription.expiresAt, timeZone),
+        value:
+          `${zonedDateTime(subscription.expiresAt, timeZone)} · ` +
+          formatExpiryRemaining(subscription.expiresAt, now, t),
       });
     }
     if (typeof subscription?.voiceSlotTotal === 'number' && typeof subscription.voiceSlotUsed === 'number') {
@@ -639,7 +647,7 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       accent: ACCENT[id],
       meters,
       accountValue: providerAccountValue(id, snapshot, t),
-      details: providerDetails(id, snapshot, t, timeZone),
+      details: providerDetails(id, snapshot, t, timeZone, now),
       hoursLabel: id === 'deepseek' ? pricingPeriodLabel(pricing, t) : null,
       note: snapshot === undefined
         ? null

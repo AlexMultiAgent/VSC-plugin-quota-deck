@@ -502,6 +502,112 @@ describe('renderTooltip', () => {
     expect(expiryHtml).not.toContain('Expires');
   });
 
+  it('shows the days remaining beside a MiniMax expiry', () => {
+    const now = Date.parse('2026-11-20T00:00:00.000Z');
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok' as const,
+          fetchedAt: 'x',
+          data: { windows: [] },
+        },
+        'minimax.subscription': {
+          kind: 'ok' as const,
+          fetchedAt: 'x',
+          data: { expiresAt: now + 10 * 86_400_000, planName: null },
+        },
+      }),
+    };
+
+    const html = renderTooltip(
+      snapshots,
+      ['minimax-cn'],
+      zh,
+      undefined,
+      'Asia/Shanghai',
+      undefined,
+      now,
+    );
+
+    expect(html).toContain('· 剩余 10天');
+  });
+
+  it('marks an expired MiniMax subscription', () => {
+    const now = Date.parse('2026-11-20T00:00:00.000Z');
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok' as const,
+          fetchedAt: 'x',
+          data: { windows: [] },
+        },
+        'minimax.subscription': {
+          kind: 'ok' as const,
+          fetchedAt: 'x',
+          data: { expiresAt: now - 1, planName: null },
+        },
+      }),
+    };
+
+    const html = renderTooltip(
+      snapshots,
+      ['minimax-cn'],
+      zh,
+      undefined,
+      'Asia/Shanghai',
+      undefined,
+      now,
+    );
+
+    expect(html).toContain('已过期');
+  });
+
+  it('shows the days remaining beside a Qwen Token Plan expiry', () => {
+    const now = Date.parse('2026-11-20T00:00:00.000Z');
+    const snapshots = {
+      qwen: makeSnapshot('qwen', {
+        'qwen.accountBalance': {
+          kind: 'ok' as const,
+          fetchedAt: 'x',
+          data: {
+            availableAmount: 1,
+            availableCashAmount: 1,
+            creditAmount: 0,
+            quotaLimit: null,
+            currency: 'CNY',
+          },
+        },
+        'qwen.tokenPlan': {
+          kind: 'ok' as const,
+          fetchedAt: 'x',
+          data: { windows: [] },
+        },
+        'qwen.tokenPlanSubscription': {
+          kind: 'ok' as const,
+          fetchedAt: 'x',
+          data: {
+            status: 'active',
+            specCode: 'lite',
+            expiresAt: now + 5 * 86_400_000,
+            remainingDays: 5,
+          },
+        },
+      }),
+    };
+
+    const html = renderTooltip(
+      snapshots,
+      ['qwen'],
+      zh,
+      undefined,
+      'Asia/Shanghai',
+      undefined,
+      now,
+    );
+
+    expect(html).toContain('· 剩余 5天');
+  });
+
   it('does not show DeepSeek detailed usage retained in a legacy cache', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-11-16T04:00:00.000Z'));

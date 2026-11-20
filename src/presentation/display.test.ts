@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { translatorFor } from '../localization';
 import {
+  formatDateTime,
+  formatExpiryRemaining,
   formatMoney,
+  formatRemainingDays,
   pickTightestWindow,
   providerDisplayName,
   selectPrimaryCurrency,
@@ -63,5 +67,37 @@ describe('pickTightestWindow', () => {
 
   it('returns undefined when no window qualifies', () => {
     expect(pickTightestWindow([window(null)])).toBeUndefined();
+  });
+});
+
+const zh = translatorFor('zh-CN');
+const en = translatorFor('en-US');
+const DAY = 86_400_000;
+const now = Date.parse('2026-11-20T00:00:00.000Z');
+
+describe('formatExpiryRemaining', () => {
+  it('rounds a partial day up', () => {
+    expect(formatExpiryRemaining(now + 10 * DAY + 1, now, zh)).toBe('剩余 11天');
+  });
+
+  it('uses the short day unit in English', () => {
+    expect(formatExpiryRemaining(now + 10 * DAY, now, en)).toBe('Remaining 10d');
+  });
+
+  it('marks an expired subscription', () => {
+    expect(formatExpiryRemaining(now - 1, now, zh)).toBe('已过期');
+    expect(formatExpiryRemaining(now - 1, now, en)).toBe('Expired');
+  });
+
+  it('formats an explicit day count', () => {
+    expect(formatRemainingDays(7, zh)).toBe('剩余 7天');
+  });
+});
+
+describe('formatDateTime', () => {
+  it('formats an instant in the requested time zone', () => {
+    expect(
+      formatDateTime(Date.parse('2026-11-20T10:00:00.000Z'), 'Asia/Shanghai'),
+    ).toBe('2026-11-20 18:00');
   });
 });

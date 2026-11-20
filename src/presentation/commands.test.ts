@@ -15,9 +15,11 @@ describe('registerCommands', () => {
       loginQwen: async () => undefined,
       configureProviders: async () => undefined,
       showHelp: async () => undefined,
+      checkConnection: async () => undefined,
       openSettings: async () => undefined,
     });
     expect([...state.registeredCommands.keys()].sort()).toEqual([
+      'quotaDeck.checkConnection',
       'quotaDeck.configureDeepSeek',
       'quotaDeck.configureMiniMax',
       'quotaDeck.configureProviders',
@@ -41,6 +43,7 @@ describe('registerCommands', () => {
       loginQwen: async () => undefined,
       configureProviders: async () => undefined,
       showHelp: async () => undefined,
+      checkConnection: async () => undefined,
       openSettings: async () => {
         calls += 1;
       },

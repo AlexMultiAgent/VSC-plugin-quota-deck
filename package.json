@@ -94,6 +94,11 @@
         "category": "QuotaDeck CN"
       },
       {
+        "command": "quotaDeck.checkConnection",
+        "title": "%command.checkConnection.title%",
+        "category": "QuotaDeck CN"
+      },
+      {
         "command": "quotaDeck.openSettings",
         "title": "%command.openSettings.title%",
         "category": "QuotaDeck CN",
@@ -217,6 +222,10 @@
       "commandPalette": [
         {
           "command": "quotaDeck.openDashboard",
+          "when": "true"
+        },
+        {
+          "command": "quotaDeck.checkConnection",
           "when": "true"
         },
         {

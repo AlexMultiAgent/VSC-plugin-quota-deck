@@ -9,6 +9,7 @@ export interface CommandHandlers {
   loginQwen(): Promise<void>;
   configureProviders(): Promise<void>;
   showHelp(): Promise<void>;
+  checkConnection(): Promise<void>;
   openSettings(): Promise<void>;
 }
 
@@ -33,6 +34,9 @@ export function registerCommands(handlers: CommandHandlers): vscode.Disposable[]
     handlers.configureProviders(),
   );
   const showHelp = vscode.commands.registerCommand('quotaDeck.showHelp', () => handlers.showHelp());
+  const checkConnection = vscode.commands.registerCommand('quotaDeck.checkConnection', () =>
+    handlers.checkConnection(),
+  );
   const openSettings = vscode.commands.registerCommand('quotaDeck.openSettings', () =>
     handlers.openSettings(),
   );
@@ -46,6 +50,7 @@ export function registerCommands(handlers: CommandHandlers): vscode.Disposable[]
     loginQwen,
     configureProviders,
     showHelp,
+    checkConnection,
     openSettings,
   ];
 }

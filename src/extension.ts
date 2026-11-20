@@ -18,6 +18,8 @@ import {
   configureMiniMax,
   pickStoredCredential,
 } from './presentation/credentials';
+import { buildHealthReport, writeHealthReport } from './presentation/health';
+import { showHelp } from './presentation/help';
 import { DashboardPanel } from './presentation/dashboard/panel';
 import { dashboardLocalization } from './presentation/dashboard/locale';
 import { buildDashboardModel, type DashboardModel } from './presentation/dashboard/viewModel';
@@ -42,6 +44,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const providers = buildProviders(http);
   const statusBar = new StatusBarPresenter(t);
   const overview = new QuotaOverviewProvider();
+  const healthChannel = vscode.window.createOutputChannel('QuotaDeck CN');
   const overviewView = vscode.window.createTreeView('quotaDeck.overview', {
     treeDataProvider: overview,
     canSelectMany: false,
@@ -192,6 +195,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     dashboard,
     overview,
     overviewView,
+    healthChannel,
     { dispose: () => scheduler.stop() },
     { dispose: () => coordinator.dispose() },
     ...registerCommands({
@@ -242,8 +246,29 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await writer.loginQwen();
       },
       configureProviders,
-      showHelp: async () => {
-        await vscode.window.showInformationMessage(t('command.showHelp.message'));
+      showHelp: () => showHelp(t),
+      checkConnection: async () => {
+        await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: t('health.checking'),
+          },
+          async () => {
+            await refreshAll();
+          },
+        );
+        writeHealthReport(
+          healthChannel,
+          buildHealthReport({
+            providers,
+            snapshots: coordinator.getLast(),
+            connection: connectionState,
+            order: settings.providerOrder,
+            t,
+            timeZone: settings.timeZone,
+            now: Date.now(),
+          }),
+        );
       },
       openSettings: async () => {
         await vscode.commands.executeCommand(

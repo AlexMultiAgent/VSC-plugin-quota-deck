@@ -1,4 +1,6 @@
 import type { ProviderId } from '../core/types';
+import { zonedParts } from '../core/time';
+import type { Translator } from '../localization';
 
 /** Currencies shown first when the account holds more than one. */
 const CURRENCY_PRIORITY = ['CNY', 'USD', 'EUR'];
@@ -24,6 +26,34 @@ const PROVIDER_DISPLAY_NAMES: Record<ProviderId, string> = {
 
 export function providerDisplayName(id: ProviderId): string {
   return PROVIDER_DISPLAY_NAMES[id];
+}
+
+/** Format an instant as `YYYY-MM-DD HH:mm` in the given time zone. */
+export function formatDateTime(instant: number, timeZone: string): string {
+  const parts = zonedParts(instant, timeZone);
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return (
+    `${parts.year}-${pad(parts.month)}-${pad(parts.day)} ` +
+    `${pad(parts.hour)}:${pad(parts.minute)}`
+  );
+}
+
+/** Format an explicit day count, e.g. `剩余 10天` / `Remaining 10d`. */
+export function formatRemainingDays(days: number, t: Translator): string {
+  return `${t('tooltip.remaining')} ${days}${t('dashboard.duration.day').trim()}`;
+}
+
+/**
+ * Whole days left before `expiresAt`, rounded up so a partial day still
+ * counts. An expiry in the past renders the localized "expired" label.
+ */
+export function formatExpiryRemaining(
+  expiresAt: number,
+  now: number,
+  t: Translator,
+): string {
+  if (expiresAt <= now) return t('tooltip.expired');
+  return formatRemainingDays(Math.ceil((expiresAt - now) / 86_400_000), t);
 }
 
 export interface QuotaWindowView {

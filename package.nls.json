@@ -9,6 +9,7 @@
   "command.loginQwen.title": "Sign in to Qianwen AI",
   "command.configureProviders.title": "Configure Providers",
   "command.showHelp.title": "Show Help",
+  "command.checkConnection.title": "Check Connection",
   "command.openSettings.title": "Extension Settings",
   "command.clearCredential.title": "Clear Credential",
   "viewsContainer.quotaDeck.title": "QuotaDeck CN",

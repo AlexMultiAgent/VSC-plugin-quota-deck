@@ -54,6 +54,80 @@ describe('buildOverviewItems', () => {
     expect(items[0]?.children[2]?.description).toBe('剩余 3/3 次 · 已使用 0 次');
   });
 
+  it('shows the days remaining beside the MiniMax subscription expiry', () => {
+    const now = Date.parse('2026-11-20T00:00:00.000Z');
+    const items = buildOverviewItems({
+      snapshots: {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.plan': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: { windows: [], models: [] },
+          },
+          'minimax.subscription': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: { expiresAt: now + 10 * 86_400_000, planName: null },
+          },
+        }),
+      },
+      configured: { 'minimax-cn': true },
+      order: ['minimax-cn'],
+      t: zh,
+      pricing: 'offPeak',
+      timeZone: 'Asia/Shanghai',
+      warningThresholdPercent: 20,
+      now,
+    });
+
+    const expiry = items[0]?.children.find((child) => child.label === '到期');
+    expect(expiry?.description).toBe('2026-11-30 08:00 · 剩余 10天');
+    expect(expiry?.tooltip).toContain('剩余 10天');
+  });
+
+  it('shows the days remaining beside the Qwen Token Plan expiry', () => {
+    const now = Date.parse('2026-11-20T00:00:00.000Z');
+    const items = buildOverviewItems({
+      snapshots: {
+        qwen: makeSnapshot('qwen', {
+          'qwen.accountBalance': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: {
+              availableAmount: 1,
+              availableCashAmount: 1,
+              creditAmount: 0,
+              quotaLimit: null,
+              currency: 'CNY',
+            },
+          },
+          'qwen.tokenPlanSubscription': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: {
+              status: 'active',
+              specCode: null,
+              expiresAt: now + 5 * 86_400_000,
+              remainingDays: 5,
+            },
+          },
+        }),
+      },
+      configured: { qwen: true },
+      order: ['qwen'],
+      t: zh,
+      pricing: 'offPeak',
+      timeZone: 'Asia/Shanghai',
+      warningThresholdPercent: 20,
+      now,
+    });
+
+    const expiry = items[0]?.children
+      .flatMap((child) => child.children)
+      .find((child) => child.label === '到期');
+    expect(expiry?.description).toBe('2026-11-25 08:00 · 剩余 5天');
+  });
+
   it('renders the captured MiniMax video quota as three of three remaining', () => {
     const fixture = loadFixture('minimax-cn', 'minimax.plan', 'standard') as {
       response: unknown;

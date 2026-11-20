@@ -18,6 +18,33 @@ function options(overrides: Partial<DashboardOptions> = {}): DashboardOptions {
 }
 
 describe('buildDashboardModel', () => {
+  it('shows the MiniMax expiry days remaining', () => {
+    const now = Date.parse('2026-11-20T00:00:00.000Z');
+    const model = buildDashboardModel(
+      options({
+        now,
+        order: ['minimax-cn'],
+        snapshots: {
+          'minimax-cn': makeSnapshot('minimax-cn', {
+            'minimax.plan': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: { windows: [], models: [] },
+            },
+            'minimax.subscription': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: { expiresAt: now + 10 * 86_400_000, planName: null },
+            },
+          }),
+        },
+      }),
+    );
+
+    const expiry = model.providers[0]?.details.find((detail) => detail.label === 'Expires');
+    expect(expiry?.value).toBe('2026-11-30 08:00 · Remaining 10d');
+  });
+
   it('localizes the dashboard actions', () => {
     const model = buildDashboardModel(options());
     expect(model.labels.refreshNow).toBe('Refresh now');
@@ -629,6 +656,7 @@ describe('buildDashboardModel', () => {
       options({
         order: ['minimax-cn'],
         timeZone: 'UTC',
+        now: Date.parse('2027-07-01T16:00:00.000Z'),
         snapshots: {
           'minimax-cn': makeSnapshot('minimax-cn', {
             'minimax.subscription': {
@@ -645,7 +673,7 @@ describe('buildDashboardModel', () => {
     );
     expect(model.providers[0]!.details).toEqual([
       { label: 'Plan', value: 'TokenPlanMax-年度会员' },
-      { label: 'Expires', value: '2027-07-05 16:00' },
+      { label: 'Expires', value: '2027-07-05 16:00 · Remaining 4d' },
       { label: 'Updated', value: '2026-11-16 00:00' },
     ]);
     expect(model.providers[0]!.note).toBe(

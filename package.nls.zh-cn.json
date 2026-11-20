@@ -9,6 +9,7 @@
   "command.loginQwen.title": "登录千问AI平台",
   "command.configureProviders.title": "配置服务商",
   "command.showHelp.title": "查看帮助",
+  "command.checkConnection.title": "检查连接",
   "command.openSettings.title": "插件设置",
   "command.clearCredential.title": "清除凭据",
   "viewsContainer.quotaDeck.title": "QuotaDeck CN",

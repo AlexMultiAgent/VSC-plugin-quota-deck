@@ -17,7 +17,9 @@ import type {
   QwenTokenPlanSubscription,
 } from '../../providers/qwen/shape';
 import {
+  formatExpiryRemaining,
   formatMoney,
+  formatRemainingDays,
   pickTightestWindow,
   providerDisplayName,
   selectPrimaryCurrency,
@@ -58,6 +60,7 @@ export interface OverviewOptions {
   readonly timeZone: string;
   readonly warningThresholdPercent: number;
   readonly lastRefreshIso?: string | undefined;
+  readonly now?: number;
 }
 
 const TONE_STATE: Record<QuotaTone, OverviewState> = {
@@ -221,6 +224,7 @@ function miniMaxChildren(
   options: OverviewOptions,
 ): OverviewItem[] {
   const children: OverviewItem[] = [];
+  const now = options.now ?? Date.now();
   const plan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
   const balance = capabilityValue<MiniMaxAccountBalance>(
     snapshot,
@@ -382,11 +386,13 @@ function miniMaxChildren(
   if (typeof subscription?.expiresAt === 'number') {
     const expiry = instantLabel(subscription.expiresAt, options.timeZone);
     if (expiry !== undefined) {
+      const description =
+        `${expiry} · ${formatExpiryRemaining(subscription.expiresAt, now, options.t)}`;
       children.push({
         id: `provider:${id}:subscription`,
         label: options.t('tooltip.expires'),
-        description: expiry,
-        tooltip: detailTooltip(options.t('tooltip.expires'), expiry),
+        description,
+        tooltip: detailTooltip(options.t('tooltip.expires'), description),
         state: 'muted',
         stateLabel: '',
         action: null,
@@ -519,6 +525,7 @@ function tokenPlanWindowLabel(
 
 function qwenItem(options: OverviewOptions): OverviewItem {
   const snapshot = options.snapshots.qwen;
+  const now = options.now ?? Date.now();
   const status = primaryStatus(snapshot, 'qwen.accountBalance', options.t);
   const balance = capabilityValue<QwenAccountBalance>(snapshot, 'qwen.accountBalance');
   const balanceChildren: OverviewItem[] = [];
@@ -611,11 +618,18 @@ function qwenItem(options: OverviewOptions): OverviewItem {
     if (subscription.expiresAt !== null) {
       const expiry = instantLabel(subscription.expiresAt, options.timeZone);
       if (expiry !== undefined) {
+        const remaining =
+          subscription.expiresAt <= now
+            ? options.t('tooltip.expired')
+            : typeof subscription.remainingDays === 'number'
+              ? formatRemainingDays(subscription.remainingDays, options.t)
+              : formatExpiryRemaining(subscription.expiresAt, now, options.t);
+        const description = `${expiry} · ${remaining}`;
         planChildren.push({
           id: 'provider:qwen:expires',
           label: options.t('tooltip.expires'),
-          description: expiry,
-          tooltip: detailTooltip(options.t('tooltip.expires'), expiry),
+          description,
+          tooltip: detailTooltip(options.t('tooltip.expires'), description),
           state: 'muted',
           stateLabel: '',
           action: null,

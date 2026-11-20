@@ -15,7 +15,12 @@ import type {
   QwenTokenPlanSubscription,
 } from '../providers/qwen/shape';
 import { pricingState, type PricingState } from '../providers/deepseek/pricing';
-import { formatMoney, providerDisplayName } from './display';
+import {
+  formatExpiryRemaining,
+  formatMoney,
+  formatRemainingDays,
+  providerDisplayName,
+} from './display';
 
 const ESCAPES: Record<string, string> = {
   '&': '&amp;',
@@ -133,6 +138,7 @@ function qwenTokenPlanRows(
   snapshot: ProviderSnapshot,
   t: Translator,
   timeZone: string,
+  now: number,
 ): string {
   const plan = capabilityValue<QwenTokenPlan>(snapshot, 'qwen.tokenPlan');
   const subscription = capabilityValue<QwenTokenPlanSubscription>(
@@ -161,9 +167,15 @@ function qwenTokenPlanRows(
     }
     if (subscription.expiresAt !== null) {
       const expiry = zonedTime(new Date(subscription.expiresAt).toISOString(), timeZone);
+      const remaining =
+        subscription.expiresAt <= now
+          ? t('tooltip.expired')
+          : typeof subscription.remainingDays === 'number'
+            ? formatRemainingDays(subscription.remainingDays, t)
+            : formatExpiryRemaining(subscription.expiresAt, now, t);
       rows +=
         `<tr><td>${escapeHtml(t('tooltip.expires'))}</td>` +
-        `<td>${escapeHtml(expiry)}</td><td></td><td></td></tr>`;
+        `<td>${escapeHtml(`${expiry} · ${remaining}`)}</td><td></td><td></td></tr>`;
     }
   } else if (subscription?.status === 'none') {
     rows +=
@@ -189,6 +201,7 @@ function providerRows(
   snapshot: ProviderSnapshot | undefined,
   t: Translator,
   timeZone: string,
+  now: number,
 ): string {
   if (snapshot === undefined) {
     return `<tr><td colspan="4" class="t-muted">${escapeHtml(t('state.unconfigured'))}</td></tr>`;
@@ -203,7 +216,7 @@ function providerRows(
         `<td>${escapeHtml(formatMoney(qwenBalance.availableAmount, qwenBalance.currency))}</td>` +
         `<td class="t-muted">${escapeHtml(qwenBalance.currency)}</td><td></td></tr>`;
     }
-    rows += qwenTokenPlanRows(snapshot, t, timeZone);
+    rows += qwenTokenPlanRows(snapshot, t, timeZone, now);
     if (rows.length > 0) return rows;
   }
 
@@ -275,9 +288,11 @@ function providerRows(
       );
     }
     if (typeof subscription?.expiresAt === 'number') {
+      const expiry = zonedTime(new Date(subscription.expiresAt).toISOString(), timeZone);
+      const remaining = formatExpiryRemaining(subscription.expiresAt, now, t);
       rows.push(
         `<tr><td>${escapeHtml(t('tooltip.expires'))}</td>` +
-        `<td>${escapeHtml(zonedTime(new Date(subscription.expiresAt).toISOString(), timeZone))}</td>` +
+        `<td>${escapeHtml(`${expiry} · ${remaining}`)}</td>` +
         '<td></td><td></td></tr>',
       );
     }
@@ -319,6 +334,7 @@ export function renderTooltip(
   lastRefreshIso?: string,
   timeZone: string = SHANGHAI,
   pricing: PricingState = pricingState(Date.now()),
+  now: number = Date.now(),
 ): string {
   const providerCards = order
     .filter((id) => hasUsableConfiguration(snapshots[id]))
@@ -334,7 +350,7 @@ export function renderTooltip(
         `<tr><td class="t-title"><strong>${escapeHtml(providerDisplayName(id))}</strong></td>` +
         `<td class="t-muted">${escapeHtml(region)}</td></tr>` +
         period +
-        providerRows(id, snapshot, t, timeZone) +
+        providerRows(id, snapshot, t, timeZone, now) +
         '</table>'
       );
     });

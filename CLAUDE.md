@@ -50,7 +50,8 @@ src/
                  qwen/ parse and assemble inside shape.ts + provider.ts; qwen/auth.ts parses the
                  management device flow and stored token, qwen/login.ts runs it
   presentation/  statusBar, tooltip, overview/ (Activity Bar tree), onboarding, commands, credentials,
-                 qwenLogin, switcher, labels, display, quotaTone, quickPickFallback, dashboard/
+                 qwenLogin, switcher, help, health, labels, display, quotaTone, quickPickFallback,
+                 dashboard/
   localization/  messages.ts (key registry) + en-us.ts / zh-cn.ts bundles + index.ts (resolver)
   test/          __mocks__/vscode.ts, fixtures/, helpers/
 ```

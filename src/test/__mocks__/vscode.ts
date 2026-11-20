@@ -80,6 +80,19 @@ export interface StatusBarItem {
   visible: boolean;
 }
 
+export interface OutputChannel {
+  readonly name: string;
+  append(value: string): void;
+  appendLine(value: string): void;
+  replace(value: string): void;
+  clear(): void;
+  show(preserveFocus?: boolean): void;
+  hide(): void;
+  dispose(): void;
+  lines: string[];
+  shown: boolean;
+}
+
 export interface Uri {
   readonly scheme: string;
   readonly authority: string;
@@ -167,6 +180,9 @@ export const state = {
   }>,
   quickPickResults: [] as unknown[],
   quickPickOffered: [] as unknown[][],
+  informationMessageResults: [] as Array<string | undefined>,
+  informationMessageOffered: [] as string[][],
+  outputChannels: [] as OutputChannel[],
   registeredCommands: new Map<string, (...args: never[]) => unknown>(),
   statusBarItems: [] as StatusBarItem[],
   webviewPanels: [] as WebviewPanel[],
@@ -186,6 +202,9 @@ export function __reset(): void {
   state.inputBoxOptions = [];
   state.quickPickResults = [];
   state.quickPickOffered = [];
+  state.informationMessageResults = [];
+  state.informationMessageOffered = [];
+  state.outputChannels = [];
   state.registeredCommands.clear();
   state.statusBarItems = [];
   state.webviewPanels = [];
@@ -295,9 +314,10 @@ export const window = {
     }
     return Promise.resolve(queued);
   },
-  showInformationMessage(message: string): Promise<void> {
+  showInformationMessage(message: string, ...items: string[]): Promise<string | undefined> {
     state.output.push(`info:${message}`);
-    return Promise.resolve();
+    state.informationMessageOffered.push(items);
+    return Promise.resolve(state.informationMessageResults.shift());
   },
   showErrorMessage(message: string): Promise<void> {
     state.output.push(`error:${message}`);
@@ -324,6 +344,36 @@ export const window = {
         onCancellationRequested: () => ({ dispose: () => undefined }),
       },
     );
+  },
+  createOutputChannel(name: string): OutputChannel {
+    const channel: OutputChannel = {
+      name,
+      lines: [],
+      shown: false,
+      append(value: string) {
+        channel.lines.push(value);
+      },
+      appendLine(value: string) {
+        channel.lines.push(value);
+      },
+      replace(value: string) {
+        channel.lines.splice(0, channel.lines.length, value);
+      },
+      clear() {
+        channel.lines.splice(0, channel.lines.length);
+      },
+      show() {
+        channel.shown = true;
+      },
+      hide() {
+        channel.shown = false;
+      },
+      dispose() {
+        channel.shown = false;
+      },
+    };
+    state.outputChannels.push(channel);
+    return channel;
   },
   createWebviewPanel(_viewType: string, _title: string, _column: number, _options: unknown): WebviewPanel {
     const listeners: Array<(message: unknown) => void> = [];
