@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.3 — 2026-11-20
+
+- MiniMax 新增账户余额：可用余额、现金、代金券、信用额度、欠费（`/account/query_balance`，与 Token Plan 共用同一把 key），在仪表盘、悬浮详情和 Activity Bar 中展示。
+- 修正 MiniMax 每周额度：应用 `weekly_boost_permille` 放大系数（1500 表示 1.5 倍），避免每周百分比偏低。
+- 修正 MiniMax 无限额度识别：`current_*_status: 3` 现在正确显示为“无限”；两个窗口都为 0 且状态都为 3 的“套餐不含该模型”不会误判为无限。
+
 ## 0.3.2 — 2026-11-20
 
 - MiniMax 新增“积分”余额展示（订阅响应的 `credit_info.total_credit`），仪表盘、悬浮详情和 Activity Bar 树同步显示；树状图补上套餐名称。
