@@ -196,6 +196,7 @@ export class MiniMaxProvider implements QuotaProvider {
           range,
           now,
           timeZone,
+          this.currency,
         ),
       };
     } catch {

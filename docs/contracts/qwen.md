@@ -80,7 +80,12 @@ The flat envelope is `{ code: "200", data: { …fields } }`. The extension reads
 | `AvailableAmount` | 可用余额 |
 | `CashAmount` | 可用现金 |
 | `CreditAmount` | 信控额度 |
+| `AvailableCreditAmount` | 可用信控额度 (nullable in the parser for older payloads) |
 | `QuotaAmount` | 额度上限 (nullable) |
+| `QuotaConsumedAmount` | 已用额度 (nullable) |
+| `UnclearedAmount` | 未结清金额 (nullable) |
+| `UnpaidAmount` | 未支付金额 (nullable) |
+| `FundAccountStatus` | 账户状态; `VALID` renders as 正常 |
 | `Currency` | Currency label |
 
 The live capture also returns `AvailableCreditAmount`, `QuotaConsumedAmount`,
@@ -127,7 +132,7 @@ without a workspace and was verified end to end.
 | API | Fields |
 | --- | --- |
 | `zeldaHttp.apikeyMgr./tokenplan/personal/api/v2/usage` | `per1MonthPercentage` (used ratio 0..1) and `per1MonthResetTime` (epoch ms); legacy plans may return `per1WeekPercentage` / `per1WeekResetTime` |
-| `zeldaHttp.apikeyMgr./tokenplan/personal/api/v2/subscription` with `Data.commodityCode = sfm_tokenplansolo_public_cn` | `status: "VALID"`, `specCode` (`lite` / `essential` / `standard` / `pro`), `remainingDays`, `startTime`, `endTime`, `autoRenewFlag`, `instanceCode` |
+| `zeldaHttp.apikeyMgr./tokenplan/personal/api/v2/subscription` with `Data.commodityCode = sfm_tokenplansolo_public_cn` | `status: "VALID"`, `specCode` (`lite` / `essential` / `standard` / `pro`), `remainingDays`, `startTime`, `endTime`, `autoRenewFlag`, `instanceCode`; the dashboard shows the tier, expiry, remaining days, start time and auto-renew state |
 
 Live values observed: `per1MonthPercentage = 0.0262…`, `per1MonthResetTime = 1797782400000`,
 `specCode = "essential"`, `remainingDays = 30`, `status = "VALID"`.

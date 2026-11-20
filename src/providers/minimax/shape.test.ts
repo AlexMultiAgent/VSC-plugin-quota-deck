@@ -153,6 +153,9 @@ describe('readMiniMaxSubscription', () => {
       'TokenPlanMax-年度会员',
     );
     expect(readMiniMaxSubscription(fixture.response).totalCredit).toBe(0);
+    expect(readMiniMaxSubscription(fixture.response).voiceSlotTotal).toBe(0);
+    expect(readMiniMaxSubscription(fixture.response).voiceSlotUsed).toBe(0);
+    expect(readMiniMaxSubscription(fixture.response).renewalPrice).toBe(1190);
     const originalTimeZone = process.env.TZ;
     try {
       for (const timeZone of ['UTC', 'America/New_York', 'Asia/Shanghai']) {
@@ -202,6 +205,7 @@ describe('readMiniMaxTokenUsage', () => {
     expect(readMiniMaxTokenUsage({ charge_records: records }, 'last7', now)).toEqual({
       rangeId: 'last7',
       tokens: 30,
+      cash: 0,
       currency: null,
       hasUsageRecords: true,
     });

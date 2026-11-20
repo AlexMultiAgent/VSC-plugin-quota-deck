@@ -75,14 +75,19 @@ Top-level keys: `cycle_resource_packages` (the catalogue of plans for sale),
 | `current_subscribe_end_time_ts` | the same expiry as epoch milliseconds — this is the one to read |
 | `current_subscribe_title` | plan name, e.g. `TokenPlanMax-年度会员` |
 | `credit_info.total_credit` | prepaid credit balance (积分), a count, not currency; `0.00` when no credit pack is held |
+| `voice_slot_info.voice_slot_total` / `voice_slot_used` | voice slots owned and used; the dashboard shows `used/total` |
+| `current_combo_card.price_data.renew_price_tag` | renewal price in the account currency; the dashboard labels it as the renewal price |
 
 ## `minimax.tokenUsage`
 
 `GET /account/amount?page=1&limit=100&aggregate=false`
 
-`charge_records[]` entries carry `created_at` in **epoch seconds** and
-`consume_token` as a **string**. The response also carries `total_cnt`,
-`consume_token_sum` and `consume_cash_sum`.
+`charge_records[]` entries carry `created_at` in **epoch seconds**,
+`consume_token` and `consume_cash` as **strings**. Purchase events
+(`method` ending in `_purchase`) are excluded from usage. The response also
+carries `total_cnt`, `consume_token_sum`, `consume_cash_sum` and
+`consume_cash_after_voucher_sum`; the dashboard aggregates token and cash
+totals for the selected range instead of showing the all-time sums.
 
 ## `minimax.accountBalance`
 

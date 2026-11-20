@@ -27,7 +27,12 @@ describe('readQwenAccountBalance', () => {
       availableAmount: -12.34,
       availableCashAmount: -18.34,
       creditAmount: 5,
+      availableCreditAmount: 0,
       quotaLimit: 1000,
+      quotaConsumedAmount: 0,
+      unclearedAmount: 0,
+      unpaidAmount: 0,
+      fundAccountStatus: 'VALID',
       currency: 'CNY',
     });
   });
@@ -37,7 +42,12 @@ describe('readQwenAccountBalance', () => {
       availableAmount: 0,
       availableCashAmount: 0,
       creditAmount: 0,
+      availableCreditAmount: 0,
       quotaLimit: 0,
+      quotaConsumedAmount: 0,
+      unclearedAmount: 0,
+      unpaidAmount: 0,
+      fundAccountStatus: 'VALID',
       currency: 'CNY',
     });
   });
@@ -188,15 +198,19 @@ describe('readQwenTokenPlanSubscription', () => {
         subscriptionResponse({
           status: 'VALID',
           specCode: 'pro',
+          startTime: 1780000000000,
           endTime: 1790000000000,
           remainingDays: 12,
+          autoRenewFlag: true,
         }),
       ),
     ).toEqual({
       status: 'active',
       specCode: 'pro',
+      startedAt: 1780000000000,
       expiresAt: 1790000000000,
       remainingDays: 12,
+      autoRenew: true,
     });
   });
 
@@ -204,8 +218,10 @@ describe('readQwenTokenPlanSubscription', () => {
     expect(readQwenTokenPlanSubscription(subscriptionResponse(null))).toEqual({
       status: 'none',
       specCode: null,
+      startedAt: null,
       expiresAt: null,
       remainingDays: null,
+      autoRenew: null,
     });
   });
 
@@ -213,8 +229,10 @@ describe('readQwenTokenPlanSubscription', () => {
     expect(readQwenTokenPlanSubscription(subscriptionResponse({ status: 'EXPIRED' }))).toEqual({
       status: 'unknown',
       specCode: null,
+      startedAt: null,
       expiresAt: null,
       remainingDays: null,
+      autoRenew: null,
     });
   });
 
@@ -222,8 +240,10 @@ describe('readQwenTokenPlanSubscription', () => {
     expect(readQwenTokenPlanSubscription(subscriptionResponse({ status: 'VALID' }))).toEqual({
       status: 'active',
       specCode: null,
+      startedAt: null,
       expiresAt: null,
       remainingDays: null,
+      autoRenew: null,
     });
   });
 });

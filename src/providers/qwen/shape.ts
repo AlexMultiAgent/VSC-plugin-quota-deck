@@ -4,7 +4,12 @@ export interface QwenAccountBalance {
   readonly availableAmount: number;
   readonly availableCashAmount: number;
   readonly creditAmount: number;
+  readonly availableCreditAmount: number | null;
   readonly quotaLimit: number | null;
+  readonly quotaConsumedAmount: number | null;
+  readonly unclearedAmount: number | null;
+  readonly unpaidAmount: number | null;
+  readonly fundAccountStatus: string | null;
   readonly currency: string;
 }
 
@@ -26,10 +31,16 @@ export function readQwenAccountBalance(response: unknown): QwenAccountBalance {
     availableAmount: requireNumber(data.AvailableAmount, 'AvailableAmount'),
     availableCashAmount: requireNumber(data.CashAmount, 'CashAmount'),
     creditAmount: requireNumber(data.CreditAmount, 'CreditAmount'),
+    availableCreditAmount: numberOrNull(data.AvailableCreditAmount),
     quotaLimit:
       data.QuotaAmount === undefined || data.QuotaAmount === null
         ? null
         : requireNumber(data.QuotaAmount, 'QuotaAmount'),
+    quotaConsumedAmount: numberOrNull(data.QuotaConsumedAmount),
+    unclearedAmount: numberOrNull(data.UnclearedAmount),
+    unpaidAmount: numberOrNull(data.UnpaidAmount),
+    fundAccountStatus:
+      typeof data.FundAccountStatus === 'string' ? data.FundAccountStatus : null,
     currency: balanceText(data.Currency, 'Currency'),
   };
 }
@@ -51,8 +62,10 @@ export type QwenTokenPlanStatus = 'active' | 'none' | 'unknown';
 export interface QwenTokenPlanSubscription {
   readonly status: QwenTokenPlanStatus;
   readonly specCode: string | null;
+  readonly startedAt: number | null;
   readonly expiresAt: number | null;
   readonly remainingDays: number | null;
+  readonly autoRenew: boolean | null;
 }
 
 /** The console gateway rejected the derived token even after a refresh. */
@@ -159,11 +172,25 @@ export function readQwenTokenPlanSubscription(
 ): QwenTokenPlanSubscription {
   const business = gatewayBusiness(response);
   if (business.data === undefined || business.data === null) {
-    return { status: 'none', specCode: null, expiresAt: null, remainingDays: null };
+    return {
+      status: 'none',
+      specCode: null,
+      startedAt: null,
+      expiresAt: null,
+      remainingDays: null,
+      autoRenew: null,
+    };
   }
   const entity = asRecord(business.data, 'subscription');
   if (entity.status !== 'VALID') {
-    return { status: 'unknown', specCode: null, expiresAt: null, remainingDays: null };
+    return {
+      status: 'unknown',
+      specCode: null,
+      startedAt: null,
+      expiresAt: null,
+      remainingDays: null,
+      autoRenew: null,
+    };
   }
   return {
     status: 'active',
@@ -171,7 +198,9 @@ export function readQwenTokenPlanSubscription(
       typeof entity.specCode === 'string' && entity.specCode.length > 0
         ? entity.specCode
         : null,
+    startedAt: timestampOrNull(entity.startTime),
     expiresAt: timestampOrNull(entity.endTime),
     remainingDays: numberOrNull(entity.remainingDays),
+    autoRenew: typeof entity.autoRenewFlag === 'boolean' ? entity.autoRenewFlag : null,
   };
 }

@@ -361,6 +361,34 @@ function providerDetails(
         value: formatCredits(subscription.totalCredit),
       });
     }
+    if (typeof subscription?.voiceSlotTotal === 'number' && typeof subscription.voiceSlotUsed === 'number') {
+      details.push({
+        label: t('dashboard.minimax.voiceSlots'),
+        value: `${subscription.voiceSlotUsed}/${subscription.voiceSlotTotal}`,
+      });
+    }
+    if (typeof subscription?.renewalPrice === 'number') {
+      details.push({
+        label: t('dashboard.minimax.renewalPrice'),
+        value: formatMoney(
+          subscription.renewalPrice,
+          id === 'minimax-cn' ? 'CNY' : 'USD',
+        ),
+      });
+    }
+    const plan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
+    if (
+      plan?.weeklyBoostPermille !== null &&
+      plan?.weeklyBoostPermille !== undefined &&
+      plan.weeklyBoostPermille !== 1000
+    ) {
+      details.push({
+        label: t('dashboard.minimax.weeklyBoost'),
+        value: `${(plan.weeklyBoostPermille / 1000).toLocaleString('en-US', {
+          maximumFractionDigits: 3,
+        })}×`,
+      });
+    }
     const balance = capabilityValue<MiniMaxAccountBalance>(
       snapshot,
       'minimax.accountBalance',
@@ -412,10 +440,48 @@ function providerDetails(
           group,
         },
       );
+      if (typeof balance.availableCreditAmount === 'number') {
+        details.push({
+          label: t('dashboard.qwen.availableCredit'),
+          value: formatMoney(balance.availableCreditAmount, balance.currency),
+          group,
+        });
+      }
       if (balance.quotaLimit !== null) {
         details.push({
           label: t('dashboard.qwen.quotaLimit'),
           value: formatMoney(balance.quotaLimit, balance.currency),
+          group,
+        });
+      }
+      if (typeof balance.quotaConsumedAmount === 'number') {
+        details.push({
+          label: t('dashboard.qwen.quotaConsumed'),
+          value: formatMoney(balance.quotaConsumedAmount, balance.currency),
+          group,
+        });
+      }
+      if (typeof balance.unclearedAmount === 'number') {
+        details.push({
+          label: t('dashboard.qwen.uncleared'),
+          value: formatMoney(balance.unclearedAmount, balance.currency),
+          group,
+        });
+      }
+      if (typeof balance.unpaidAmount === 'number') {
+        details.push({
+          label: t('dashboard.qwen.unpaid'),
+          value: formatMoney(balance.unpaidAmount, balance.currency),
+          group,
+        });
+      }
+      if (typeof balance.fundAccountStatus === 'string') {
+        details.push({
+          label: t('dashboard.qwen.accountStatus'),
+          value:
+            balance.fundAccountStatus === 'VALID'
+              ? t('dashboard.qwen.statusValid')
+              : balance.fundAccountStatus,
           group,
         });
       }
@@ -437,6 +503,27 @@ function providerDetails(
         details.push({
           label: t('tooltip.expires'),
           value: zonedDateTime(tokenPlan.expiresAt, timeZone),
+          group: planGroup,
+        });
+      }
+      if (tokenPlan.remainingDays !== null) {
+        details.push({
+          label: t('dashboard.qwen.remainingDays'),
+          value: String(tokenPlan.remainingDays),
+          group: planGroup,
+        });
+      }
+      if (typeof tokenPlan.startedAt === 'number') {
+        details.push({
+          label: t('dashboard.qwen.startedAt'),
+          value: zonedDateTime(tokenPlan.startedAt, timeZone),
+          group: planGroup,
+        });
+      }
+      if (typeof tokenPlan.autoRenew === 'boolean') {
+        details.push({
+          label: t('dashboard.qwen.autoRenew'),
+          value: t(tokenPlan.autoRenew ? 'dashboard.yes' : 'dashboard.no'),
           group: planGroup,
         });
       }
@@ -600,6 +687,15 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       tone: 'neutral',
       scope: providerDisplayName(id),
     });
+    if (usage.currency !== null && typeof usage.cash === 'number') {
+      historyTiles.push({
+        key: 'minimaxCost',
+        label: t('dashboard.minimax.cost'),
+        value: formatMoney(usage.cash, usage.currency),
+        tone: 'neutral',
+        scope: providerDisplayName(id),
+      });
+    }
   }
   return {
     hero: lowestQuota === null

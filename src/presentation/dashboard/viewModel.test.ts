@@ -514,6 +514,40 @@ describe('buildDashboardModel', () => {
     expect(model.historyTiles).toEqual([]);
   });
 
+  it('shows MiniMax voice slots, renewal price, and the weekly multiplier', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['minimax-cn'],
+        snapshots: {
+          'minimax-cn': makeSnapshot('minimax-cn', {
+            'minimax.plan': {
+              kind: 'ok',
+              fetchedAt: '2026-11-16T00:00:00.000Z',
+              data: { windows: [], models: [], weeklyBoostPermille: 1500 },
+            },
+            'minimax.subscription': {
+              kind: 'ok',
+              fetchedAt: '2026-11-16T00:00:00.000Z',
+              data: {
+                expiresAt: null,
+                planName: null,
+                totalCredit: null,
+                voiceSlotTotal: 5,
+                voiceSlotUsed: 2,
+                renewalPrice: 1190,
+              },
+            },
+          }),
+        },
+      }),
+    );
+
+    const details = model.providers[0]!.details;
+    expect(details).toContainEqual({ label: 'Voice slots', value: '2/5' });
+    expect(details).toContainEqual({ label: 'Renewal price', value: '¥1190.00' });
+    expect(details).toContainEqual({ label: 'Weekly multiplier', value: '1.5×' });
+  });
+
   it('shows the MiniMax account balance fields', () => {
     const model = buildDashboardModel(
       options({
@@ -619,6 +653,64 @@ describe('buildDashboardModel', () => {
     ]);
   });
 
+  it('shows the extended Qwen balance and subscription fields', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['qwen'],
+        timeZone: 'UTC',
+        snapshots: {
+          qwen: makeSnapshot('qwen', {
+            'qwen.accountBalance': {
+              kind: 'ok',
+              fetchedAt: '2026-11-16T00:00:00.000Z',
+              data: {
+                availableAmount: 10,
+                availableCashAmount: 1,
+                creditAmount: 2,
+                availableCreditAmount: 3,
+                quotaLimit: 4,
+                quotaConsumedAmount: 5,
+                unclearedAmount: 6,
+                unpaidAmount: 7,
+                fundAccountStatus: 'VALID',
+                currency: 'CNY',
+              },
+            },
+            'qwen.tokenPlanSubscription': {
+              kind: 'ok',
+              fetchedAt: '2026-11-16T00:00:00.000Z',
+              data: {
+                status: 'active',
+                specCode: 'pro',
+                startedAt: Date.parse('2026-01-01T00:00:00Z'),
+                expiresAt: Date.parse('2027-01-01T00:00:00Z'),
+                remainingDays: 30,
+                autoRenew: true,
+              },
+            },
+          }),
+        },
+      }),
+    );
+
+    expect(model.providers[0]!.details).toEqual([
+      { label: 'Available cash', value: '¥1.00', group: 'Balance details' },
+      { label: 'Credit', value: '¥2.00', group: 'Balance details' },
+      { label: 'Available credit', value: '¥3.00', group: 'Balance details' },
+      { label: 'Quota limit', value: '¥4.00', group: 'Balance details' },
+      { label: 'Quota used', value: '¥5.00', group: 'Balance details' },
+      { label: 'Uncleared', value: '¥6.00', group: 'Balance details' },
+      { label: 'Unpaid', value: '¥7.00', group: 'Balance details' },
+      { label: 'Account status', value: 'Valid', group: 'Balance details' },
+      { label: 'Plan', value: 'pro', group: 'Token Plan' },
+      { label: 'Expires', value: '2027-01-01 00:00', group: 'Token Plan' },
+      { label: 'Remaining days', value: '30', group: 'Token Plan' },
+      { label: 'Started', value: '2026-01-01 00:00', group: 'Token Plan' },
+      { label: 'Auto-renew', value: 'Yes', group: 'Token Plan' },
+      { label: 'Updated', value: '2026-11-16 00:00' },
+    ]);
+  });
+
   it('carries the selected range and all range options', () => {
     const model = buildDashboardModel(options({ range: 'last30' }));
     expect(model.range).toBe('last30');
@@ -657,6 +749,7 @@ describe('buildDashboardModel', () => {
               data: {
                 rangeId: 'last30',
                 tokens: 12345,
+                cash: 6.5,
                 currency: 'CNY',
                 hasUsageRecords: true,
               },
@@ -670,6 +763,13 @@ describe('buildDashboardModel', () => {
         key: 'minimaxTokens',
         label: 'Token usage',
         value: '12,345',
+        tone: 'neutral',
+        scope: 'MiniMax CN',
+      },
+      {
+        key: 'minimaxCost',
+        label: 'Cost',
+        value: '¥6.50',
         tone: 'neutral',
         scope: 'MiniMax CN',
       },

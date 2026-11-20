@@ -26,6 +26,8 @@ export interface MiniMaxModel {
 export interface MiniMaxPlan {
   readonly windows: MiniMaxWindow[];
   readonly models: MiniMaxModel[];
+  /** General weekly boost: 1500 means the displayed weekly percent is 1.5×. */
+  readonly weeklyBoostPermille: number | null;
 }
 
 export interface MiniMaxSubscription {
@@ -33,11 +35,17 @@ export interface MiniMaxSubscription {
   readonly planName: string | null;
   /** Prepaid credit balance (`credit_info.total_credit`), not quota percent. */
   readonly totalCredit: number | null;
+  readonly voiceSlotTotal: number | null;
+  readonly voiceSlotUsed: number | null;
+  /** `current_combo_card.price_data.renew_price_tag`, in the provider currency. */
+  readonly renewalPrice: number | null;
 }
 
 export interface MiniMaxTokenUsage {
   readonly rangeId: RangeId;
   readonly tokens: number;
+  /** Cash consumed by non-purchase records in the selected range. */
+  readonly cash: number;
   readonly currency: string | null;
   readonly hasUsageRecords: boolean;
 }
@@ -191,7 +199,11 @@ export function readMiniMaxPlan(response: unknown): MiniMaxPlan {
     };
   });
 
-  return { windows, models };
+  return {
+    windows,
+    models,
+    weeklyBoostPermille: numberOrNull(general.weekly_boost_permille),
+  };
 }
 
 export interface MiniMaxAccountBalance {
@@ -241,10 +253,30 @@ export function readMiniMaxSubscription(response: unknown): MiniMaxSubscription 
     typeof creditInfo === 'object' && creditInfo !== null && !Array.isArray(creditInfo)
       ? numberOrNull((creditInfo as Record<string, unknown>).total_credit)
       : null;
+  const voiceInfo = root.voice_slot_info;
+  const voice =
+    typeof voiceInfo === 'object' && voiceInfo !== null && !Array.isArray(voiceInfo)
+      ? (voiceInfo as Record<string, unknown>)
+      : undefined;
+  const comboCard = root.current_combo_card;
+  const priceData =
+    typeof comboCard === 'object' && comboCard !== null && !Array.isArray(comboCard)
+      ? (comboCard as Record<string, unknown>).price_data
+      : undefined;
+  const renewalPrice =
+    typeof priceData === 'object' && priceData !== null && !Array.isArray(priceData)
+      ? numberOrNull(
+          (priceData as Record<string, unknown>).renew_price_tag ??
+            (priceData as Record<string, unknown>).price_tag,
+        )
+      : null;
   return {
     expiresAt,
     planName: typeof planName === 'string' ? planName : null,
     totalCredit,
+    voiceSlotTotal: voice === undefined ? null : numberOrNull(voice.voice_slot_total),
+    voiceSlotUsed: voice === undefined ? null : numberOrNull(voice.voice_slot_used),
+    renewalPrice,
   };
 }
 
@@ -258,11 +290,13 @@ export function readMiniMaxTokenUsage(
   rangeId: RangeId = 'last7',
   now = Date.now(),
   timeZone: string = SHANGHAI,
+  currency: string | null = null,
 ): MiniMaxTokenUsage {
   const root = asRecord(response, 'root');
   const records = Array.isArray(root.charge_records) ? root.charge_records : [];
   const range = rangeFor(rangeId, now, timeZone);
   let tokens = 0;
+  let cash = 0;
   let hasUsageRecords = false;
 
   for (const raw of records) {
@@ -281,12 +315,17 @@ export function readMiniMaxTokenUsage(
     if (timestamp === null) continue;
     if (timestamp < range.start || timestamp > range.end) continue;
     tokens += numberOrNull(record.consume_token) ?? 0;
+    cash += numberOrNull(record.consume_cash) ?? 0;
   }
 
   return {
     rangeId,
     tokens,
-    currency: typeof root.currency === 'string' ? root.currency : null,
+    cash,
+    currency:
+      typeof root.currency === 'string'
+        ? root.currency
+        : currency,
     hasUsageRecords,
   };
 }
