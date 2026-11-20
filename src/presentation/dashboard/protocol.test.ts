@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { makeSnapshot } from '../../test/helpers/snapshot';
+import { translatorFor } from '../../localization';
 import { hostMessage, isHostMessage, isWebviewMessage } from './protocol';
-import type { DashboardModel } from './viewModel';
+import { buildDashboardModel, type DashboardModel } from './viewModel';
 
 function emptyModel(): DashboardModel {
   return {
@@ -165,6 +167,57 @@ describe('host messages', () => {
       tone: 'caution',
     } as never);
     expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(false);
+  });
+
+  it('accepts meter records built from live MiniMax plan data', () => {
+    const model = buildDashboardModel({
+      snapshots: {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.plan': {
+            kind: 'ok',
+            fetchedAt: '2026-11-20T00:00:00.000Z',
+            data: {
+              windows: [
+                { window: 'fiveHour', remainingPercent: 88, resetAt: null, unlimited: false },
+              ],
+              models: [],
+            },
+          },
+        }),
+      },
+      order: ['minimax-cn'],
+      t: translatorFor('en-US'),
+      range: 'last7',
+      pricing: 'peak',
+      timeZone: 'Asia/Shanghai',
+    });
+    expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(true);
+  });
+
+  it('accepts grouped detail rows built from live Qwen balance data', () => {
+    const model = buildDashboardModel({
+      snapshots: {
+        qwen: makeSnapshot('qwen', {
+          'qwen.accountBalance': {
+            kind: 'ok',
+            fetchedAt: '2026-11-20T00:00:00.000Z',
+            data: {
+              availableAmount: 1,
+              availableCashAmount: 1,
+              creditAmount: 0,
+              quotaLimit: null,
+              currency: 'CNY',
+            },
+          },
+        }),
+      },
+      order: ['qwen'],
+      t: translatorFor('en-US'),
+      range: 'last7',
+      pricing: 'peak',
+      timeZone: 'Asia/Shanghai',
+    });
+    expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(true);
   });
 
   it('rejects a non-object', () => {

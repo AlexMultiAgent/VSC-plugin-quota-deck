@@ -31,6 +31,18 @@ function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): 
   return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
 }
 
+function hasAllowedKeys(
+  value: Record<string, unknown>,
+  required: readonly string[],
+  optional: readonly string[] = [],
+): boolean {
+  const allowed = new Set([...required, ...optional]);
+  return (
+    required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) &&
+    Object.keys(value).every((key) => allowed.has(key))
+  );
+}
+
 export function isRangeId(value: unknown): value is RangeId {
   return typeof value === 'string' && (RANGE_IDS as readonly string[]).includes(value);
 }
@@ -47,13 +59,19 @@ function isMeters(value: unknown): boolean {
   return Array.isArray(value) && value.every(
     (meter) =>
       isRecord(meter) &&
-      hasExactKeys(meter, ['key', 'label', 'percent', 'valueLabel', 'resetLabel', 'tone']) &&
+      hasAllowedKeys(
+        meter,
+        ['key', 'label', 'percent', 'valueLabel', 'resetLabel', 'tone'],
+        ['group', 'unlimited'],
+      ) &&
       typeof meter.key === 'string' &&
       typeof meter.label === 'string' &&
       isNumberOrNull(meter.percent) &&
       isStringOrNull(meter.valueLabel) &&
       isStringOrNull(meter.resetLabel) &&
-      typeof meter.tone === 'string',
+      typeof meter.tone === 'string' &&
+      (meter.group === undefined || typeof meter.group === 'string') &&
+      (meter.unlimited === undefined || typeof meter.unlimited === 'boolean'),
   );
 }
 
@@ -71,9 +89,10 @@ function isProviderDetails(value: unknown): boolean {
   return Array.isArray(value) && value.every(
     (detail) =>
       isRecord(detail) &&
-      hasExactKeys(detail, ['label', 'value']) &&
+      hasAllowedKeys(detail, ['label', 'value'], ['group']) &&
       typeof detail.label === 'string' &&
-      typeof detail.value === 'string',
+      typeof detail.value === 'string' &&
+      (detail.group === undefined || typeof detail.group === 'string'),
   );
 }
 
