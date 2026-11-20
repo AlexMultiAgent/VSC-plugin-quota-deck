@@ -97,7 +97,7 @@ provider must have supplied a number (a missing one is contract drift and throws
 `numberOrNull` when the provider may legitimately omit it. Never substitute `0` for a missing
 number.
 
-`src/presentation/display.ts` holds the shared display helpers: `formatMoney`, `formatCredits`,
+`src/presentation/display.ts` holds the shared display helpers: `formatMoney`,
 `selectPrimaryCurrency`, `providerDisplayName`, `pickTightestWindow`. Use them instead of writing
 another copy. `src/presentation/quotaTone.ts` is the shared severity function
 (`quotaTone(percent, warningThresholdPercent)` → `positive | caution | warning | critical`) used by
@@ -234,8 +234,11 @@ These are product and security rules, not implementation details — do not trad
   `QuotaDeck CN: 登录千问AI平台`. `per1MonthPercentage` is a **used** ratio in 0..1; monthly and
   weekly are independent. The verified contracts are in `docs/contracts/qwen.md`.
 - **MiniMax credits, account balance, boosts, and unlimited windows are separate concepts.** The
-  prepaid credit balance is `credit_info.total_credit` on the subscription response and is a count,
-  not currency; the dashboard, tooltip and tree label it 积分 / Credits. The account balance comes
+  console's 积分 (credit balance) is not reachable with an API key: it comes from
+  `/backend/account/token_plan_credit` (`balance_breakdown`), which the console calls with a Cookie
+  session. The subscription response's `credit_info.total_credit` is a legacy field (0.00 on annual
+  plans) and must not be surfaced as 积分; the dashboard and tooltip say the balance is
+  console-only. The account balance comes
   from `/account/query_balance` (available / cash / voucher / credit / owed) with the same Token
   Plan key; the response has no currency field, so the provider labels CN amounts CNY and global
   amounts USD. `weekly_boost_permille` is a per-mille multiplier on the weekly percentage (1500 =

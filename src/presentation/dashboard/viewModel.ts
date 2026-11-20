@@ -15,7 +15,7 @@ import type {
   QwenTokenPlan,
   QwenTokenPlanSubscription,
 } from '../../providers/qwen/shape';
-import { formatCredits, formatMoney, providerDisplayName, selectPrimaryCurrency } from '../display';
+import { formatMoney, providerDisplayName, selectPrimaryCurrency } from '../display';
 import { pricingPeriodLabel, rangeLabel } from '../labels';
 import { quotaTone } from '../quotaTone';
 
@@ -355,12 +355,6 @@ function providerDetails(
         value: zonedDateTime(subscription.expiresAt, timeZone),
       });
     }
-    if (typeof subscription?.totalCredit === 'number') {
-      details.push({
-        label: t('dashboard.minimax.credits'),
-        value: formatCredits(subscription.totalCredit),
-      });
-    }
     if (typeof subscription?.voiceSlotTotal === 'number' && typeof subscription.voiceSlotUsed === 'number') {
       details.push({
         label: t('dashboard.minimax.voiceSlots'),
@@ -647,11 +641,15 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       accountValue: providerAccountValue(id, snapshot, t),
       details: providerDetails(id, snapshot, t, timeZone),
       hoursLabel: id === 'deepseek' ? pricingPeriodLabel(pricing, t) : null,
-      note: id === 'deepseek' && snapshot !== undefined
-        ? t('dashboard.deepseek.officialBilling')
-        : id === 'qwen' && snapshot !== undefined
-          ? t('dashboard.qwen.unsupportedDetail')
-          : null,
+      note: snapshot === undefined
+        ? null
+        : id === 'minimax-cn' || id === 'minimax-global'
+          ? t('dashboard.minimax.creditsConsoleOnly')
+          : id === 'deepseek'
+            ? t('dashboard.deepseek.officialBilling')
+            : id === 'qwen'
+              ? t('dashboard.qwen.unsupportedDetail')
+              : null,
       message: failed !== undefined && failed.kind === 'failed'
         ? t(failed.error.message)
         : stale !== undefined && stale.kind === 'stale'

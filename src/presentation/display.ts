@@ -7,11 +7,6 @@ export function formatMoney(amount: number, currency: string): string {
   return currency === 'CNY' ? `¥${amount.toFixed(2)}` : `${currency} ${amount.toFixed(2)}`;
 }
 
-/** Format a non-currency credit count (MiniMax 积分) without a currency symbol. */
-export function formatCredits(amount: number): string {
-  return amount.toLocaleString('en-US', { maximumFractionDigits: 2 });
-}
-
 /** Pick the currency to display. Never sums across currencies. */
 export function selectPrimaryCurrency(currencies: readonly string[]): string | undefined {
   for (const code of CURRENCY_PRIORITY) {

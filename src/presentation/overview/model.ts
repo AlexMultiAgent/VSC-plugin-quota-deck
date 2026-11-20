@@ -17,7 +17,6 @@ import type {
   QwenTokenPlanSubscription,
 } from '../../providers/qwen/shape';
 import {
-  formatCredits,
   formatMoney,
   pickTightestWindow,
   providerDisplayName,
@@ -395,20 +394,6 @@ function miniMaxChildren(
       });
     }
   }
-  if (typeof subscription?.totalCredit === 'number') {
-    const credits = formatCredits(subscription.totalCredit);
-    children.push({
-      id: `provider:${id}:credits`,
-      label: options.t('dashboard.minimax.credits'),
-      description: credits,
-      tooltip: detailTooltip(options.t('dashboard.minimax.credits'), credits),
-      state: 'muted',
-      stateLabel: '',
-      action: null,
-      children: [],
-    });
-  }
-
   return children;
 }
 

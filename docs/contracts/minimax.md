@@ -74,9 +74,16 @@ Top-level keys: `cycle_resource_packages` (the catalogue of plans for sale),
 | `current_subscribe_end_time` | locale date string such as `"07/06/2027"` — ambiguous, and `Date.parse` resolves it to **local** midnight |
 | `current_subscribe_end_time_ts` | the same expiry as epoch milliseconds — this is the one to read |
 | `current_subscribe_title` | plan name, e.g. `TokenPlanMax-年度会员` |
-| `credit_info.total_credit` | prepaid credit balance (积分), a count, not currency; `0.00` when no credit pack is held |
 | `voice_slot_info.voice_slot_total` / `voice_slot_used` | voice slots owned and used; the dashboard shows `used/total` |
 | `current_combo_card.price_data.renew_price_tag` | renewal price in the account currency; the dashboard labels it as the renewal price |
+
+### Credits (积分) are console-only
+
+`credit_info.total_credit` is a legacy field (0.00 on an annual Token Plan) and is **not** the
+balance the console labels 积分. The console reads `/backend/account/token_plan_credit`
+(`balance_breakdown.total_balance` and its per-source `buckets`) through a Cookie-authenticated
+console session. The extension accepts API credentials only, so it does not surface a credit
+number; the dashboard and tooltip say the balance is console-only.
 
 ## `minimax.tokenUsage`
 

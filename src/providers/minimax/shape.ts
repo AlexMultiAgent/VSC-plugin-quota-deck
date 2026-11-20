@@ -33,8 +33,6 @@ export interface MiniMaxPlan {
 export interface MiniMaxSubscription {
   readonly expiresAt: number | null;
   readonly planName: string | null;
-  /** Prepaid credit balance (`credit_info.total_credit`), not quota percent. */
-  readonly totalCredit: number | null;
   readonly voiceSlotTotal: number | null;
   readonly voiceSlotUsed: number | null;
   /** `current_combo_card.price_data.renew_price_tag`, in the provider currency. */
@@ -248,11 +246,6 @@ export function readMiniMaxSubscription(response: unknown): MiniMaxSubscription 
   const expiresAt =
     asTimestamp(current.current_subscribe_end_time_ts) ??
     asTimestamp(current.current_subscribe_end_time ?? current.end_time);
-  const creditInfo = root.credit_info;
-  const totalCredit =
-    typeof creditInfo === 'object' && creditInfo !== null && !Array.isArray(creditInfo)
-      ? numberOrNull((creditInfo as Record<string, unknown>).total_credit)
-      : null;
   const voiceInfo = root.voice_slot_info;
   const voice =
     typeof voiceInfo === 'object' && voiceInfo !== null && !Array.isArray(voiceInfo)
@@ -273,7 +266,6 @@ export function readMiniMaxSubscription(response: unknown): MiniMaxSubscription 
   return {
     expiresAt,
     planName: typeof planName === 'string' ? planName : null,
-    totalCredit,
     voiceSlotTotal: voice === undefined ? null : numberOrNull(voice.voice_slot_total),
     voiceSlotUsed: voice === undefined ? null : numberOrNull(voice.voice_slot_used),
     renewalPrice,

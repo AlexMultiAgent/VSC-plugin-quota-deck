@@ -222,7 +222,7 @@ describe('buildOverviewItems', () => {
     expect(weekly?.state).toBe('positive');
   });
 
-  it('shows the MiniMax plan name and credit balance', () => {
+  it('shows the MiniMax plan name and expiry', () => {
     const items = buildOverviewItems({
       snapshots: {
         'minimax-cn': makeSnapshot('minimax-cn', {
@@ -232,7 +232,6 @@ describe('buildOverviewItems', () => {
             data: {
               expiresAt: Date.parse('2027-07-05T00:00:00Z'),
               planName: 'TokenPlanMax-年度会员',
-              totalCredit: 1234,
             },
           },
         }),
@@ -246,8 +245,7 @@ describe('buildOverviewItems', () => {
     });
 
     const children = items[0]?.children ?? [];
-    expect(children.map((child) => child.label)).toEqual(['套餐', '到期', '积分']);
-    expect(children[2]?.description).toBe('1,234');
+    expect(children.map((child) => child.label)).toEqual(['套餐', '到期']);
   });
 
   it('keeps MiniMax Global distinct from MiniMax CN', () => {

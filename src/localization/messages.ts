@@ -51,7 +51,7 @@ export const MESSAGES = {
   'dashboard.refreshNow': '立即刷新',
   'dashboard.historyRange': '历史用量范围',
   'dashboard.historyUsage': '历史用量',
-  'dashboard.minimax.credits': '积分',
+  'dashboard.minimax.creditsConsoleOnly': '积分余额需在 MiniMax 控制台查看。',
   'dashboard.minimax.availableBalance': '可用余额',
   'dashboard.minimax.cashBalance': '现金余额',
   'dashboard.minimax.voucherBalance': '代金券余额',

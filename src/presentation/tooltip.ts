@@ -15,7 +15,7 @@ import type {
   QwenTokenPlanSubscription,
 } from '../providers/qwen/shape';
 import { pricingState, type PricingState } from '../providers/deepseek/pricing';
-import { formatCredits, formatMoney, providerDisplayName } from './display';
+import { formatMoney, providerDisplayName } from './display';
 
 const ESCAPES: Record<string, string> = {
   '&': '&amp;',
@@ -281,13 +281,9 @@ function providerRows(
         '<td></td><td></td></tr>',
       );
     }
-    if (typeof subscription?.totalCredit === 'number') {
-      rows.push(
-        `<tr><td>${escapeHtml(t('dashboard.minimax.credits'))}</td>` +
-        `<td>${escapeHtml(formatCredits(subscription.totalCredit))}</td>` +
-        '<td></td><td></td></tr>',
-      );
-    }
+    rows.push(
+      `<tr><td colspan="4" class="t-muted">${escapeHtml(t('dashboard.minimax.creditsConsoleOnly'))}</td></tr>`,
+    );
     if (rows.length > 0) return rows.join('');
   }
   if (miniMaxBalanceRow.length > 0) return miniMaxBalanceRow;

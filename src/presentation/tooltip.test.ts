@@ -807,6 +807,8 @@ describe('renderTooltip', () => {
     expect(html).toContain('Video');
     expect(html).not.toContain('6,850');
     expect(html).toContain('2027-06-30');
+    expect(html).toContain('Credit balance is available in the MiniMax console.');
+    expect(html).not.toContain('<td>Credits</td>');
   });
 
   it('shows the MiniMax expiry in the configured time zone', () => {
@@ -832,6 +834,8 @@ describe('renderTooltip', () => {
 
     expect(html).toContain('2027-07-06 00:00');
     expect(html).not.toContain('2027-07-05');
+    expect(html).toContain('积分余额需在 MiniMax 控制台查看');
+    expect(html).not.toContain('<td>积分</td>');
   });
 });
 

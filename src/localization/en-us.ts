@@ -48,7 +48,7 @@ export const enUs: MessageBundle = {
   'dashboard.refreshNow': 'Refresh now',
   'dashboard.historyRange': 'History usage range',
   'dashboard.historyUsage': 'Historical usage',
-  'dashboard.minimax.credits': 'Credits',
+  'dashboard.minimax.creditsConsoleOnly': 'Credit balance is available in the MiniMax console.',
   'dashboard.minimax.availableBalance': 'Available balance',
   'dashboard.minimax.cashBalance': 'Cash',
   'dashboard.minimax.voucherBalance': 'Voucher',

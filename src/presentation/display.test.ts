@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatCredits,
   formatMoney,
   pickTightestWindow,
   providerDisplayName,
@@ -14,13 +13,6 @@ describe('formatMoney', () => {
 
   it('renders every other currency with its ISO code', () => {
     expect(formatMoney(12.3, 'USD')).toBe('USD 12.30');
-  });
-});
-
-describe('formatCredits', () => {
-  it('formats a credit count without a currency symbol', () => {
-    expect(formatCredits(1234.5)).toBe('1,234.5');
-    expect(formatCredits(0)).toBe('0');
   });
 });
 

@@ -531,7 +531,6 @@ describe('buildDashboardModel', () => {
               data: {
                 expiresAt: null,
                 planName: null,
-                totalCredit: null,
                 voiceSlotTotal: 5,
                 voiceSlotUsed: 2,
                 renewalPrice: 1190,
@@ -638,7 +637,6 @@ describe('buildDashboardModel', () => {
               data: {
                 expiresAt: Date.parse('2027-07-05T16:00:00.000Z'),
                 planName: 'TokenPlanMax-年度会员',
-                totalCredit: 12.5,
               },
             },
           }),
@@ -648,9 +646,11 @@ describe('buildDashboardModel', () => {
     expect(model.providers[0]!.details).toEqual([
       { label: 'Plan', value: 'TokenPlanMax-年度会员' },
       { label: 'Expires', value: '2027-07-05 16:00' },
-      { label: 'Credits', value: '12.5' },
       { label: 'Updated', value: '2026-11-16 00:00' },
     ]);
+    expect(model.providers[0]!.note).toBe(
+      'Credit balance is available in the MiniMax console.',
+    );
   });
 
   it('shows the extended Qwen balance and subscription fields', () => {
