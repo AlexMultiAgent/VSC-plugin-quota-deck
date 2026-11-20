@@ -68,15 +68,18 @@ first refresh, `switchProvider` repaints only the status bar and tooltip, and `o
 repaints the dashboard before refreshing. A new surface needs a paint line in `refreshAll()` **and**
 in the startup cache block, or it stays empty until the first refresh and then lags the rest.
 
+The `quotaDeck.checkConnection` output channel is on-demand: it refreshes first, then rewrites its
+diagnostic report. It is not one of the continuously painted surfaces and needs no startup paint.
+
 Each surface renders that snapshot through its own derived view model:
 `presentation/overview/model.ts` (`buildOverviewItems`) and
 `presentation/dashboard/viewModel.ts` (`buildDashboardModel`) turn the snapshot into display
 records, and `dashboard/webview/render.ts` turns the dashboard model into DOM. A derived value
 belongs in the view model, not in the surface.
 
-`quotaDeck.statusBar.providerOrder` decides **which** providers appear and in what order — all
-four surfaces filter by it, so removing a provider from the list hides it everywhere. It is not an
-ordering-only preference.
+`quotaDeck.statusBar.providerOrder` decides **which** providers appear and in what order — the
+four painted surfaces and the connection-check report filter by it, so removing a provider from
+the list hides it everywhere. It is not an ordering-only preference.
 
 Snapshots are fetched per **range** (`RangeId` in `src/core/time.ts`:
 `today | yesterday | last7 | last30 | thisMonth | lastMonth`). The range flows through
@@ -99,8 +102,9 @@ provider must have supplied a number (a missing one is contract drift and throws
 number.
 
 `src/presentation/display.ts` holds the shared display helpers: `formatMoney`,
-`selectPrimaryCurrency`, `providerDisplayName`, `pickTightestWindow`. Use them instead of writing
-another copy. `src/presentation/quotaTone.ts` is the shared severity function
+`selectPrimaryCurrency`, `providerDisplayName`, `pickTightestWindow`, `formatDateTime`,
+`formatExpiryRemaining`, `formatRemainingDays`. Use them instead of writing another copy.
+`src/presentation/quotaTone.ts` is the shared severity function
 (`quotaTone(percent, warningThresholdPercent)` → `positive | caution | warning | critical`) used by
 the status bar, the dashboard and the Activity Bar tree — the `warning` line follows the user's
 `warningThresholdPercent`, but `caution` is hard-coded at 50 % and `critical` at 5 %.
