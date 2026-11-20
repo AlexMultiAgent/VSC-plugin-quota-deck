@@ -514,6 +514,39 @@ describe('buildDashboardModel', () => {
     expect(model.historyTiles).toEqual([]);
   });
 
+  it('shows the MiniMax account balance fields', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['minimax-cn'],
+        snapshots: {
+          'minimax-cn': makeSnapshot('minimax-cn', {
+            'minimax.accountBalance': {
+              kind: 'ok',
+              fetchedAt: '2026-11-16T00:00:00.000Z',
+              data: {
+                availableAmount: 1,
+                cashBalance: 2,
+                voucherBalance: 3,
+                creditBalance: 4,
+                owedAmount: 5,
+                currency: 'CNY',
+              },
+            },
+          }),
+        },
+      }),
+    );
+
+    expect(model.providers[0]!.details).toEqual([
+      { label: 'Available balance', value: '¥1.00', group: 'Account balance' },
+      { label: 'Cash', value: '¥2.00', group: 'Account balance' },
+      { label: 'Voucher', value: '¥3.00', group: 'Account balance' },
+      { label: 'Credit', value: '¥4.00', group: 'Account balance' },
+      { label: 'Owed', value: '¥5.00', group: 'Account balance' },
+      { label: 'Updated', value: '2026-11-16 08:00' },
+    ]);
+  });
+
   it('renders an unlimited MiniMax window without a percentage or track', () => {
     const model = buildDashboardModel(
       options({

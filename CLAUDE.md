@@ -229,11 +229,16 @@ These are product and security rules, not implementation details — do not trad
   official CLI has no refresh grant: an expired `expiresAt` means the user re-runs
   `QuotaDeck CN: 登录千问AI平台`. `per1MonthPercentage` is a **used** ratio in 0..1; monthly and
   weekly are independent. The verified contracts are in `docs/contracts/qwen.md`.
-- **MiniMax credits and unlimited windows are separate from the percentage quota.** The prepaid
-  credit balance is `credit_info.total_credit` on the subscription response and is a count, not
-  currency; the dashboard, tooltip and tree label it 积分 / Credits. A window with
-  `unlimited: true` has no meaningful percentage, so it renders as 无限 / Unlimited with no meter
-  track — never as `0%` or `—`. `pickTightestWindow()` already ignores unlimited windows.
+- **MiniMax credits, account balance, boosts, and unlimited windows are separate concepts.** The
+  prepaid credit balance is `credit_info.total_credit` on the subscription response and is a count,
+  not currency; the dashboard, tooltip and tree label it 积分 / Credits. The account balance comes
+  from `/account/query_balance` (available / cash / voucher / credit / owed) with the same Token
+  Plan key; the response has no currency field, so the provider labels CN amounts CNY and global
+  amounts USD. `weekly_boost_permille` is a per-mille multiplier on the weekly percentage (1500 =
+  1.5×, capped at 200%). `current_weekly_status: 3` means unlimited, but when both totals are zero
+  and both statuses are 3 the model is not in the plan — do not mark that as unlimited. An
+  unlimited window renders as 无限 / Unlimited with no meter track, never as `0%` or `—`;
+  `pickTightestWindow()` already ignores unlimited windows.
 - **MiniMax rejects a credential with HTTP 200.** The refusal lives in `base_resp.status_code`
   (`1004` for a bad key), so `credentialRejection()` in `src/providers/minimax/provider.ts` runs
   before the shape parsers — otherwise a revoked key reads as a malformed response.

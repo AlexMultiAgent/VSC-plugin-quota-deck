@@ -1,6 +1,6 @@
 # MiniMax contract verification
 
-Checked on 2026-11-19 against a live domestic Token Plan key (`sk-cp-…`) on
+Checked on 2026-11-20 against a live domestic Token Plan key (`sk-cp-…`) on
 `https://www.minimaxi.com`. Captured payloads live in
 `src/test/fixtures/minimax-cn/`.
 
@@ -9,6 +9,7 @@ Checked on 2026-11-19 against a live domestic Token Plan key (`sk-cp-…`) on
 | `minimax.plan` | verified | Token Plan key |
 | `minimax.subscription` | verified | Token Plan key |
 | `minimax.tokenUsage` | verified | Token Plan key |
+| `minimax.accountBalance` | verified | Token Plan key (same key as the plan) |
 | `minimax.points` | removed | needed a web-session Cookie |
 
 ## The credential check lives in the body, not the status code
@@ -38,10 +39,10 @@ international hosts answer the same shape.
 | `current_interval_remaining_percent` | 5-hour window remaining percentage |
 | `current_weekly_total_count` / `current_weekly_usage_count` | the same pair for the weekly window |
 | `current_weekly_remaining_percent` | weekly remaining percentage |
-| `current_interval_status` / `current_weekly_status` | observed as `1`; the meaning of the other values is unverified |
+| `current_interval_status` / `current_weekly_status` | `1` normal, `2` exhausted, `3` unlimited; when both totals are 0 and both statuses are 3, the model is not in the plan |
 | `end_time` / `weekly_end_time` | window reset, epoch **milliseconds** |
-| `weekly_unlimited` | when true the weekly window has no meaningful percentage; the UI shows **Unlimited** |
-| `weekly_boost_permille` | present on the `general` entry, not used by the extension |
+| `weekly_unlimited` | legacy boolean fallback for an unlimited weekly window; `current_weekly_status: 3` is the current signal |
+| `weekly_boost_permille` | per-mille multiplier applied to the weekly percentage (`1500` = 1.5×); the UI caps the displayed value at 200% |
 
 ### `current_interval_usage_count` is the remaining count
 
@@ -82,6 +83,29 @@ Top-level keys: `cycle_resource_packages` (the catalogue of plans for sale),
 `charge_records[]` entries carry `created_at` in **epoch seconds** and
 `consume_token` as a **string**. The response also carries `total_cnt`,
 `consume_token_sum` and `consume_cash_sum`.
+
+## `minimax.accountBalance`
+
+`GET /account/query_balance`
+
+Live-verified on 2026-11-20 with the same `sk-cp-…` Token Plan key used for
+`minimax.plan`. The official CLI normally selects this endpoint for `sk-api-…`
+keys, but the Token Plan key answers it as well.
+
+| Field | Meaning |
+| --- | --- |
+| `available_amount` | spendable balance |
+| `cash_balance` | cash balance |
+| `voucher_balance` | voucher balance |
+| `credit_balance` | credit balance |
+| `owed_amount` | outstanding amount |
+| `balance_alert_switch` / `balance_alert_threshold` | alert settings; not surfaced |
+| `base_resp.status_code` | `0` on success; the same body-level credential check applies |
+
+The response has **no currency field**. The extension labels `minimax-cn`
+amounts as `CNY` and `minimax-global` amounts as `USD`; if MiniMax ever returns
+a different settlement currency for an account, that assumption is contract
+drift.
 
 ## `minimax.points`
 

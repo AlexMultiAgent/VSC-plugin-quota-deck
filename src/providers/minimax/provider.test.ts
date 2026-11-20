@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { MiniMaxProvider } from './provider';
 import type { HttpClient, JsonResult } from '../../core/http';
 import type { SecretReader } from '../../core/types';
+import { loadFixture } from '../../test/helpers/fixture';
 
 function secretReader(values: Record<string, string>): SecretReader {
   return { read: async (providerId, credential) => values[`${providerId}:${credential}`] };
@@ -31,10 +32,54 @@ describe('MiniMaxProvider', () => {
     });
   });
 
-  it('declares the three capabilities available from a Token Plan key', () => {
+  it('declares the four capabilities available from a Token Plan key', () => {
     const provider = new MiniMaxProvider('minimax-cn', 'https://www.minimaxi.com', httpClient({ ok: false, error: { kind: 'unknown', message: 'error.unknown' } }));
     const ids = provider.getCapabilities().capabilities.map((capability) => capability.id);
-    expect(ids).toEqual(['minimax.plan', 'minimax.subscription', 'minimax.tokenUsage']);
+    expect(ids).toEqual([
+      'minimax.plan',
+      'minimax.subscription',
+      'minimax.tokenUsage',
+      'minimax.accountBalance',
+    ]);
+  });
+
+  it('fetches the account balance with the Token Plan key', async () => {
+    const balance = loadFixture('minimax-cn', 'minimax.accountBalance', 'standard') as {
+      response: unknown;
+    };
+    const getJson = vi.fn().mockImplementation(async (url: string) => {
+      if (String(url).includes('/account/query_balance')) {
+        return { ok: true, body: balance.response };
+      }
+      return {
+        ok: true,
+        body: {
+          base_resp: { status_code: 0 },
+          model_remains: [],
+          charge_records: [],
+          total_cnt: 0,
+        },
+      };
+    });
+    const provider = new MiniMaxProvider('minimax-cn', 'https://www.minimaxi.com', {
+      getJson,
+    } as unknown as HttpClient);
+    await provider.connect(secretReader({ 'minimax-cn:token-plan-key': 'token' }));
+
+    const snapshot = await provider.fetchSnapshot(new AbortController().signal);
+
+    expect(snapshot.capabilities['minimax.accountBalance']).toEqual({
+      kind: 'ok',
+      fetchedAt: expect.any(String),
+      data: {
+        availableAmount: 0,
+        cashBalance: 0,
+        voucherBalance: 0,
+        creditBalance: 0,
+        owedAmount: 0,
+        currency: 'CNY',
+      },
+    });
   });
 
   it('marks every Token Plan capability as required', () => {

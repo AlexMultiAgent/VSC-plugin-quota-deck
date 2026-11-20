@@ -17,7 +17,8 @@
     "qwen.consoleAccess": "/data/v2/api.json",
     "qwen.tokenPlanUsage": "/cli/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaHttp.apikeyMgr.%2Ftokenplan%2Fpersonal%2Fapi%2Fv2%2Fusage",
     "qwen.tokenPlanSubscription": "/cli/api.json?action=BroadScopeAspnGateway&product=sfm_bailian&api=zeldaHttp.apikeyMgr.%2Ftokenplan%2Fpersonal%2Fapi%2Fv2%2Fsubscription",
-    "qwen.fundBalance": "/data/v2/api.json"
+    "qwen.fundBalance": "/data/v2/api.json",
+    "minimax.accountBalance": "/account/query_balance"
   },
   "credentials": {
     "minimax-cn": {

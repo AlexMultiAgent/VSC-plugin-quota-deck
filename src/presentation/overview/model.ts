@@ -6,6 +6,7 @@ import type { ProviderId, ProviderSnapshot } from '../../core/types';
 import type { PricingState } from '../../providers/deepseek/pricing';
 import type { DeepSeekBalance } from '../../providers/deepseek/shape';
 import type {
+  MiniMaxAccountBalance,
   MiniMaxPlan,
   MiniMaxSubscription,
   MiniMaxWindow,
@@ -222,6 +223,66 @@ function miniMaxChildren(
 ): OverviewItem[] {
   const children: OverviewItem[] = [];
   const plan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
+  const balance = capabilityValue<MiniMaxAccountBalance>(
+    snapshot,
+    'minimax.accountBalance',
+  );
+  const balanceChildren: OverviewItem[] = [];
+  if (balance !== undefined) {
+    const fields: Array<{ id: string; label: string; amount: number }> = [
+      {
+        id: 'available',
+        label: options.t('dashboard.minimax.availableBalance'),
+        amount: balance.availableAmount,
+      },
+      {
+        id: 'cash',
+        label: options.t('dashboard.minimax.cashBalance'),
+        amount: balance.cashBalance,
+      },
+      {
+        id: 'voucher',
+        label: options.t('dashboard.minimax.voucherBalance'),
+        amount: balance.voucherBalance,
+      },
+      {
+        id: 'credit',
+        label: options.t('dashboard.minimax.creditBalance'),
+        amount: balance.creditBalance,
+      },
+      {
+        id: 'owed',
+        label: options.t('dashboard.minimax.owedAmount'),
+        amount: balance.owedAmount,
+      },
+    ];
+    for (const field of fields) {
+      const amount = formatMoney(field.amount, balance.currency);
+      balanceChildren.push({
+        id: `provider:${id}:balance:${field.id}`,
+        label: field.label,
+        description: amount,
+        tooltip: detailTooltip(field.label, amount),
+        state: 'muted',
+        stateLabel: '',
+        action: null,
+        children: [],
+      });
+    }
+  }
+  if (balanceChildren.length > 0 && balance !== undefined) {
+    const amount = formatMoney(balance.availableAmount, balance.currency);
+    children.push({
+      id: `provider:${id}:balanceGroup`,
+      label: options.t('dashboard.accountBalance'),
+      description: amount,
+      tooltip: detailTooltip(options.t('dashboard.accountBalance'), amount),
+      state: 'muted',
+      stateLabel: '',
+      action: null,
+      children: balanceChildren,
+    });
+  }
 
   for (const window of plan?.windows ?? []) {
     const label = windowLabel(window.window, options.t);

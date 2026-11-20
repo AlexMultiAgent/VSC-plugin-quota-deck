@@ -145,6 +145,53 @@ describe('buildOverviewItems', () => {
     expect(items[1]?.children.find((item) => item.label === 'Peak')).toBeDefined();
   });
 
+  it('shows the MiniMax account balance group', () => {
+    const items = buildOverviewItems({
+      snapshots: {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.accountBalance': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: {
+              availableAmount: 1,
+              cashBalance: 2,
+              voucherBalance: 3,
+              creditBalance: 4,
+              owedAmount: 5,
+              currency: 'CNY',
+            },
+          },
+        }),
+      },
+      configured: { 'minimax-cn': true },
+      order: ['minimax-cn'],
+      t: zh,
+      pricing: 'offPeak',
+      timeZone: 'Asia/Shanghai',
+      warningThresholdPercent: 20,
+    });
+
+    const group = items[0]?.children.find(
+      (child) => child.id === 'provider:minimax-cn:balanceGroup',
+    );
+    expect(group?.label).toBe('账户余额');
+    expect(group?.description).toBe('¥1.00');
+    expect(group?.children.map((child) => child.label)).toEqual([
+      '可用余额',
+      '现金余额',
+      '代金券余额',
+      '信用额度',
+      '欠费',
+    ]);
+    expect(group?.children.map((child) => child.description)).toEqual([
+      '¥1.00',
+      '¥2.00',
+      '¥3.00',
+      '¥4.00',
+      '¥5.00',
+    ]);
+  });
+
   it('shows an unlimited MiniMax window as Unlimited', () => {
     const items = buildOverviewItems({
       snapshots: {

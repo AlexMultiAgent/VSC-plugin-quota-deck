@@ -1,0 +1,23 @@
+{
+  "capturedAt": "2026-11-20T00:48:49.632Z",
+  "provider": "minimax-cn",
+  "capability": "minimax.accountBalance",
+  "case": "standard",
+  "sourceHost": "www.minimaxi.com",
+  "sourceUrls": [
+    "https://www.minimaxi.com/account/query_balance"
+  ],
+  "response": {
+    "available_amount": "0.00",
+    "cash_balance": "0.00",
+    "voucher_balance": "0.00",
+    "credit_balance": "0.00",
+    "owed_amount": "0.00",
+    "balance_alert_switch": false,
+    "balance_alert_threshold": "0.00",
+    "base_resp": {
+      "status_code": 0,
+      "status_msg": "success"
+    }
+  }
+}

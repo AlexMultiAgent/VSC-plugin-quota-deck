@@ -286,7 +286,7 @@ describe('renderTooltip', () => {
     expect(visibleText).toContain('3/3');
     expect(visibleText).not.toContain('0/3');
     expect(visibleText).toContain('90%');
-    expect(visibleText).toContain('14%');
+    expect(visibleText).toContain('21%');
   });
 
   it('shows the video reset time after its quota track', () => {
@@ -558,6 +558,42 @@ describe('renderTooltip', () => {
     expect(html).not.toContain('Quota limit');
     expect(html).not.toContain('¥1000.00');
     expect(html).not.toContain('AccessKey');
+  });
+
+  it('shows the MiniMax balance before the Token Plan rows', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.accountBalance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            availableAmount: 1,
+            cashBalance: 2,
+            voucherBalance: 3,
+            creditBalance: 4,
+            owedAmount: 5,
+            currency: 'CNY',
+          },
+        },
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 100, resetAt: null, unlimited: false },
+            ],
+            models: [],
+          },
+        },
+      }),
+    };
+
+    const html = renderTooltip(snapshots, ['minimax-cn'], t);
+
+    expect(html).toContain('Account balance');
+    expect(html).toContain('¥1.00');
+    expect(html.indexOf('Account balance')).toBeLessThan(html.indexOf('Token Plan'));
+    expect(html).not.toContain('Available cash');
   });
 
   it('shows an unlimited MiniMax window as Unlimited', () => {

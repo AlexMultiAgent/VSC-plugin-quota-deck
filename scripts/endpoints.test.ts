@@ -26,6 +26,7 @@ describe('provider endpoints', () => {
   it('names an origin for every provider', () => {
     expect(ORIGINS['minimax-cn']).toMatch(/^https:\/\//);
     expect(ORIGINS['minimax-global']).toMatch(/^https:\/\//);
+    expect(ENDPOINTS['minimax.accountBalance']).toBe('/account/query_balance');
     expect(ORIGINS['deepseek-api']).toMatch(/^https:\/\//);
     expect(ORIGINS).not.toHaveProperty('deepseek-platform');
   });

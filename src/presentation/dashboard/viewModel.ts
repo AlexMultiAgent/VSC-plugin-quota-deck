@@ -5,6 +5,7 @@ import { capabilityValue } from '../../core/capability';
 import type { PricingState } from '../../providers/deepseek/pricing';
 import type { DeepSeekBalance } from '../../providers/deepseek/shape';
 import type {
+  MiniMaxAccountBalance,
   MiniMaxPlan,
   MiniMaxSubscription,
   MiniMaxTokenUsage,
@@ -359,6 +360,40 @@ function providerDetails(
         label: t('dashboard.minimax.credits'),
         value: formatCredits(subscription.totalCredit),
       });
+    }
+    const balance = capabilityValue<MiniMaxAccountBalance>(
+      snapshot,
+      'minimax.accountBalance',
+    );
+    if (balance !== undefined) {
+      const group = t('dashboard.accountBalance');
+      details.push(
+        {
+          label: t('dashboard.minimax.availableBalance'),
+          value: formatMoney(balance.availableAmount, balance.currency),
+          group,
+        },
+        {
+          label: t('dashboard.minimax.cashBalance'),
+          value: formatMoney(balance.cashBalance, balance.currency),
+          group,
+        },
+        {
+          label: t('dashboard.minimax.voucherBalance'),
+          value: formatMoney(balance.voucherBalance, balance.currency),
+          group,
+        },
+        {
+          label: t('dashboard.minimax.creditBalance'),
+          value: formatMoney(balance.creditBalance, balance.currency),
+          group,
+        },
+        {
+          label: t('dashboard.minimax.owedAmount'),
+          value: formatMoney(balance.owedAmount, balance.currency),
+          group,
+        },
+      );
     }
   }
   if (id === 'qwen') {

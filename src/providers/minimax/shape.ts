@@ -1,5 +1,5 @@
 import { rangeFor, SHANGHAI, type RangeId } from '../../core/time';
-import { asRecord, numberOrNull } from '../shape';
+import { asRecord, numberOrNull, requireNumber } from '../shape';
 
 export interface MiniMaxWindow {
   readonly window: 'fiveHour' | 'weekly';
@@ -95,6 +95,22 @@ function readQuota(
   };
 }
 
+const MAX_WEEKLY_DISPLAY_PERCENT = 200;
+
+/** `weekly_boost_permille` is a per-mille multiplier: 1500 means 1.5×. */
+function weeklyBoostFactor(value: unknown): number {
+  const permille = numberOrNull(value);
+  return permille === null ? 1 : Math.max(0, permille) / 1000;
+}
+
+function boostedWeeklyPercent(quota: Quota, record: Record<string, unknown>): number | null {
+  if (quota.remainingPercent === null) return null;
+  return Math.min(
+    MAX_WEEKLY_DISPLAY_PERCENT,
+    quota.remainingPercent * weeklyBoostFactor(record.weekly_boost_permille),
+  );
+}
+
 export function readMiniMaxPlan(response: unknown): MiniMaxPlan {
   const root = asRecord(response, 'root');
   const rows = root.model_remains;
@@ -116,27 +132,36 @@ export function readMiniMaxPlan(response: unknown): MiniMaxPlan {
     numberOrNull(general.current_weekly_remaining_percent),
   );
 
+  // Status 3 means unlimited. When both totals are zero and both statuses are
+  // 3, the API is instead describing a model that is not in the plan.
+  const intervalStatus = numberOrNull(general.current_interval_status);
+  const weeklyStatus = numberOrNull(general.current_weekly_status);
+  const unavailablePlan =
+    numberOrNull(general.current_interval_total_count) === 0 &&
+    numberOrNull(general.current_weekly_total_count) === 0 &&
+    intervalStatus === 3 &&
+    weeklyStatus === 3;
+  const fiveHourUnlimited = !unavailablePlan && intervalStatus === 3;
+  const weeklyUnlimited =
+    !unavailablePlan && (weeklyStatus === 3 || general.weekly_unlimited === true);
+
   const windows: MiniMaxWindow[] = [
     {
       window: 'fiveHour',
-      remainingPercent: interval.remainingPercent,
-      remainingPercentSource: interval.remainingPercentSource,
+      remainingPercent: fiveHourUnlimited ? null : interval.remainingPercent,
+      remainingPercentSource: fiveHourUnlimited ? null : interval.remainingPercentSource,
       resetAt: asTimestamp(general.end_time),
-      unlimited: false,
+      unlimited: fiveHourUnlimited,
     },
   ];
 
-  if (
-    weekly.total !== null ||
-    weekly.remainingPercent !== null ||
-    general.weekly_unlimited === true
-  ) {
+  if (weekly.total !== null || weekly.remainingPercent !== null || weeklyUnlimited) {
     windows.push({
       window: 'weekly',
-      remainingPercent: weekly.remainingPercent,
-      remainingPercentSource: weekly.remainingPercentSource,
+      remainingPercent: weeklyUnlimited ? null : boostedWeeklyPercent(weekly, general),
+      remainingPercentSource: weeklyUnlimited ? null : weekly.remainingPercentSource,
       resetAt: asTimestamp(general.weekly_end_time),
-      unlimited: general.weekly_unlimited === true,
+      unlimited: weeklyUnlimited,
     });
   }
 
@@ -161,12 +186,39 @@ export function readMiniMaxPlan(response: unknown): MiniMaxPlan {
       weeklyTotal: weeklyQuota.total,
       weeklyRemaining: weeklyQuota.remaining,
       weeklyUsed: weeklyQuota.used,
-      weeklyRemainingPercent: weeklyQuota.remainingPercent,
+      weeklyRemainingPercent: boostedWeeklyPercent(weeklyQuota, record),
       weeklyResetAt: asTimestamp(record.weekly_end_time),
     };
   });
 
   return { windows, models };
+}
+
+export interface MiniMaxAccountBalance {
+  readonly availableAmount: number;
+  readonly cashBalance: number;
+  readonly voucherBalance: number;
+  readonly creditBalance: number;
+  readonly owedAmount: number;
+  /** The endpoint has no currency field; the provider supplies its region's currency. */
+  readonly currency: string;
+}
+
+export function readMiniMaxAccountBalance(
+  response: unknown,
+  currency: string,
+): MiniMaxAccountBalance {
+  const root = asRecord(response, 'root');
+  const baseResp = asRecord(root.base_resp, 'base_resp');
+  if (baseResp.status_code !== 0) throw new Error('the balance query failed');
+  return {
+    availableAmount: requireNumber(root.available_amount, 'available_amount'),
+    cashBalance: requireNumber(root.cash_balance, 'cash_balance'),
+    voucherBalance: requireNumber(root.voucher_balance, 'voucher_balance'),
+    creditBalance: requireNumber(root.credit_balance, 'credit_balance'),
+    owedAmount: requireNumber(root.owed_amount, 'owed_amount'),
+    currency,
+  };
 }
 
 export function readMiniMaxSubscription(response: unknown): MiniMaxSubscription {

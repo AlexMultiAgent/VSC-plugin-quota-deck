@@ -3,7 +3,11 @@ import type { ProviderId, ProviderSnapshot } from '../core/types';
 import type { MessageKey } from '../localization/messages';
 import { SHANGHAI } from '../core/time';
 import { capabilityValue } from '../core/capability';
-import type { MiniMaxPlan, MiniMaxSubscription } from '../providers/minimax/shape';
+import type {
+  MiniMaxAccountBalance,
+  MiniMaxPlan,
+  MiniMaxSubscription,
+} from '../providers/minimax/shape';
 import type { DeepSeekBalance } from '../providers/deepseek/shape';
 import type {
   QwenAccountBalance,
@@ -203,9 +207,20 @@ function providerRows(
     if (rows.length > 0) return rows;
   }
 
+  const miniMaxBalance = capabilityValue<MiniMaxAccountBalance>(
+    snapshot,
+    'minimax.accountBalance',
+  );
+  const miniMaxBalanceRow =
+    miniMaxBalance === undefined
+      ? ''
+      : `<tr><td>${escapeHtml(t('dashboard.accountBalance'))}</td>` +
+        `<td>${escapeHtml(formatMoney(miniMaxBalance.availableAmount, miniMaxBalance.currency))}</td>` +
+        `<td class="t-muted">${escapeHtml(miniMaxBalance.currency)}</td><td></td></tr>`;
   const plan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
   if (plan !== undefined) {
     const rows: string[] = [
+      ...(miniMaxBalanceRow.length > 0 ? [miniMaxBalanceRow] : []),
       `<tr><td colspan="4">${escapeHtml(t('capability.minimax.plan'))}</td></tr>`,
     ];
     for (const window of plan.windows) {
@@ -275,6 +290,7 @@ function providerRows(
     }
     if (rows.length > 0) return rows.join('');
   }
+  if (miniMaxBalanceRow.length > 0) return miniMaxBalanceRow;
 
   const balance = balances(snapshot);
   if (balance.length > 0) {

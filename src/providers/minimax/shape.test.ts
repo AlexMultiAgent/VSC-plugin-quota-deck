@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadFixture } from '../../test/helpers/fixture';
 import {
+  readMiniMaxAccountBalance,
   readMiniMaxPlan,
   readMiniMaxSubscription,
   readMiniMaxTokenUsage,
@@ -27,8 +28,56 @@ describe('readMiniMaxPlan', () => {
       ]),
     ).toEqual([
       ['fiveHour', 90, 'field'],
-      ['weekly', 14, 'field'],
+      ['weekly', 21, 'field'],
     ]);
+  });
+
+  it('applies the weekly boost multiplier', () => {
+    const response = JSON.parse(JSON.stringify(capturedPlan.response)) as {
+      model_remains: Array<Record<string, unknown>>;
+    };
+    const general = response.model_remains[0]!;
+    general.current_weekly_remaining_percent = 50;
+    general.weekly_boost_permille = 1500;
+
+    const plan = readMiniMaxPlan(response);
+
+    expect(plan.windows.find((window) => window.window === 'weekly')?.remainingPercent).toBe(75);
+  });
+
+  it('treats status 3 as unlimited, except for a model outside the plan', () => {
+    const response = (total: number) => ({
+      model_remains: [
+        {
+          model_name: 'general',
+          current_interval_total_count: total,
+          current_interval_usage_count: 0,
+          current_interval_remaining_percent: 100,
+          current_interval_status: 3,
+          current_weekly_total_count: total,
+          current_weekly_usage_count: 0,
+          current_weekly_remaining_percent: 100,
+          current_weekly_status: 3,
+          end_time: 1,
+          weekly_end_time: 2,
+        },
+      ],
+    });
+
+    expect(
+      readMiniMaxPlan(response(1)).windows.map((window) => ({
+        window: window.window,
+        unlimited: window.unlimited,
+        percent: window.remainingPercent,
+      })),
+    ).toEqual([
+      { window: 'fiveHour', unlimited: true, percent: null },
+      { window: 'weekly', unlimited: true, percent: null },
+    ]);
+
+    expect(
+      readMiniMaxPlan(response(0)).windows.every((window) => !window.unlimited),
+    ).toBe(true);
   });
 
   it('reads a video count as the number of uses still left', () => {
@@ -113,6 +162,32 @@ describe('readMiniMaxSubscription', () => {
     } finally {
       process.env.TZ = originalTimeZone;
     }
+  });
+});
+
+describe('readMiniMaxAccountBalance', () => {
+  const fixture = loadFixture('minimax-cn', 'minimax.accountBalance', 'standard') as {
+    response: unknown;
+  };
+
+  it('parses the captured balance in the provider currency', () => {
+    expect(readMiniMaxAccountBalance(fixture.response, 'CNY')).toEqual({
+      availableAmount: 0,
+      cashBalance: 0,
+      voucherBalance: 0,
+      creditBalance: 0,
+      owedAmount: 0,
+      currency: 'CNY',
+    });
+  });
+
+  it('rejects a non-zero base_resp', () => {
+    expect(() =>
+      readMiniMaxAccountBalance(
+        { base_resp: { status_code: 1004 }, available_amount: '0' },
+        'CNY',
+      ),
+    ).toThrow();
   });
 });
 

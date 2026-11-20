@@ -14,6 +14,7 @@ import type {
 import { ENDPOINTS } from '../endpoints';
 import { numberOrNull } from '../shape';
 import {
+  readMiniMaxAccountBalance,
   readMiniMaxPlan,
   readMiniMaxSubscription,
   readMiniMaxTokenUsage,
@@ -23,6 +24,7 @@ const CAPABILITIES: readonly CapabilityDescriptor[] = [
   { id: 'minimax.plan', titleKey: 'capability.minimax.plan', credential: 'token-plan-key', required: true },
   { id: 'minimax.subscription', titleKey: 'capability.minimax.subscription', credential: 'token-plan-key', required: true },
   { id: 'minimax.tokenUsage', titleKey: 'capability.minimax.tokenUsage', credential: 'token-plan-key', required: true },
+  { id: 'minimax.accountBalance', titleKey: 'capability.minimax.accountBalance', credential: 'token-plan-key', required: true },
 ];
 
 /**
@@ -51,6 +53,11 @@ export class MiniMaxProvider implements QuotaProvider {
 
   get displayName(): string {
     return this.id === 'minimax-cn' ? 'MiniMax CN' : 'MiniMax Global';
+  }
+
+  /** `/account/query_balance` carries no currency field. */
+  private get currency(): string {
+    return this.id === 'minimax-cn' ? 'CNY' : 'USD';
   }
 
   getCapabilities(): ProviderCapabilities {
@@ -85,6 +92,13 @@ export class MiniMaxProvider implements QuotaProvider {
       range,
       timeZone,
       signal,
+    );
+    capabilities['minimax.accountBalance'] = await this.fetchSimple(
+      'minimax.accountBalance',
+      ENDPOINTS['minimax.accountBalance'],
+      fetchedAt,
+      signal,
+      (body) => readMiniMaxAccountBalance(body, this.currency),
     );
 
     return { providerId: this.id, fetchedAt, capabilities };
