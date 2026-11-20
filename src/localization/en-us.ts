@@ -7,6 +7,8 @@ export const enUs: MessageBundle = {
   'statusBar.segment.deepseek': 'DS',
   'statusBar.segment.qwen': 'QW',
   'statusBar.qwen.plan': 'Plan',
+  'statusBar.window.fiveHour': '5h',
+  'statusBar.window.weekly': 'Week',
   'statusBar.tooltip.header': 'Chinese LLM quota',
   'statusBar.tooltip.badge': 'CN MODELS',
   'statusBar.tooltip.footer': 'Click to open the dashboard for deeper analysis',

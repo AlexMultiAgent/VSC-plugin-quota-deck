@@ -118,16 +118,3 @@ export function validTimeZone(zone: unknown): string {
     return SHANGHAI;
   }
 }
-
-export function formatCountdown(milliseconds: number): string {
-  const total = Math.max(0, Math.floor(milliseconds / 60_000));
-  const minutes = total % 60;
-  const hours = Math.floor(total / 60);
-  if (hours < 1) return `${minutes}m`;
-  if (hours < 24) {
-    const remainingHours = hours % 24;
-    const days = Math.floor(hours / 24);
-    return days === 0 ? `${remainingHours}h${minutes}m` : `${days}d${remainingHours}h`;
-  }
-  return `${Math.floor(hours / 24)}d${hours % 24}h`;
-}

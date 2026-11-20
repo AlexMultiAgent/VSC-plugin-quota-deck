@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import type { Translator } from '../localization';
 import type { ProviderId, ProviderSnapshot } from '../core/types';
 import type { MessageKey } from '../localization/messages';
-import { formatCountdown } from '../core/time';
 import { capabilityValue } from '../core/capability';
 import type { MiniMaxPlan } from '../providers/minimax/shape';
 import type { DeepSeekBalance } from '../providers/deepseek/shape';
@@ -43,15 +42,23 @@ function tightestWindow(snapshot: ProviderSnapshot | undefined): MiniMaxWindowVi
   return pickTightestWindow(miniMaxWindows(snapshot));
 }
 
-function preferredWindow(snapshot: ProviderSnapshot | undefined): MiniMaxWindowView | undefined {
-  const windows = miniMaxWindows(snapshot).filter(
-    (window) => !window.unlimited && window.remainingPercent !== null,
-  );
-  return windows.find((window) => window.window === 'fiveHour') ?? pickTightestWindow(windows);
+function windowLabel(window: MiniMaxWindowView['window'], t: Translator): string {
+  return window === 'weekly'
+    ? t('statusBar.window.weekly')
+    : t('statusBar.window.fiveHour');
 }
 
-function hasUnlimitedWindow(snapshot: ProviderSnapshot | undefined): boolean {
-  return miniMaxWindows(snapshot).some((window) => window.unlimited);
+/** Both MiniMax windows, labelled so a 92% five-hour window cannot read as the weekly one. */
+function miniMaxWindowParts(
+  snapshot: ProviderSnapshot | undefined,
+  t: Translator,
+): string[] {
+  return miniMaxWindows(snapshot).flatMap((window) => {
+    const label = windowLabel(window.window, t);
+    if (window.unlimited) return [`${label} ${t('tooltip.unlimited')}`];
+    if (window.remainingPercent === null) return [];
+    return [`${label} ${Math.round(window.remainingPercent)}%`];
+  });
 }
 
 function deepSeekBalance(snapshot: ProviderSnapshot | undefined): BalanceView | undefined {
@@ -138,7 +145,7 @@ function visibleTone(
         ? []
         : [quotaTone(window.remainingPercent, warningThresholdPercent)];
     }
-    const window = preferredWindow(snapshots[id]);
+    const window = tightestWindow(snapshots[id]);
     return window === undefined || window.remainingPercent === null
       ? []
       : [quotaTone(window.remainingPercent, warningThresholdPercent)];
@@ -237,18 +244,18 @@ export function renderStatusBarText(
       return `${label} ${state.icon} ${state.label}`;
     }
 
-    const window = preferredWindow(snapshot);
-    if (window === undefined) {
-      if (hasUnlimitedWindow(snapshot)) {
-        return `${label} ${STATUS_ICON.positive} ${t('tooltip.unlimited')}`;
-      }
+    const parts = miniMaxWindowParts(snapshot, t);
+    if (parts.length === 0) {
       const state = unavailableState(snapshot, t);
       return `${label} ${state.icon} ${state.label}`;
     }
-    const percent = window.remainingPercent!;
-    const countdown = window.resetAt === null ? '' : ` · ${formatCountdown(window.resetAt - Date.now())}`;
+    const window = tightestWindow(snapshot);
+    const icon =
+      window === undefined || window.remainingPercent === null
+        ? STATUS_ICON.positive
+        : STATUS_ICON[quotaTone(window.remainingPercent, warningThresholdPercent)];
     const stale = isStale(snapshot, 'minimax.plan') ? ` ${t('state.stale')}` : '';
-    return `${label} ${STATUS_ICON[quotaTone(percent, warningThresholdPercent)]} ${Math.round(percent)}%${countdown}${stale}`;
+    return `${label} ${icon} ${parts.join(' · ')}${stale}`;
   });
 
   const kept = segments.slice(0, MAX_STATUS_BAR_SEGMENTS);

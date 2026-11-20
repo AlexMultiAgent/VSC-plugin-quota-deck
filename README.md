@@ -1,6 +1,6 @@
 # QuotaDeck CN
 
-**在 VS Code 状态栏查看 MiniMax、DeepSeek、Qwen 的余额、Token Plan 窗口和重置倒计时。**
+**在 VS Code 状态栏查看 MiniMax、DeepSeek、Qwen 的余额与 Token Plan 额度窗口。**
 
 不用在三个厂商控制台之间来回切换。QuotaDeck CN 把已配置账户的实时摘要放在编辑器里；悬停查看完整信息，需要明细时再打开可选仪表盘。
 
@@ -57,7 +57,7 @@ QuotaDeck CN keeps MiniMax, DeepSeek, and Qwen account data in your VS Code stat
 
 ## Features
 
-- 状态栏显示各服务商的剩余额度、余额与重置倒计时；DeepSeek 同时标注忙时或闲时。
+- 状态栏显示各服务商的剩余额度与余额，MiniMax 并排标注 5 小时与每周窗口；DeepSeek 同时标注忙时或闲时。重置倒计时保留在悬停详情、Activity Bar 与仪表盘。
 - 状态栏只显示已配置的服务商，避免未配置项占据空间。
 - 状态栏默认每 5 分钟自动刷新；可在仪表盘“立即刷新”或命令面板手动刷新。
 - 单击状态栏打开仪表盘时会立即重新获取数据，并同步刷新状态栏、悬浮详情和仪表盘。

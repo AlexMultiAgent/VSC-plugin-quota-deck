@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatCountdown,
   rangeFor,
   toDayStart,
   toShanghaiDayStart,
@@ -82,20 +81,3 @@ describe('validTimeZone', () => {
   });
 });
 
-describe('formatCountdown', () => {
-  it('formats under an hour in minutes', () => {
-    expect(formatCountdown(25 * 60_000)).toBe('25m');
-  });
-
-  it('formats under a day in hours and minutes', () => {
-    expect(formatCountdown(2 * 3_600_000 + 15 * 60_000)).toBe('2h15m');
-  });
-
-  it('formats a day or more in days and hours', () => {
-    expect(formatCountdown(1 * 86_400_000 + 3 * 3_600_000)).toBe('1d3h');
-  });
-
-  it('formats an elapsed reset as zero minutes', () => {
-    expect(formatCountdown(-5_000)).toBe('0m');
-  });
-});

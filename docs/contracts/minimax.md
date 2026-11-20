@@ -44,6 +44,14 @@ international hosts answer the same shape.
 | `weekly_unlimited` | legacy boolean fallback for an unlimited weekly window; `current_weekly_status: 3` is the current signal |
 | `weekly_boost_permille` | per-mille multiplier applied to the weekly percentage (`1500` = 1.5×); the UI caps the displayed value at 200% |
 
+### The weekly window resets at Monday 00:00
+
+`weekly_start_time` and `weekly_end_time` are epoch milliseconds. The captured
+response anchors the cycle at Monday 00:00 Asia/Shanghai
+(`2026-11-16 00:00` → `2026-11-23 00:00`), so the reset is **Sunday midnight
+(12 AM)**, not Sunday 23:00. The UI renders that epoch in `quotaDeck.timeZone`,
+so the wall-clock reading follows the configured zone.
+
 ### `current_interval_usage_count` is the remaining count
 
 This is the field that costs a day when misread. The same record also carries

@@ -207,7 +207,7 @@ describe('renderStatusBarText', () => {
     expect(text).toContain('42%');
   });
 
-  it('prioritizes the five-hour window over a lower weekly balance', () => {
+  it('labels the five-hour and weekly windows side by side', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -223,8 +223,71 @@ describe('renderStatusBarText', () => {
       }),
     };
     const text = renderStatusBarText(snapshots, ['minimax-cn'], t);
-    expect(text).toContain('92%');
-    expect(text).not.toContain('37%');
+    expect(text).toContain('5h 92%');
+    expect(text).toContain('Week 37%');
+  });
+
+  it('renders the live five-hour and weekly percentages in Chinese', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 100, resetAt: null, unlimited: false },
+              { window: 'weekly', remainingPercent: 81, resetAt: null, unlimited: false },
+            ],
+          },
+        },
+      }),
+    };
+
+    expect(renderStatusBarText(snapshots, ['minimax-cn'], zh)).toBe(
+      '$(pulse) MM $(check) 5小时 100% · 周 81%',
+    );
+  });
+
+  it('marks the segment when the weekly window is exhausted despite a full five-hour window', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 100, resetAt: null, unlimited: false },
+              { window: 'weekly', remainingPercent: 0, resetAt: null, unlimited: false },
+            ],
+          },
+        },
+      }),
+    };
+
+    expect(renderStatusBarText(snapshots, ['minimax-cn'], zh)).toBe(
+      '$(pulse) MM $(error) 5小时 100% · 周 0%',
+    );
+  });
+
+  it('skips a window whose percentage is unknown instead of substituting zero', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 42, resetAt: null, unlimited: false },
+              { window: 'weekly', remainingPercent: null, resetAt: null, unlimited: false },
+            ],
+          },
+        },
+      }),
+    };
+    const text = renderStatusBarText(snapshots, ['minimax-cn'], t);
+    expect(text).toContain('5h 42%');
+    expect(text).not.toContain('Week');
+    expect(text).not.toContain('0%');
   });
 
   it('uses the four-stage quota tones', () => {
@@ -239,13 +302,13 @@ describe('renderStatusBarText', () => {
     });
 
     expect(renderStatusBarText(windowAt(50), ['minimax-cn'], t, 'all', 'minimax-cn', 20))
-      .toContain('MM $(check) 50%');
+      .toContain('MM $(check) 5h 50%');
     expect(renderStatusBarText(windowAt(49), ['minimax-cn'], t, 'all', 'minimax-cn', 20))
-      .toContain('MM $(warning) 49%');
+      .toContain('MM $(warning) 5h 49%');
     expect(renderStatusBarText(windowAt(19), ['minimax-cn'], t, 'all', 'minimax-cn', 20))
-      .toContain('MM $(warning) 19%');
+      .toContain('MM $(warning) 5h 19%');
     expect(renderStatusBarText(windowAt(5), ['minimax-cn'], t, 'all', 'minimax-cn', 20))
-      .toContain('MM $(error) 5%');
+      .toContain('MM $(error) 5h 5%');
   });
 
   it('hides providers that are not configured', () => {
@@ -294,7 +357,28 @@ describe('renderStatusBarText', () => {
     };
 
     expect(renderStatusBarText(snapshots, ['minimax-cn'], t)).toBe(
-      '$(pulse) MM $(check) Unlimited',
+      '$(pulse) MM $(check) Week Unlimited',
+    );
+  });
+
+  it('labels an unlimited five-hour window beside a counted weekly one', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: null, resetAt: null, unlimited: true },
+              { window: 'weekly', remainingPercent: 81, resetAt: null, unlimited: false },
+            ],
+          },
+        },
+      }),
+    };
+
+    expect(renderStatusBarText(snapshots, ['minimax-cn'], zh)).toBe(
+      '$(pulse) MM $(check) 5小时 无限 · 周 81%',
     );
   });
 
@@ -396,7 +480,7 @@ describe('StatusBarPresenter', () => {
     presenter.dispose();
   });
 
-  it('uses green text without a warning background when the five-hour window is healthy', () => {
+  it('colors the item by the tightest window now that both are displayed', () => {
     const presenter = new StatusBarPresenter(t);
     presenter.update(
       {
@@ -420,7 +504,7 @@ describe('StatusBarPresenter', () => {
       { 'minimax-cn': true },
     );
     expect(state.statusBarItems[0]!.backgroundColor).toBeUndefined();
-    expect((state.statusBarItems[0]!.color as { id: string }).id).toBe('charts.green');
+    expect((state.statusBarItems[0]!.color as { id: string }).id).toBe('charts.orange');
     presenter.dispose();
   });
 

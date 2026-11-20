@@ -7,6 +7,8 @@ export const zhCn: MessageBundle = {
   'statusBar.segment.deepseek': 'DS',
   'statusBar.segment.qwen': 'QW',
   'statusBar.qwen.plan': '套餐',
+  'statusBar.window.fiveHour': '5小时',
+  'statusBar.window.weekly': '周',
   'statusBar.tooltip.header': '国产大模型额度',
   'statusBar.tooltip.badge': '国产模型',
   'statusBar.tooltip.footer': '点击在仪表盘中查看更多分析',
