@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.6 — 2026-11-20
+
+- 移除 MiniMax“积分”展示：控制台积分只能通过 Cookie 会话读取，API key 无法访问；原字段 `credit_info.total_credit` 并非控制台积分，显示为 0 会误导。仪表盘与悬浮栏改为提示积分需在 MiniMax 控制台查看。
+
 ## 0.3.5 — 2026-11-20
 
 - 修复仪表盘一直显示“暂时无法接收额度数据”：webview 的 `state` 消息校验拒绝了 `group` 与 `unlimited` 可选字段，MiniMax / Qwen 数据存在时整条消息被判无效。
