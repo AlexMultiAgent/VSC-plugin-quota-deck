@@ -62,18 +62,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           notes="$(awk -v ver="${GITHUB_REF_NAME#v}" 'index($0, "## " ver " ") == 1 { found = 1; next } found && /^## / { exit } found { print }' CHANGELOG.md)"
-          related='
-
-          ---
-          [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck)
-          [![npm](https://img.shields.io/npm/v/quota-deck-mcp?logo=npm&logoColor=white)](https://www.npmjs.com/package/quota-deck-mcp)'
-          subject="${notes:-QuotaDeck CN $GITHUB_REF_NAME}"
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "quota-deck-${GITHUB_REF_NAME#v}.vsix" --clobber
-            gh release edit "$GITHUB_REF_NAME" --notes "${subject}${related}"
           else
             gh release create "$GITHUB_REF_NAME" "quota-deck-${GITHUB_REF_NAME#v}.vsix" \
               --verify-tag \
               --title "QuotaDeck CN $GITHUB_REF_NAME" \
-              --notes "${subject}${related}"
+              --notes "${notes:-QuotaDeck CN $GITHUB_REF_NAME}"
           fi
