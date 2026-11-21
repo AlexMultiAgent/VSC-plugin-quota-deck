@@ -90,8 +90,10 @@ the list hides it everywhere. It is not an ordering-only preference.
 
 `quotaDeck.statusBar.primaryProvider` re-orders one surface only: in `all` mode its segment is
 moved to the front of the status bar, while the tooltip, the tree and the dashboard keep
-`providerOrder`. It also picks which MiniMax region occupies the single MiniMax slot.
-`visibleProviderIds()` in `src/presentation/statusBar.ts` owns both rules.
+`providerOrder`. It also picks which MiniMax region occupies the single MiniMax slot, but only
+among the regions `providerOrder` still lists — a region removed from the order is never
+reintroduced merely because it has a credential. `visibleProviderIds()` in
+`src/presentation/statusBar.ts` owns both rules.
 
 The MiniMax status-bar segment labels both windows — `5小时` / `周` in zh, `5h` / `Week` in en — and
 takes its icon and colour from the tighter of the two. The reset countdown lives in the tooltip,

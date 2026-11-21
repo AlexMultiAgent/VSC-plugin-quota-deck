@@ -443,6 +443,75 @@ describe('renderStatusBarText', () => {
     expect(text).not.toContain('MM');
   });
 
+  it('does not reintroduce a MiniMax region the order removed', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok' as const,
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 100, resetAt: null, unlimited: false },
+              { window: 'weekly', remainingPercent: 0, resetAt: null, unlimited: false },
+            ],
+          },
+        },
+      }),
+    };
+    const text = renderStatusBarText(
+      snapshots,
+      ['deepseek', 'qwen', 'minimax-global'],
+      t,
+      'all',
+      'minimax-cn',
+      20,
+      { 'minimax-cn': true, 'minimax-global': false, deepseek: true, qwen: true },
+    );
+    expect(text).not.toContain('MM');
+    expect(text).not.toContain('MG');
+    expect(text).toContain('DS');
+    expect(text).toContain('QW');
+  });
+
+  it('uses the listed MiniMax region when the primary region is not in the order', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok' as const,
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 100, resetAt: null, unlimited: false },
+            ],
+          },
+        },
+      }),
+      'minimax-global': makeSnapshot('minimax-global', {
+        'minimax.plan': {
+          kind: 'ok' as const,
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 42, resetAt: null, unlimited: false },
+            ],
+          },
+        },
+      }),
+    };
+    const text = renderStatusBarText(
+      snapshots,
+      ['deepseek', 'qwen', 'minimax-global'],
+      t,
+      'all',
+      'minimax-cn',
+      20,
+      { 'minimax-cn': true, 'minimax-global': true, deepseek: true, qwen: true },
+    );
+    expect(text).toContain('MG');
+    expect(text).toContain('42%');
+    expect(text).not.toContain('MM');
+  });
+
   it('carries a status icon on every segment', () => {
     const text = renderStatusBarText({}, ['minimax-cn', 'deepseek', 'qwen'], t);
     expect(text).toContain('$(circle-slash)');
@@ -580,6 +649,33 @@ describe('StatusBarPresenter', () => {
     expect((state.statusBarItems[0]!.backgroundColor as { id: string }).id)
       .toBe('statusBarItem.errorBackground');
     expect(state.statusBarItems[0]!.color).toBe('#ffffff');
+    presenter.dispose();
+  });
+
+  it('does not colour the bar from a MiniMax region the order removed', () => {
+    const presenter = new StatusBarPresenter(t);
+    presenter.update(
+      {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.plan': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: {
+              windows: [
+                { window: 'fiveHour', remainingPercent: 100, resetAt: null, unlimited: false },
+                { window: 'weekly', remainingPercent: 0, resetAt: null, unlimited: false },
+              ],
+            },
+          },
+        }),
+      },
+      ['deepseek', 'qwen', 'minimax-global'],
+      'all',
+      'minimax-cn',
+      20,
+      { 'minimax-cn': true, 'minimax-global': false, deepseek: true, qwen: true },
+    );
+    expect(state.statusBarItems[0]!.backgroundColor).toBeUndefined();
     presenter.dispose();
   });
 

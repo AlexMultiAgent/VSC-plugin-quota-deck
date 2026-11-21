@@ -160,19 +160,28 @@ function visibleProviderIds(
   primary: ProviderId,
   configured?: Partial<Record<ProviderId, boolean>>,
 ): ProviderId[] {
-  const minimaxPrimary = primary === 'minimax-global' ? 'minimax-global' : 'minimax-cn';
-  const minimaxFallback = minimaxPrimary === 'minimax-cn' ? 'minimax-global' : 'minimax-cn';
-  const minimaxDisplay = configured?.[minimaxPrimary] === true
-    ? minimaxPrimary
-    : configured?.[minimaxFallback] === true
-      ? minimaxFallback
-      : minimaxPrimary;
+  const available = (id: ProviderId): boolean =>
+    configured === undefined || configured[id] === true;
   if (mode === 'focused') {
-    return configured === undefined || configured[primary] === true ? [primary] : [];
+    return available(primary) ? [primary] : [];
   }
+  const minimaxPrimary: ProviderId =
+    primary === 'minimax-global' ? 'minimax-global' : 'minimax-cn';
+  const minimaxFallback: ProviderId =
+    minimaxPrimary === 'minimax-cn' ? 'minimax-global' : 'minimax-cn';
+  // The shared slot may only represent a region that `providerOrder` still lists.
+  // Choosing by `configured` alone would resurrect a region the user removed.
+  const minimaxChoices: ProviderId[] = [minimaxPrimary, minimaxFallback].filter((id) =>
+    order.includes(id),
+  );
+  const minimaxDisplay = minimaxChoices.find(available) ?? minimaxChoices[0];
   const candidates = order.reduce<ProviderId[]>((result, id) => {
     if (id === 'minimax-cn' || id === 'minimax-global') {
-      if (!result.includes('minimax-cn') && !result.includes('minimax-global')) {
+      if (
+        minimaxDisplay !== undefined &&
+        !result.includes('minimax-cn') &&
+        !result.includes('minimax-global')
+      ) {
         result.push(minimaxDisplay);
       }
       return result;
@@ -184,12 +193,11 @@ function visibleProviderIds(
   // there moves the DeepSeek segment to the front; the rest keep `providerOrder`.
   const preferred =
     primary === 'minimax-cn' || primary === 'minimax-global' ? minimaxDisplay : primary;
-  const ordered: ProviderId[] = candidates.includes(preferred)
-    ? [preferred, ...candidates.filter((id) => id !== preferred)]
-    : candidates;
-  return configured === undefined
-    ? ordered
-    : ordered.filter((id) => configured[id] === true);
+  const ordered: ProviderId[] =
+    preferred !== undefined && candidates.includes(preferred)
+      ? [preferred, ...candidates.filter((id) => id !== preferred)]
+      : candidates;
+  return ordered.filter(available);
 }
 
 export function renderStatusBarText(
