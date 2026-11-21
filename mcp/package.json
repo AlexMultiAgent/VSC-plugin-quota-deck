@@ -1,0 +1,54 @@
+{
+  "name": "quota-deck-mcp",
+  "version": "0.1.0",
+  "description": "MCP server exposing MiniMax, DeepSeek and Qwen quota, balance and reset windows.",
+  "type": "module",
+  "bin": {
+    "quota-deck-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "minimax",
+    "deepseek",
+    "qwen",
+    "quota",
+    "balance"
+  ],
+  "author": "AlexMultiAgent",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlexMultiAgent/VSC-plugin-quota-deck.git",
+    "directory": "mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/issues"
+  },
+  "homepage": "https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/tree/main/mcp",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}

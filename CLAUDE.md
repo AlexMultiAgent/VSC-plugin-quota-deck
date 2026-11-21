@@ -19,6 +19,12 @@ npm run check:i18n       # production sources must not contain hardcoded Chinese
 npm run guard:fixtures   # committed fixtures: no secret-shaped or non-zero financial values
 npm run guard:package    # shipped files: no secrets, no absolute local paths, activity-bar icon present
 npm run package          # build → locale/i18n checks → guard:fixtures → release-gate → vsce package → guard:package
+
+# MCP server (separate package, never part of the VSIX)
+npm --prefix mcp install
+npm --prefix mcp run build
+npm --prefix mcp run typecheck
+npm --prefix mcp test
 ```
 
 `guard:package` reads `dist/extension.js` and `dist/webview.js` and runs `npx vsce ls`, so it is
@@ -27,9 +33,10 @@ npm run package          # build → locale/i18n checks → guard:fixtures → r
 `npm run package` writes `quota-deck-<version>.vsix` to the repo root; it does not publish.
 Pushing a `v*` tag runs `.github/workflows/publish.yml`, which re-runs typecheck, tests and
 `npm run package`, then publishes that VSIX through Marketplace Trusted Publishing
-(`npx @vscode/vsce@4 publish --oidc`, no PAT). The publisher's Trusted Publishing policy must name
-this repository and workflow. Publishing by hand is `npx vsce publish --packagePath
-quota-deck-<version>.vsix` with a Marketplace PAT (`VSCE_PAT`).
+(`npx @vscode/vsce@4 publish --oidc`, no PAT) and attaches the same VSIX to a GitHub Release named
+after the tag. The publisher's Trusted Publishing policy must name this repository and workflow.
+Publishing by hand is `npx vsce publish --packagePath quota-deck-<version>.vsix` with a Marketplace
+PAT (`VSCE_PAT`).
 
 ## Architecture
 
@@ -140,6 +147,13 @@ script pointing at a URL the extension does not call. It is JSON rather than a `
 the capture scripts must read it without importing anything from `src/`. Qwen has no environment
 credential: its management token is obtained through the device flow and lives only in Secret
 Storage.
+
+`mcp/` is a standalone Node package (`quota-deck-mcp`) that bundles `src/core` and
+`src/providers` to expose the same snapshots over MCP. It is excluded from the VSIX by
+`.vscodeignore`, keeps its own lockfile, tests and esbuild config, and is not covered by the root
+`typecheck`/`test` commands — run `npm --prefix mcp …` for it. It reads credentials from
+environment variables only, never from Secret Storage, and its bundle must stay free of `vscode`
+imports.
 
 `src/presentation/dashboard/protocol.ts` validates every host↔webview message against an
 exact-key schema — including the range selection the webview sends back. Extend that validator
