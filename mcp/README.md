@@ -1,5 +1,9 @@
 # QuotaDeck MCP
 
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck)
+[![GitHub Releases](https://img.shields.io/github/v/release/AlexMultiAgent/VSC-plugin-quota-deck?logo=github)](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/releases)
+[![npm](https://img.shields.io/npm/v/quota-deck-mcp?logo=npm&logoColor=white)](https://www.npmjs.com/package/quota-deck-mcp)
+
 Read-only MCP server for MiniMax CN/Global, DeepSeek and Qwen account balances, quota windows,
 reset times and MiniMax usage. It reuses the parsing code of the
 [QuotaDeck CN](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck)
@@ -73,6 +77,12 @@ npx -y quota-deck-mcp --once
 npx -y quota-deck-mcp --once --provider deepseek --language zh-CN
 npx -y quota-deck-mcp --once --range thisMonth --time-zone Asia/Shanghai
 ```
+
+## Related
+
+- [QuotaDeck CN on the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck) — the extension this package shares its provider and parsing code with.
+- [GitHub repository](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck) and [Releases](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/releases) — source, VSIX downloads and release notes.
+- [npm package](https://www.npmjs.com/package/quota-deck-mcp)
 
 ## Development
 
