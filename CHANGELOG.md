@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.12 — 2026-11-22
+
+- 新增配套的 MCP server（`quota-deck-mcp`）：在 Claude Code 等 MCP 客户端中查询 MiniMax / DeepSeek / Qwen 的账户余额、额度窗口与重置时间；它独立于扩展安装，凭据只从环境变量读取。
+- 文档：README 增加 VS Code Marketplace、GitHub Releases 与 MCP server 的相互链接和徽标。
+- 打包：VSIX 不再包含 `mcp/` 子包。
+
 ## 0.3.11 — 2026-11-21
 
 - 包含 0.3.10 的状态栏修复（0.3.10 未发布到 Marketplace）：从 `quotaDeck.statusBar.providerOrder` 移除某个 MiniMax 区域后，合并槽位不再按主服务商与凭据配置重新显示该区域；槽位只在排序中仍列出的区域之间选择，与悬浮详情、Activity Bar 和仪表盘保持一致。
