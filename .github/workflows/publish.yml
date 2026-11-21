@@ -8,7 +8,7 @@ on:
       - 'v[0-9]*'
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
@@ -56,3 +56,17 @@ jobs:
           --oidc
           --skip-duplicate
           --packagePath "quota-deck-${GITHUB_REF_NAME#v}.vsix"
+
+      - name: Attach the VSIX to a GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="$(awk -v ver="${GITHUB_REF_NAME#v}" 'index($0, "## " ver " ") == 1 { found = 1; next } found && /^## / { exit } found { print }' CHANGELOG.md)"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "quota-deck-${GITHUB_REF_NAME#v}.vsix" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "quota-deck-${GITHUB_REF_NAME#v}.vsix" \
+              --verify-tag \
+              --title "QuotaDeck CN $GITHUB_REF_NAME" \
+              --notes "${notes:-QuotaDeck CN $GITHUB_REF_NAME}"
+          fi
