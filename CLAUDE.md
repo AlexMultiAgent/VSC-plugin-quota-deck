@@ -25,8 +25,11 @@ npm run package          # build → locale/i18n checks → guard:fixtures → r
 **not** a standalone check — run `npm run build` first. `npm run package` does this for you.
 
 `npm run package` writes `quota-deck-<version>.vsix` to the repo root; it does not publish.
-Marketplace publishing is `npx vsce publish --packagePath quota-deck-<version>.vsix` and needs a
-Marketplace PAT (`VSCE_PAT`).
+Pushing a `v*` tag runs `.github/workflows/publish.yml`, which re-runs typecheck, tests and
+`npm run package`, then publishes that VSIX through Marketplace Trusted Publishing
+(`npx @vscode/vsce@4 publish --oidc`, no PAT). The publisher's Trusted Publishing policy must name
+this repository and workflow. Publishing by hand is `npx vsce publish --packagePath
+quota-deck-<version>.vsix` with a Marketplace PAT (`VSCE_PAT`).
 
 ## Architecture
 
@@ -212,7 +215,8 @@ These are product and security rules, not implementation details — do not trad
   `CHANGELOG.md` agree, and that `v<version>` either does not exist yet or still points at HEAD.
   When the tag is behind HEAD, the gate compares the two commits and fails only when a changed file
   ships in the VSIX (`src/`, `media/`, the manifest, `README.md`, `CHANGELOG.md`, `LICENSE`).
-  A docs-only commit — `CLAUDE.md`, `docs/**`, `scripts/**` — packages under the current version.
+  A docs-only commit — `CLAUDE.md`, `docs/**`, `scripts/**`, `.github/**` — packages under the
+  current version.
 - **The settings manifest is pinned by a test.** `scripts/settings.test.ts` asserts the exact set of
   `contributes.configuration.properties`, that every one is `scope: 'window'` with a
   `%config.<key>.description%` `markdownDescription`, and that `statusBar.mode` carries two
