@@ -12,7 +12,9 @@ describe('knownTimeZones', () => {
     const zones = knownTimeZones();
     expect(zones.length).toBeGreaterThan(10);
     expect(new Set(zones).size).toBe(zones.length);
-    expect(zones).toContain(systemTimeZone());
+    // `supportedValuesOf` omits some usable zones on some ICU builds (GitHub's
+    // Node omits UTC), so the system zone is not guaranteed to be listed here;
+    // `buildTimeZoneItems` adds it separately.
     expect([...zones].sort((left, right) => left.localeCompare(right))).toEqual(zones);
   });
 });
@@ -52,6 +54,6 @@ describe('buildTimeZoneItems', () => {
     const zones = items.map((item) => item.zone);
     expect(zones.filter((zone) => zone === systemTimeZone())).toHaveLength(1);
     expect(new Set(zones).size).toBe(zones.length);
-    expect(zones.length).toBe(new Set([...knownTimeZones(), 'auto']).size);
+    expect(zones.length).toBe(new Set([...knownTimeZones(), systemTimeZone(), 'auto']).size);
   });
 });
