@@ -6,10 +6,6 @@
 
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck) · [问题反馈](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/issues) · [⭐ Star](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck) · [MIT](LICENSE) · 无遥测
 
-[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck)
-[![GitHub Releases](https://img.shields.io/github/v/release/AlexMultiAgent/VSC-plugin-quota-deck?logo=github)](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/releases)
-[![npm](https://img.shields.io/npm/v/quota-deck-mcp?logo=npm&logoColor=white)](https://www.npmjs.com/package/quota-deck-mcp)
-
 ## 预览
 
 以下截图使用演示数据。
@@ -179,7 +175,7 @@ Qwen / 百炼余额与 Token Plan 获取方式：
 | --- | --- |
 | [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck) | 安装扩展（VS Code、Cursor、Windsurf 等 VS Code 兼容编辑器） |
 | [GitHub Releases](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/releases) | 下载 VSIX，适用于离线安装或手动更新 |
-| [MCP server](https://www.npmjs.com/package/quota-deck-mcp) | 在 Claude Code 等 MCP 客户端查询同一份额度；源码见 [`mcp/`](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/tree/main/mcp) |
+| [MCP server 源码](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/tree/main/mcp) | 在 Claude Code 等 MCP 客户端查询同一份额度；当前从源码构建，npm 发布为后续可选项 |
 
 ## 支持这个项目
 

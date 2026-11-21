@@ -2,8 +2,8 @@
 
 ## 0.3.12 — 2026-11-22
 
-- 新增配套的 MCP server（`quota-deck-mcp`）：在 Claude Code 等 MCP 客户端中查询 MiniMax / DeepSeek / Qwen 的账户余额、额度窗口与重置时间；它独立于扩展安装，凭据只从环境变量读取。
-- 文档：README 增加 VS Code Marketplace、GitHub Releases 与 MCP server 的相互链接和徽标。
+- 新增配套的 MCP server（`quota-deck-mcp`）：在 Claude Code 等 MCP 客户端中查询 MiniMax / DeepSeek / Qwen 的账户余额、额度窗口与重置时间；凭据只从环境变量读取，当前通过仓库源码构建使用，npm 发布为后续可选项。
+- 文档：扩展 README 增加 GitHub Releases 与 MCP server 源码的链接。
 - 打包：VSIX 不再包含 `mcp/` 子包。
 
 ## 0.3.11 — 2026-11-21

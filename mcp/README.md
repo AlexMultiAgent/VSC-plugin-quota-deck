@@ -1,22 +1,21 @@
 # QuotaDeck MCP
 
-[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck)
-[![GitHub Releases](https://img.shields.io/github/v/release/AlexMultiAgent/VSC-plugin-quota-deck?logo=github)](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/releases)
-[![npm](https://img.shields.io/npm/v/quota-deck-mcp?logo=npm&logoColor=white)](https://www.npmjs.com/package/quota-deck-mcp)
-
 Read-only MCP server for MiniMax CN/Global, DeepSeek and Qwen account balances, quota windows,
 reset times and MiniMax usage. It reuses the parsing code of the
 [QuotaDeck CN](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck)
 VS Code extension and never proxies model requests.
 
-## Quick start
+## Quick start (from this repository)
 
 ```bash
-npx -y quota-deck-mcp
+npm --prefix mcp install
+npm --prefix mcp run build
+node mcp/dist/index.js
 ```
 
-The server speaks MCP over stdio. Without credentials every provider is reported as
-`not-configured`; a missing value is never shown as `0`.
+Run these from the repository root. The package is not published to npm yet; publishing is an
+optional future step (see below). The server speaks MCP over stdio. Without credentials every
+provider is reported as `not-configured`; a missing value is never shown as `0`.
 
 ## Configure an MCP client
 
@@ -26,8 +25,8 @@ Claude Code (`~/.claude.json`, a project `.mcp.json`, or `claude mcp add`):
 {
   "mcpServers": {
     "quota-deck": {
-      "command": "npx",
-      "args": ["-y", "quota-deck-mcp"],
+      "command": "node",
+      "args": ["/absolute/path/to/VSC-plugin-quota-deck/mcp/dist/index.js"],
       "env": {
         "MINIMAX_CN_TOKEN_PLAN": "...",
         "MINIMAX_GLOBAL_TOKEN_PLAN": "...",
@@ -73,16 +72,26 @@ details and the missing environment variable when unconfigured.
 Useful for a quick check without an MCP client:
 
 ```bash
-npx -y quota-deck-mcp --once
-npx -y quota-deck-mcp --once --provider deepseek --language zh-CN
-npx -y quota-deck-mcp --once --range thisMonth --time-zone Asia/Shanghai
+node mcp/dist/index.js --once
+node mcp/dist/index.js --once --provider deepseek --language zh-CN
+node mcp/dist/index.js --once --range thisMonth --time-zone Asia/Shanghai
 ```
 
 ## Related
 
 - [QuotaDeck CN on the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck) — the extension this package shares its provider and parsing code with.
 - [GitHub repository](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck) and [Releases](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/releases) — source, VSIX downloads and release notes.
-- [npm package](https://www.npmjs.com/package/quota-deck-mcp)
+
+## Publishing to npm (optional)
+
+The package is not published. To make `npx -y quota-deck-mcp` available later:
+
+```bash
+cd mcp
+npm publish --registry=https://registry.npmjs.org
+```
+
+The `prepublishOnly` script builds `dist/` before publishing.
 
 ## Development
 
