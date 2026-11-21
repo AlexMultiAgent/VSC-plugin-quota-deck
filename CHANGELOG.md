@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.11 — 2026-11-21
+
+- 包含 0.3.10 的状态栏修复（0.3.10 未发布到 Marketplace）：从 `quotaDeck.statusBar.providerOrder` 移除某个 MiniMax 区域后，合并槽位不再按主服务商与凭据配置重新显示该区域；槽位只在排序中仍列出的区域之间选择，与悬浮详情、Activity Bar 和仪表盘保持一致。
+- 修复：时区选择器的测试不再假定 `Intl.supportedValuesOf('timeZone')` 一定包含系统时区（GitHub Actions 的 Node 运行时不列出 `UTC`），发布工作流现在能通过测试阶段。
+
 ## 0.3.10 — 2026-11-21
 
 - 修复：从 `quotaDeck.statusBar.providerOrder` 移除某个 MiniMax 区域后，状态栏的合并槽位仍可能按主服务商与凭据配置显示该区域，导致状态栏与悬浮详情、Activity Bar 和仪表盘不一致。现在槽位只在排序中仍列出的区域之间选择：主区域在列表内且可用时优先，否则使用列表内另一个可用区域；两个区域都不在列表时不显示 MiniMax 段。
