@@ -290,7 +290,7 @@ describe('renderStatusBarText', () => {
     expect(text).not.toContain('0%');
   });
 
-  it('uses the four-stage quota tones', () => {
+  it('uses the three-stage quota tones', () => {
     const windowAt = (remainingPercent: number) => ({
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -304,7 +304,7 @@ describe('renderStatusBarText', () => {
     expect(renderStatusBarText(windowAt(50), ['minimax-cn'], t, 'all', 'minimax-cn', 20))
       .toContain('MM $(check) 5h 50%');
     expect(renderStatusBarText(windowAt(49), ['minimax-cn'], t, 'all', 'minimax-cn', 20))
-      .toContain('MM $(warning) 5h 49%');
+      .toContain('MM $(check) 5h 49%');
     expect(renderStatusBarText(windowAt(19), ['minimax-cn'], t, 'all', 'minimax-cn', 20))
       .toContain('MM $(warning) 5h 19%');
     expect(renderStatusBarText(windowAt(5), ['minimax-cn'], t, 'all', 'minimax-cn', 20))
@@ -415,6 +415,34 @@ describe('renderStatusBarText', () => {
     expect(text).not.toContain('MG');
   });
 
+  it('moves the primary provider to the front in all mode', () => {
+    const text = renderStatusBarText(
+      {},
+      ['minimax-cn', 'minimax-global', 'deepseek', 'qwen'],
+      t,
+      'all',
+      'deepseek',
+      20,
+      { 'minimax-cn': true, 'minimax-global': false, deepseek: true, qwen: true },
+    );
+    expect(text.indexOf('DS')).toBeLessThan(text.indexOf('MM'));
+    expect(text.indexOf('MM')).toBeLessThan(text.indexOf('QW'));
+  });
+
+  it('leads with the MiniMax region the primary provider selects', () => {
+    const text = renderStatusBarText(
+      {},
+      ['deepseek', 'minimax-cn', 'minimax-global'],
+      t,
+      'all',
+      'minimax-global',
+      20,
+      { 'minimax-cn': true, 'minimax-global': true, deepseek: true },
+    );
+    expect(text.indexOf('MG')).toBeLessThan(text.indexOf('DS'));
+    expect(text).not.toContain('MM');
+  });
+
   it('carries a status icon on every segment', () => {
     const text = renderStatusBarText({}, ['minimax-cn', 'deepseek', 'qwen'], t);
     expect(text).toContain('$(circle-slash)');
@@ -508,7 +536,7 @@ describe('StatusBarPresenter', () => {
     presenter.dispose();
   });
 
-  it('uses yellow text without a warning background in the caution stage', () => {
+  it('keeps green text above the threshold now that the yellow stage is gone', () => {
     const presenter = new StatusBarPresenter(t);
     presenter.update(
       {
@@ -527,7 +555,7 @@ describe('StatusBarPresenter', () => {
       { 'minimax-cn': true },
     );
     expect(state.statusBarItems[0]!.backgroundColor).toBeUndefined();
-    expect((state.statusBarItems[0]!.color as { id: string }).id).toBe('charts.yellow');
+    expect((state.statusBarItems[0]!.color as { id: string }).id).toBe('charts.green');
     presenter.dispose();
   });
 
@@ -659,6 +687,6 @@ describe('StatusBarPresenter', () => {
     };
 
     expect(renderStatusBarText(snapshots, ['qwen'], t)).toBe(
-      '$(pulse) QW $(warning) Plan 38%',
+      '$(pulse) QW $(check) Plan 38%',
     );
   });

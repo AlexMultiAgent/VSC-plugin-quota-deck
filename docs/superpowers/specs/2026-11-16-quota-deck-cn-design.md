@@ -569,7 +569,7 @@ verbatim in Secret Storage and read back only to sign or authenticate a request.
 | `quotaDeck.statusBar.primaryProvider` | `minimax-cn`, `minimax-global`, `deepseek`, `qwen` | `minimax-cn` |
 | `quotaDeck.statusBar.providerOrder` | ordered `ProviderId` list, no duplicates | `['minimax-cn', 'minimax-global', 'deepseek', 'qwen']` |
 | `quotaDeck.statusBar.warningThresholdPercent` | 11–99 | 20 |
-| `quotaDeck.timeZone` | IANA zone name | `Asia/Shanghai` |
+| `quotaDeck.timeZone` | IANA zone name, or `auto` | `auto` — the operating system zone |
 
 No secret is accepted as a VS Code setting, and `scripts/release-gate.mjs` fails the build if
 `package.json` declares any setting whose name matches `/cookie|secret|password|token|apikey|session/i`.
@@ -590,6 +590,7 @@ index.
 | `quotaDeck.configureQwen` | QuotaDeck CN: Configure Qwen | QuotaDeck CN: 配置 Qwen |
 | `quotaDeck.configureProviders` | QuotaDeck CN: Configure Providers | QuotaDeck CN: 配置服务商 |
 | `quotaDeck.openSettings` | QuotaDeck CN: Extension Settings | QuotaDeck CN: 插件设置 |
+| `quotaDeck.pickTimeZone` | QuotaDeck CN: Pick Time Zone | QuotaDeck CN: 选择时区 |
 | `quotaDeck.clearCredential` | QuotaDeck CN: Clear Credential | QuotaDeck CN: 清除凭据 |
 | `quotaDeck.showHelp` | QuotaDeck CN: Show Help | QuotaDeck CN: 查看帮助 |
 
@@ -650,6 +651,13 @@ ascending ISO code order. The tooltip shows all of them.
 `formatCountdown` renders the time until the next reset: `< 60m` → `25m`; `< 24h` → `2h15m`;
 otherwise → `3d4h`.
 
+**Segment order**
+
+`all` mode renders `providerOrder`, except that the `primaryProvider` segment moves to the
+front; MiniMax CN and Global collapse into the single MiniMax slot first, so a MiniMax primary
+leads as whichever region that slot resolved to. `focused` mode renders only the primary
+provider. Choosing a primary is therefore visible in both modes.
+
 **Truncation rule**
 
 The bar keeps at most three segments. If more are rendered, segments are dropped from the right in
@@ -659,10 +667,13 @@ provider.
 
 **Severity**
 
-`quotaTone(percent, warningThresholdPercent)` returns `positive | caution | warning | critical`.
+`quotaTone(percent, warningThresholdPercent)` returns `positive | warning | critical`.
 `critical` is 5 % and below, `warning` is below the user's `warningThresholdPercent`, and
-`caution` is below 50 %. The same function drives the status bar, the tooltip, the Activity Bar
-tree and the dashboard, so the four surfaces can never disagree about severity.
+everything else is `positive`. There is no fourth stage: a hard-coded 50 % yellow band was
+removed because it was neither configurable nor described by the setting. The same function drives
+the status bar, the tooltip, the Activity Bar tree and the dashboard, so the four surfaces can
+never disagree about severity, and it applies to every percentage shown, including the Qwen Token
+Plan windows.
 
 **Interaction**
 
@@ -756,14 +767,16 @@ provider summaries and refresh actions if the webview fails to load.
   configured state.
 - The card order follows `providerOrder`.
 - `focused` mode displays only the primary provider.
+- In `all` mode the primary provider's segment leads the status bar; the tooltip, the tree and
+  the dashboard keep `providerOrder`.
 
 Quota status always uses semantic colors:
 
 - Healthy and sufficient: theme positive/green.
-- Attention: amber.
-- Exhausted, authentication failure, or service failure: red.
+- Below the warning threshold: orange.
+- At or below 5 %, authentication failure, or service failure: red.
 - Not configured or unsupported: muted gray.
-- Stale data: yellow warning.
+- Stale data: muted gray, with a `history` icon and a stale badge.
 
 Provider identity accents are separate from status and are limited to card headings, dots, and
 border strips:
@@ -795,9 +808,12 @@ Text labels and icons always accompany color so meaning is not color-dependent.
 - Command titles are localized through `package.nls.json` and `package.nls.zh-cn.json`; in-app
   strings are localized through `src/localization/`.
 - `auto` follows the VS Code display language.
-- The default time zone is `Asia/Shanghai`, and it is user-editable through `quotaDeck.timeZone`.
+- The default time zone is `auto`, meaning the operating system zone, and `quotaDeck.timeZone`
+  accepts any IANA zone name. `quotaDeck.pickTimeZone` offers a searchable Quick Pick of every
+  zone the runtime supports, each labelled with its UTC offset and local time, because a manifest
+  enum cannot enumerate them.
 - A user-supplied time zone is validated before it reaches `Intl.DateTimeFormat`, which throws
-  `RangeError` for an unknown IANA zone.
+  `RangeError` for an unknown IANA zone; `resolveTimeZone()` falls back to the system zone.
 - Absolute dates are assembled with `formatToParts()`, never `format()`, because `.format()` output
   depends on the ICU data the runtime ships.
 - `hourCycle: 'h23'` is used rather than `hour12: false`, because `hour12: false` can render
@@ -906,7 +922,8 @@ Tests never use real credentials and never require live provider accounts.
 - Configure DeepSeek: balance renders per currency.
 - Configure Qwen: the account balance fields and the update time render.
 - Expire or corrupt a credential: only the affected provider and capability report an error.
-- Change `quotaDeck.timeZone`: the reset times and the dashboard update immediately.
+- Change `quotaDeck.timeZone`, or pick a zone with `QuotaDeck CN: Pick Time Zone`: the reset times
+  and the dashboard update immediately.
 - Toggle light, dark, high-contrast, Chinese, English, and narrow editor widths.
 - Confirm the status bar progress bars render as blocks with no missing-glyph boxes under the
   Windows default font, and that the status bar icon codepoint renders.

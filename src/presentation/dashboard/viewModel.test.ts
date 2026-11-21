@@ -268,7 +268,7 @@ describe('buildDashboardModel', () => {
       }),
     );
     expect(model.providers[0]!.meters.map((meter) => meter.tone)).toEqual([
-      'caution',
+      'positive',
       'warning',
     ]);
   });
@@ -952,7 +952,7 @@ describe('groupHistoryTiles', () => {
         percent: 38,
         valueLabel: '38%',
         resetLabel: 'Next reset 2026-12-01 08:00 · Reset in 11d',
-        tone: 'caution',
+        tone: 'positive',
         group: 'Token Plan',
       },
     ]);

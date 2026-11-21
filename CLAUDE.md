@@ -85,6 +85,11 @@ belongs in the view model, not in the surface.
 four painted surfaces and the connection-check report filter by it, so removing a provider from
 the list hides it everywhere. It is not an ordering-only preference.
 
+`quotaDeck.statusBar.primaryProvider` re-orders one surface only: in `all` mode its segment is
+moved to the front of the status bar, while the tooltip, the tree and the dashboard keep
+`providerOrder`. It also picks which MiniMax region occupies the single MiniMax slot.
+`visibleProviderIds()` in `src/presentation/statusBar.ts` owns both rules.
+
 The MiniMax status-bar segment labels both windows — `5小时` / `周` in zh, `5h` / `Week` in en — and
 takes its icon and colour from the tighter of the two. The reset countdown lives in the tooltip,
 the dashboard and the tree, not in the status bar.
@@ -113,9 +118,12 @@ number.
 `selectPrimaryCurrency`, `providerDisplayName`, `pickTightestWindow`, `formatDateTime`,
 `formatExpiryRemaining`, `formatRemainingDays`. Use them instead of writing another copy.
 `src/presentation/quotaTone.ts` is the shared severity function
-(`quotaTone(percent, warningThresholdPercent)` → `positive | caution | warning | critical`) used by
+(`quotaTone(percent, warningThresholdPercent)` → `positive | warning | critical`) used by
 the status bar, the dashboard and the Activity Bar tree — the `warning` line follows the user's
-`warningThresholdPercent`, but `caution` is hard-coded at 50 % and `critical` at 5 %.
+`warningThresholdPercent` and `critical` is hard-coded at 5 %. There is deliberately no fourth
+stage: the old 50 % yellow `caution` band was neither configurable nor described by the setting,
+so a window at 45 % read as a warning nobody could tune away. The threshold applies to every
+percentage the extension shows, including the Qwen Token Plan windows.
 
 `src/core/capability.ts` reads capability data in a typed way. Presentation code imports the
 provider's exported types and reads through `capabilityValue`, never a hand-written `as` cast.
@@ -274,7 +282,12 @@ These are product and security rules, not implementation details — do not trad
   shape breaks that test until the pinned paths are updated to match.
 - **User-supplied time zones must be validated.** `Intl.DateTimeFormat` throws `RangeError` for
   an unknown IANA zone, and `quotaDeck.timeZone` is user-editable — route it through
-  `validTimeZone()` in `src/core/time.ts` before it reaches `Intl`.
+  `resolveTimeZone()` in `src/core/time.ts` before it reaches `Intl`. It maps the `auto`
+  default, and any unrecognized value, to `systemTimeZone()` rather than to a hard-coded city.
+  The setting stays free text because a manifest enum cannot list the hundreds of IANA zones; the
+  real chooser is the `quotaDeck.pickTimeZone` Quick Pick
+  (`src/presentation/timeZonePicker.ts`), whose handler calls `coordinator.setTimeZone()` and
+  repaints, the same way the `onDidChangeConfiguration` block does.
 - **Use `hourCycle: 'h23'`, not `hour12: false`.** `hour12: false` can render midnight as hour
   `24`, and `zonedParts()` (`src/core/time.ts`) reads that `hour` field.
   `src/providers/deepseek/pricing.ts` deliberately mixes calendars: the **Shanghai date** decides

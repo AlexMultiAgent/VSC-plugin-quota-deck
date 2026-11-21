@@ -4,6 +4,7 @@ export interface CommandHandlers {
   refresh(): Promise<void>;
   openDashboard(): Promise<void>;
   switchProvider(): Promise<void>;
+  pickTimeZone(): Promise<void>;
   configureMiniMax(): Promise<void>;
   configureDeepSeek(): Promise<void>;
   loginQwen(): Promise<void>;
@@ -20,6 +21,9 @@ export function registerCommands(handlers: CommandHandlers): vscode.Disposable[]
   );
   const switchProvider = vscode.commands.registerCommand('quotaDeck.switchProvider', () =>
     handlers.switchProvider(),
+  );
+  const pickTimeZone = vscode.commands.registerCommand('quotaDeck.pickTimeZone', () =>
+    handlers.pickTimeZone(),
   );
   const configureMiniMax = vscode.commands.registerCommand('quotaDeck.configureMiniMax', () =>
     handlers.configureMiniMax(),
@@ -45,6 +49,7 @@ export function registerCommands(handlers: CommandHandlers): vscode.Disposable[]
     refresh,
     openDashboard,
     switchProvider,
+    pickTimeZone,
     configureMiniMax,
     configureDeepSeek,
     loginQwen,

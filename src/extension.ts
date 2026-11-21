@@ -5,6 +5,7 @@ import { HttpClient } from './core/http';
 import { Scheduler } from './core/scheduler';
 import { SecretStore } from './core/secrets';
 import { readSettings } from './core/settings';
+import { AUTO_TIME_ZONE } from './core/time';
 import type { RangeId } from './core/time';
 import type { ConnectionState, ProviderId } from './core/types';
 import { resolveLanguage, translatorFor } from './localization';
@@ -30,6 +31,7 @@ import { loginQwen } from './presentation/qwenLogin';
 import { buildFallbackItems } from './presentation/quickPickFallback';
 import { StatusBarPresenter } from './presentation/statusBar';
 import { buildSwitcherItems } from './presentation/switcher';
+import { buildTimeZoneItems } from './presentation/timeZonePicker';
 import { renderTooltip } from './presentation/tooltip';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
@@ -235,6 +237,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           pricing,
         );
         refreshTooltip(pricing);
+      },
+      pickTimeZone: async () => {
+        const raw = vscode.workspace
+          .getConfiguration('quotaDeck')
+          .get<unknown>('timeZone', AUTO_TIME_ZONE);
+        // A hand-edited settings.json may hold a non-string; treat it as the
+        // runtime resolves it — unusable values follow the system zone.
+        const current = typeof raw === 'string' ? raw : AUTO_TIME_ZONE;
+        const items = buildTimeZoneItems(current, t);
+        const picked = await vscode.window.showQuickPick(items, {
+          title: t('timeZone.title'),
+          placeHolder: t('timeZone.placeholder'),
+        });
+        if (picked === undefined || typeof picked !== 'object' || !('zone' in picked)) return;
+        await vscode.workspace.getConfiguration('quotaDeck').update('timeZone', picked.zone);
+        settings = readSettings();
+        coordinator.setTimeZone(settings.timeZone);
+        const pricing = pricingState(Date.now());
+        refreshTooltip(pricing);
+        updateOverview(undefined, pricing);
+        dashboard.update(currentModel(undefined, pricing));
       },
       configureMiniMax: async () => {
         await configureProviders();

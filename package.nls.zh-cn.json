@@ -11,6 +11,7 @@
   "command.showHelp.title": "查看帮助",
   "command.checkConnection.title": "检查连接",
   "command.openSettings.title": "插件设置",
+  "command.pickTimeZone.title": "选择时区",
   "command.clearCredential.title": "清除凭据",
   "viewsContainer.quotaDeck.title": "QuotaDeck CN",
   "view.quotaDeck.overview.name": "额度概览",
@@ -24,12 +25,12 @@
   "config.statusBarMode.description": "`全部服务商`显示所有已配置的服务商系列；状态栏最多保留 3 段，并将 MiniMax 国内版与国际版合并为一个位置。`仅主服务商`只显示下方指定的主服务商。旧配置值 `focused` 表示“仅主服务商”，与窗口是否聚焦无关。",
   "config.statusBarMode.all": "显示所有已配置的服务商（状态栏最多 3 段）。",
   "config.statusBarMode.focused": "仅显示主服务商；不会暂停窗口失焦刷新逻辑。",
-  "config.primaryProvider.description": "`仅主服务商`模式下显示的服务商。在`全部服务商`模式下，它还会决定状态栏唯一的 MiniMax 位置优先展示国内版还是国际版；该区域未配置时会自动回退到另一区域。可通过“切换服务商”命令修改。",
+  "config.primaryProvider.description": "`仅主服务商`模式下显示的服务商。在`全部服务商`模式下，它会把该服务商的段落排到状态栏最前面，并决定唯一的 MiniMax 位置优先展示国内版还是国际版；该区域未配置时会自动回退到另一区域。可通过“切换服务商”命令修改。",
   "config.primaryProvider.minimaxCn": "MiniMax 国内版账户。",
   "config.primaryProvider.minimaxGlobal": "MiniMax 国际版账户。",
   "config.primaryProvider.deepseek": "DeepSeek 账户余额。",
   "config.primaryProvider.qwen": "Qwen / 百炼的阿里云账户余额。",
   "config.providerOrder.description": "决定状态栏、悬浮详情、Activity Bar 概览和仪表盘显示哪些服务商以及显示顺序。未知项与重复项会被忽略；清空后回退为默认顺序。MiniMax 国内版与国际版在状态栏共用一个位置。",
-  "config.warningThresholdPercent.description": "MiniMax 剩余额度低于该百分比时显示橙色警告；5% 及以下始终显示红色严重警告。支持 11 到 99。DeepSeek 与 Qwen 展示的是金额而非百分比，因此不适用此阈值。",
-  "config.timeZone.description": "用于仪表盘与 Activity Bar 的日期时间、重置倒计时，以及 MiniMax 历史用量的日/月边界。它不会改变服务商返回的重置时刻，也不会改变 DeepSeek 固定的高峰时段规则。"
+  "config.warningThresholdPercent.description": "剩余额度低于该百分比时显示橙色警告，5% 及以下始终显示红色严重警告，高于阈值则保持绿色。支持 11 到 99。适用于插件展示的每一个百分比：MiniMax 的 5 小时与每周窗口，以及 Qwen Token Plan 的月度/每周窗口。DeepSeek 余额与 Qwen 账户余额展示的是金额而非百分比，因此不适用此阈值。",
+  "config.timeZone.description": "用于仪表盘与 Activity Bar 的日期时间、重置倒计时，以及 MiniMax 历史用量的日/月边界。`auto` 跟随操作系统时区；也可执行`QuotaDeck CN: 选择时区`命令，从可搜索的 IANA 时区列表中挑选（每项带 UTC 偏移与当地时刻），或在此直接填写时区名。它不会改变服务商返回的重置时刻，也不会改变 DeepSeek 固定的高峰时段规则。"
 }

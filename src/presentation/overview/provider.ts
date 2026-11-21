@@ -3,7 +3,6 @@ import type { OverviewItem, OverviewState } from './model';
 
 const STATE_ICON: Record<OverviewState, { icon: string; color: string }> = {
   positive: { icon: 'circle-filled', color: 'charts.green' },
-  caution: { icon: 'info', color: 'charts.yellow' },
   warning: { icon: 'warning', color: 'charts.orange' },
   critical: { icon: 'error', color: 'errorForeground' },
   failed: { icon: 'error', color: 'errorForeground' },

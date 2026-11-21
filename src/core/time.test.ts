@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   rangeFor,
+  resolveTimeZone,
+  systemTimeZone,
   toDayStart,
   toShanghaiDayStart,
   validTimeZone,
+  zoneSummary,
 } from './time';
 
 describe('toShanghaiDayStart', () => {
@@ -72,12 +75,47 @@ describe('validTimeZone', () => {
     expect(validTimeZone('America/New_York')).toBe('America/New_York');
   });
 
-  it('falls back to Shanghai for an unknown zone', () => {
-    expect(validTimeZone('Not/AZone')).toBe('Asia/Shanghai');
+  it('falls back to the system zone for an unknown zone', () => {
+    expect(validTimeZone('Not/AZone')).toBe(systemTimeZone());
   });
 
-  it('falls back to Shanghai for an empty zone', () => {
-    expect(validTimeZone('')).toBe('Asia/Shanghai');
+  it('falls back to the system zone for an empty zone', () => {
+    expect(validTimeZone('')).toBe(systemTimeZone());
+  });
+});
+
+describe('resolveTimeZone', () => {
+  it('resolves auto to the system zone regardless of case', () => {
+    expect(resolveTimeZone('auto')).toBe(systemTimeZone());
+    expect(resolveTimeZone('AUTO')).toBe(systemTimeZone());
+    expect(resolveTimeZone(' auto ')).toBe(systemTimeZone());
+  });
+
+  it('keeps an explicit zone', () => {
+    expect(resolveTimeZone('America/New_York')).toBe('America/New_York');
+  });
+
+  it('falls back to the system zone for an unusable value', () => {
+    expect(resolveTimeZone('Not/AZone')).toBe(systemTimeZone());
+    expect(resolveTimeZone(8)).toBe(systemTimeZone());
+    expect(resolveTimeZone(undefined)).toBe(systemTimeZone());
+  });
+});
+
+describe('zoneSummary', () => {
+  const instant = Date.parse('2026-11-21T12:00:00Z');
+
+  it('reports the UTC offset and wall clock of a zone', () => {
+    expect(zoneSummary(instant, 'Asia/Shanghai')).toEqual({ offset: 'UTC+08:00', clock: '20:00' });
+    expect(zoneSummary(instant, 'UTC')).toEqual({ offset: 'UTC+00:00', clock: '12:00' });
+  });
+
+  it('renders a negative offset with a minus sign', () => {
+    expect(zoneSummary(instant, 'America/New_York')).toEqual({ offset: 'UTC-05:00', clock: '07:00' });
+  });
+
+  it('renders half-hour zones', () => {
+    expect(zoneSummary(instant, 'Asia/Kolkata')).toEqual({ offset: 'UTC+05:30', clock: '17:30' });
   });
 });
 

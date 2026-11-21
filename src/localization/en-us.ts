@@ -39,7 +39,6 @@ export const enUs: MessageBundle = {
   'health.missingLabel': 'Capabilities missing credentials',
   'health.unknown': 'Unknown',
   'health.noProviders': 'No providers to check.',
-  'overview.state.caution': 'Caution',
   'overview.state.warning': 'Low quota',
   'overview.state.critical': 'Critically low',
   'overview.state.loading': 'Loading',
@@ -168,6 +167,12 @@ export const enUs: MessageBundle = {
   'switcher.title': 'QuotaDeck CN — Switch provider',
   'switcher.configured': 'Configured',
   'switcher.notConfigured': 'Not configured',
+
+  'timeZone.title': 'QuotaDeck CN — Pick time zone',
+  'timeZone.placeholder': 'Search IANA time zones, for example Asia/Shanghai',
+  'timeZone.auto': 'Follow the system time zone',
+  'timeZone.system': 'System time zone',
+  'timeZone.current': 'Current setting',
   'command.showHelp.message': 'QuotaDeck CN — Chinese LLM quota monitoring. Click the status bar icon to open the dashboard. If QuotaDeck has helped you, please star it on GitHub — it means a lot to us.',
   'command.showHelp.star': 'Star on GitHub',
 };

@@ -164,7 +164,7 @@ describe('host messages', () => {
       label: 'Legacy',
       percent: 50,
       resetLabel: null,
-      tone: 'caution',
+      tone: 'positive',
     } as never);
     expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(false);
   });

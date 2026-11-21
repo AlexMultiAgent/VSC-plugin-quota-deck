@@ -43,7 +43,7 @@ describe('buildOverviewItems', () => {
     expect(items[0]?.label).toBe('MiniMax CN');
     expect(items[0]?.id).toBe('provider:minimax-cn');
     expect(items[0]?.description).toBe('每周 22%');
-    expect(items[0]?.stateLabel).toBe('注意');
+    expect(items[0]?.stateLabel).toBe('正常');
     expect(items[0]?.tooltip).toContain('⇄ 2026-11-18 18:43');
     expect(items[0]?.action?.kind).toBe('openDashboard');
     expect(items[0]?.children.map((item) => item.label)).toEqual([
@@ -467,7 +467,7 @@ describe('buildOverviewItems', () => {
     });
 
     expect(items[0]?.description).toBe('¥1.25 CNY · Token Plan 38%');
-    expect(items[0]?.state).toBe('caution');
+    expect(items[0]?.state).toBe('positive');
     const planGroup = items[0]?.children.find(
       (child) => child.id === 'provider:qwen:tokenPlanGroup',
     );

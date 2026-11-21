@@ -191,16 +191,15 @@ Status meaning follows the existing product rule that colour is never the only s
 | State | Icon | Colour | Label |
 | --- | --- | --- | --- |
 | Healthy | `circle-filled` | `charts.green` | `正常` |
-| Caution | `info` | `charts.yellow` | `注意` |
 | Warning | `warning` | `charts.orange` | `额度偏低` |
 | Critical | `error` | `errorForeground` | `额度严重不足` |
 | Failed | `error` | `errorForeground` | `获取失败` |
 | Stale | `history` | `descriptionForeground` | `数据已过期` |
 | Unconfigured | `circle-outline` | `descriptionForeground` | `未配置` |
 
-Detail rows use neutral theme foregrounds except when a quota value crosses an existing caution or
-warning threshold. The four threshold states are the existing `quotaTone` states: positive,
-caution, warning, and critical. Credentials, cookies, raw response bodies, and request headers are
+Detail rows use neutral theme foregrounds except when a quota value crosses an existing warning or
+critical threshold. The three threshold states are the existing `quotaTone` states: positive,
+warning, and critical. Credentials, cookies, raw response bodies, and request headers are
 never included in labels, descriptions, or tooltips.
 
 ## 8. Extension integration

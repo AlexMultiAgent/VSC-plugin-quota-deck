@@ -39,7 +39,6 @@ export const zhCn: MessageBundle = {
   'health.missingLabel': '缺少凭据的能力',
   'health.unknown': '未知',
   'health.noProviders': '没有可检查的服务商。',
-  'overview.state.caution': '注意',
   'overview.state.warning': '额度偏低',
   'overview.state.critical': '额度严重不足',
   'overview.state.loading': '正在读取',
@@ -168,6 +167,12 @@ export const zhCn: MessageBundle = {
   'switcher.title': 'QuotaDeck CN — 切换服务商',
   'switcher.configured': '已配置',
   'switcher.notConfigured': '未配置',
+
+  'timeZone.title': 'QuotaDeck CN — 选择时区',
+  'timeZone.placeholder': '搜索 IANA 时区，例如 Asia/Shanghai',
+  'timeZone.auto': '跟随系统时区',
+  'timeZone.system': '系统时区',
+  'timeZone.current': '当前设置',
   'command.showHelp.message': 'QuotaDeck CN — 国产大模型额度监控。点击状态栏图标打开仪表盘。如果 QuotaDeck 帮到了你，欢迎在 GitHub 点个 Star，这对我们意义重大。',
   'command.showHelp.star': '在 GitHub 点个 Star',
 };

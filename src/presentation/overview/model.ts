@@ -29,7 +29,6 @@ import { quotaTone, type QuotaTone } from '../quotaTone';
 
 export type OverviewState =
   | 'positive'
-  | 'caution'
   | 'warning'
   | 'critical'
   | 'failed'
@@ -65,14 +64,12 @@ export interface OverviewOptions {
 
 const TONE_STATE: Record<QuotaTone, OverviewState> = {
   positive: 'positive',
-  caution: 'caution',
   warning: 'warning',
   critical: 'critical',
 };
 
 const TONE_LABEL: Record<QuotaTone, MessageKey> = {
   positive: 'state.ok',
-  caution: 'overview.state.caution',
   warning: 'overview.state.warning',
   critical: 'overview.state.critical',
 };

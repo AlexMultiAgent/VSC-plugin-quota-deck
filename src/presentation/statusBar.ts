@@ -109,7 +109,6 @@ function tightestQwenWindow(
 const MAX_STATUS_BAR_SEGMENTS = 3;
 const STATUS_ICON = {
   positive: '$(check)',
-  caution: '$(warning)',
   warning: '$(warning)',
   critical: '$(error)',
   neutral: '$(dashboard)',
@@ -152,7 +151,6 @@ function visibleTone(
   });
   if (tones.includes('critical')) return 'critical';
   if (tones.includes('warning')) return 'warning';
-  if (tones.includes('caution')) return 'caution';
   return 'positive';
 }
 
@@ -169,21 +167,29 @@ function visibleProviderIds(
     : configured?.[minimaxFallback] === true
       ? minimaxFallback
       : minimaxPrimary;
-  const candidates = mode === 'focused'
-    ? [primary]
-    : order.reduce<ProviderId[]>((result, id) => {
-        if (id === 'minimax-cn' || id === 'minimax-global') {
-          if (!result.includes('minimax-cn') && !result.includes('minimax-global')) {
-            result.push(minimaxDisplay);
-          }
-          return result;
-        }
-        if (!result.includes(id)) result.push(id);
-        return result;
-      }, []);
+  if (mode === 'focused') {
+    return configured === undefined || configured[primary] === true ? [primary] : [];
+  }
+  const candidates = order.reduce<ProviderId[]>((result, id) => {
+    if (id === 'minimax-cn' || id === 'minimax-global') {
+      if (!result.includes('minimax-cn') && !result.includes('minimax-global')) {
+        result.push(minimaxDisplay);
+      }
+      return result;
+    }
+    if (!result.includes(id)) result.push(id);
+    return result;
+  }, []);
+  // In `all` mode the primary provider leads the status bar, so choosing DeepSeek
+  // there moves the DeepSeek segment to the front; the rest keep `providerOrder`.
+  const preferred =
+    primary === 'minimax-cn' || primary === 'minimax-global' ? minimaxDisplay : primary;
+  const ordered: ProviderId[] = candidates.includes(preferred)
+    ? [preferred, ...candidates.filter((id) => id !== preferred)]
+    : candidates;
   return configured === undefined
-    ? candidates
-    : candidates.filter((id) => configured[id] === true);
+    ? ordered
+    : ordered.filter((id) => configured[id] === true);
 }
 
 export function renderStatusBarText(
@@ -307,9 +313,7 @@ export class StatusBarPresenter {
         ? '#ffffff'
         : tone === 'warning'
           ? new vscode.ThemeColor('charts.orange')
-          : tone === 'caution'
-            ? new vscode.ThemeColor('charts.yellow')
-            : new vscode.ThemeColor('charts.green');
+          : new vscode.ThemeColor('charts.green');
     this.item.tooltip = this.t('statusBar.tooltip.header');
     this.item.show();
   }

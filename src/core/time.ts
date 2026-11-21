@@ -1,5 +1,8 @@
 export const SHANGHAI = 'Asia/Shanghai';
 
+/** Setting value that follows the operating system time zone. */
+export const AUTO_TIME_ZONE = 'auto';
+
 export const RANGE_IDS = ['today', 'yesterday', 'last7', 'last30', 'thisMonth', 'lastMonth'] as const;
 export type RangeId = (typeof RANGE_IDS)[number];
 export type Bucket = 'hour' | 'day';
@@ -104,17 +107,56 @@ export function rangeFor(id: RangeId, now: number, timeZone: string = SHANGHAI):
   }
 }
 
-/**
- * Guards a user-supplied IANA time zone. `Intl.DateTimeFormat` throws a
- * `RangeError` for an unknown zone, so an unvalidated setting would crash the
- * extension on the next refresh.
- */
-export function validTimeZone(zone: unknown): string {
-  if (typeof zone !== 'string' || zone.trim() === '') return SHANGHAI;
+function isKnownZone(zone: unknown): zone is string {
+  if (typeof zone !== 'string' || zone.trim() === '') return false;
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: zone });
-    return zone;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The operating system's IANA zone, or Shanghai when the runtime reports none. */
+export function systemTimeZone(): string {
+  try {
+    const zone = new Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return isKnownZone(zone) ? zone : SHANGHAI;
   } catch {
     return SHANGHAI;
   }
+}
+
+/**
+ * Guards a user-supplied IANA time zone. `Intl.DateTimeFormat` throws a
+ * `RangeError` for an unknown zone, so an unvalidated setting would crash the
+ * extension on the next refresh. An unusable value follows the operating system
+ * rather than a hard-coded city.
+ */
+export function validTimeZone(zone: unknown): string {
+  return isKnownZone(zone) ? zone : systemTimeZone();
+}
+
+/** `auto` follows the operating system; an unrecognized zone falls back the same way. */
+export function resolveTimeZone(zone: unknown): string {
+  if (typeof zone === 'string' && zone.trim().toLowerCase() === AUTO_TIME_ZONE) {
+    return systemTimeZone();
+  }
+  return validTimeZone(zone);
+}
+
+/** The zone's `UTC±HH:MM` offset and `HH:MM` wall clock at one instant, for pickers. */
+export function zoneSummary(
+  instant: number,
+  timeZone: string,
+): { readonly offset: string; readonly clock: string } {
+  const { hour, minute } = zonedParts(instant, timeZone);
+  const totalMinutes = Math.round(offsetAt(instant, timeZone) / 60_000);
+  const sign = totalMinutes < 0 ? '-' : '+';
+  const absolute = Math.abs(totalMinutes);
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return {
+    offset: `UTC${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`,
+    clock: `${pad(hour)}:${pad(minute)}`,
+  };
 }

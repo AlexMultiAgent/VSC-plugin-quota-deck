@@ -130,7 +130,7 @@ export function renderDashboard(
             const track = element('div', 'meter-track');
             const fill = element('div', 'meter-fill');
             fill.style.width = `${Math.max(0, Math.min(100, meter.percent ?? 0))}%`;
-            fill.style.background = `var(--vscode-charts-${meter.tone === 'critical' ? 'red' : meter.tone === 'warning' ? 'orange' : meter.tone === 'caution' ? 'yellow' : 'green'})`;
+            fill.style.background = `var(--vscode-charts-${meter.tone === 'critical' ? 'red' : meter.tone === 'warning' ? 'orange' : 'green'})`;
             track.appendChild(fill);
             row.appendChild(track);
           }

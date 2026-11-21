@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { __reset } from '../test/__mocks__/vscode';
 import { seedConfiguration } from '../test/helpers/settings';
 import { readSettings } from './settings';
+import { systemTimeZone } from './time';
 
 describe('readSettings', () => {
   beforeEach(() => __reset());
@@ -15,7 +16,7 @@ describe('readSettings', () => {
     expect(settings.primaryProvider).toBe('minimax-cn');
     expect(settings.providerOrder).toEqual(['minimax-cn', 'minimax-global', 'deepseek', 'qwen']);
     expect(settings.warningThresholdPercent).toBe(20);
-    expect(settings.timeZone).toBe('Asia/Shanghai');
+    expect(settings.timeZone).toBe(systemTimeZone());
   });
 
   it('reads configured values', () => {
@@ -70,9 +71,14 @@ describe('readSettings', () => {
     expect(readSettings().timeZone).toBe('America/New_York');
   });
 
-  it('falls back to the default time zone for an unknown zone', () => {
+  it('falls back to the system time zone for an unknown zone', () => {
     seedConfiguration({ timeZone: 'Not/AZone' });
-    expect(readSettings().timeZone).toBe('Asia/Shanghai');
+    expect(readSettings().timeZone).toBe(systemTimeZone());
+  });
+
+  it('resolves auto to the system time zone', () => {
+    seedConfiguration({ timeZone: 'auto' });
+    expect(readSettings().timeZone).toBe(systemTimeZone());
   });
 
   it('falls back when enum, boolean, or time zone settings have invalid types', () => {
@@ -87,7 +93,7 @@ describe('readSettings', () => {
     expect(settings.language).toBe('auto');
     expect(settings.statusBarMode).toBe('all');
     expect(settings.pauseWhenUnfocused).toBe(true);
-    expect(settings.timeZone).toBe('Asia/Shanghai');
+    expect(settings.timeZone).toBe(systemTimeZone());
   });
 
   it('keeps only the providers named in the order, so a removed provider is hidden', () => {

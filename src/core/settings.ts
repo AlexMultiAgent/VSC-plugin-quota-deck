@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { validTimeZone } from './time';
+import { AUTO_TIME_ZONE, resolveTimeZone } from './time';
 import { isProviderId, type ProviderId } from './types';
 
 export type Language = 'auto' | 'zh-CN' | 'en-US';
@@ -19,7 +19,7 @@ export interface Settings {
 const DEFAULT_ORDER: ProviderId[] = ['minimax-cn', 'minimax-global', 'deepseek', 'qwen'];
 const DEFAULT_WARNING_THRESHOLD_PERCENT = 20;
 const DEFAULT_REFRESH_INTERVAL_MINUTES = 5;
-const DEFAULT_TIME_ZONE = 'Asia/Shanghai';
+const DEFAULT_TIME_ZONE = AUTO_TIME_ZONE;
 
 function clamp(value: number, min: number, max: number, fallback: number): number {
   return Math.min(max, Math.max(min, Number.isFinite(value) ? value : fallback));
@@ -46,7 +46,7 @@ export function readSettings(): Settings {
     config.get<unknown>('statusBar.warningThresholdPercent'),
     DEFAULT_WARNING_THRESHOLD_PERCENT,
   );
-  const timeZone = validTimeZone(config.get<unknown>('timeZone', DEFAULT_TIME_ZONE));
+  const timeZone = resolveTimeZone(config.get<unknown>('timeZone', DEFAULT_TIME_ZONE));
 
   const validOrder = Array.isArray(order)
     ? order.filter((id): id is ProviderId => typeof id === 'string' && isProviderId(id))

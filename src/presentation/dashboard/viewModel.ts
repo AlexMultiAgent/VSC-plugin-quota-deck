@@ -46,7 +46,7 @@ export interface QuotaMeter {
   readonly percent: number | null;
   readonly valueLabel: string | null;
   readonly resetLabel: string | null;
-  readonly tone: 'positive' | 'caution' | 'warning' | 'critical' | 'muted';
+  readonly tone: 'positive' | 'warning' | 'critical' | 'muted';
   /** An unlimited window has no percentage and renders without a track. */
   readonly unlimited?: boolean;
   /** Optional section heading; consecutive meters with the same group share one. */

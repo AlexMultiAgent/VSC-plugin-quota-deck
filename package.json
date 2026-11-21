@@ -105,6 +105,11 @@
         "icon": "$(gear)"
       },
       {
+        "command": "quotaDeck.pickTimeZone",
+        "title": "%command.pickTimeZone.title%",
+        "category": "QuotaDeck CN"
+      },
+      {
         "command": "quotaDeck.clearCredential",
         "title": "%command.clearCredential.title%",
         "category": "QuotaDeck CN"
@@ -133,7 +138,11 @@
       "properties": {
         "quotaDeck.language": {
           "type": "string",
-          "enum": ["auto", "zh-CN", "en-US"],
+          "enum": [
+            "auto",
+            "zh-CN",
+            "en-US"
+          ],
           "enumDescriptions": [
             "%config.language.auto%",
             "%config.language.zhCn%",
@@ -162,7 +171,10 @@
         },
         "quotaDeck.statusBar.mode": {
           "type": "string",
-          "enum": ["all", "focused"],
+          "enum": [
+            "all",
+            "focused"
+          ],
           "enumDescriptions": [
             "%config.statusBarMode.all%",
             "%config.statusBarMode.focused%"
@@ -174,7 +186,12 @@
         },
         "quotaDeck.statusBar.primaryProvider": {
           "type": "string",
-          "enum": ["minimax-cn", "minimax-global", "deepseek", "qwen"],
+          "enum": [
+            "minimax-cn",
+            "minimax-global",
+            "deepseek",
+            "qwen"
+          ],
           "enumDescriptions": [
             "%config.primaryProvider.minimaxCn%",
             "%config.primaryProvider.minimaxGlobal%",
@@ -193,9 +210,19 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "enum": ["minimax-cn", "minimax-global", "deepseek", "qwen"]
+            "enum": [
+              "minimax-cn",
+              "minimax-global",
+              "deepseek",
+              "qwen"
+            ]
           },
-          "default": ["minimax-cn", "minimax-global", "deepseek", "qwen"],
+          "default": [
+            "minimax-cn",
+            "minimax-global",
+            "deepseek",
+            "qwen"
+          ],
           "scope": "window",
           "order": 60,
           "markdownDescription": "%config.providerOrder.description%"
@@ -211,7 +238,7 @@
         },
         "quotaDeck.timeZone": {
           "type": "string",
-          "default": "Asia/Shanghai",
+          "default": "auto",
           "scope": "window",
           "order": 80,
           "markdownDescription": "%config.timeZone.description%"
@@ -242,6 +269,10 @@
         },
         {
           "command": "quotaDeck.openSettings",
+          "when": "true"
+        },
+        {
+          "command": "quotaDeck.pickTimeZone",
           "when": "true"
         },
         {
