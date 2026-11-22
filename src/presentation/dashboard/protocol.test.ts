@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { makeSnapshot } from '../../test/helpers/snapshot';
 import { translatorFor } from '../../localization';
-import { hostMessage, isHostMessage, isWebviewMessage } from './protocol';
+import { isHostMessage, isWebviewMessage } from './protocol';
 import { buildDashboardModel, type DashboardModel } from './viewModel';
 
 function emptyModel(): DashboardModel {
@@ -248,13 +248,5 @@ describe('webview messages', () => {
 
   it('rejects extra properties', () => {
     expect(isWebviewMessage({ kind: 'ready', extra: true })).toBe(false);
-  });
-});
-
-describe('hostMessage', () => {
-  it('builds the state message the panel posts', () => {
-    const message = hostMessage({ kind: 'state', model: emptyModel(), range: 'last7' });
-    expect(message.kind).toBe('state');
-    expect(message.kind === 'state' ? message.range : undefined).toBe('last7');
   });
 });

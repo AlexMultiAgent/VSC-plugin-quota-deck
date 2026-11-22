@@ -1,3 +1,8 @@
+/**
+ * Gated scaffolding for the deferred DeepSeek per-key/account usage
+ * capabilities (design §4.5). Production exposes only `deepseek.balance`;
+ * nothing in `src/` imports these helpers yet.
+ */
 export interface PerKeyRow {
   readonly apiKeyId: string;
   readonly currency: string;

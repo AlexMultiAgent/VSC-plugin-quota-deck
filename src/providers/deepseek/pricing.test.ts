@@ -68,6 +68,18 @@ describe('pricingState', () => {
     expect(pricingState(Date.parse('2026-10-01T02:00:00Z'))).toBe('offPeak');
   });
 
+  it('reports off-peak during the 2027 Spring Festival', () => {
+    expect(pricingState(Date.parse('2027-02-08T02:00:00Z'))).toBe('offPeak');
+  });
+
+  it('reports off-peak on 2027 National Day', () => {
+    expect(pricingState(Date.parse('2027-10-01T02:00:00Z'))).toBe('offPeak');
+  });
+
+  it('reports peak on an ordinary 2027 weekday', () => {
+    expect(pricingState(Date.parse('2027-03-10T02:00:00Z'))).toBe('peak');
+  });
+
   it('reports unavailable for a date outside the coverage', () => {
     expect(pricingState(Date.parse('2030-01-01T00:00:00Z'))).toBe('unavailable');
   });

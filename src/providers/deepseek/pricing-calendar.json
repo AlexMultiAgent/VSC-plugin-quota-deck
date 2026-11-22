@@ -1,7 +1,7 @@
 {
-  "version": "2026.11.2",
+  "version": "2027.1.0",
   "coverageStart": "2026-01-01",
-  "coverageEnd": "2026-12-31",
+  "coverageEnd": "2027-12-31",
   "peakWindowsUtc": [
     { "startMinute": 60, "endMinute": 240 },
     { "startMinute": 360, "endMinute": 600 }
@@ -39,7 +39,36 @@
     { "date": "2026-10-04", "name": "国庆节" },
     { "date": "2026-10-05", "name": "国庆节" },
     { "date": "2026-10-06", "name": "国庆节" },
-    { "date": "2026-10-07", "name": "国庆节" }
+    { "date": "2026-10-07", "name": "国庆节" },
+    { "date": "2027-01-01", "name": "元旦" },
+    { "date": "2027-01-02", "name": "元旦" },
+    { "date": "2027-01-03", "name": "元旦" },
+    { "date": "2027-02-05", "name": "春节" },
+    { "date": "2027-02-06", "name": "春节" },
+    { "date": "2027-02-07", "name": "春节" },
+    { "date": "2027-02-08", "name": "春节" },
+    { "date": "2027-02-09", "name": "春节" },
+    { "date": "2027-02-10", "name": "春节" },
+    { "date": "2027-02-11", "name": "春节" },
+    { "date": "2027-02-12", "name": "春节" },
+    { "date": "2027-02-13", "name": "春节" },
+    { "date": "2027-04-03", "name": "清明节" },
+    { "date": "2027-04-04", "name": "清明节" },
+    { "date": "2027-04-05", "name": "清明节" },
+    { "date": "2027-05-01", "name": "劳动节" },
+    { "date": "2027-05-02", "name": "劳动节" },
+    { "date": "2027-05-03", "name": "劳动节" },
+    { "date": "2027-05-04", "name": "劳动节" },
+    { "date": "2027-05-05", "name": "劳动节" },
+    { "date": "2027-06-09", "name": "端午节" },
+    { "date": "2027-09-15", "name": "中秋节" },
+    { "date": "2027-10-01", "name": "国庆节" },
+    { "date": "2027-10-02", "name": "国庆节" },
+    { "date": "2027-10-03", "name": "国庆节" },
+    { "date": "2027-10-04", "name": "国庆节" },
+    { "date": "2027-10-05", "name": "国庆节" },
+    { "date": "2027-10-06", "name": "国庆节" },
+    { "date": "2027-10-07", "name": "国庆节" }
   ],
   "notes": "DeepSeek peak hours: 01:00-04:00 and 06:00-10:00 UTC, Monday-Friday, excluding Chinese public holidays. Account-reported DeepSeek cost remains authoritative."
 }

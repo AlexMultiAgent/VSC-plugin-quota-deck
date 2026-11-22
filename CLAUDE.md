@@ -172,8 +172,10 @@ the capture scripts must read it without importing anything from `src/`. Qwen ha
 credential: its management token is obtained through the device flow and lives only in Secret
 Storage.
 
-`mcp/` is a standalone Node package (`quota-deck-mcp`) that bundles `src/core` and
-`src/providers` to expose the same snapshots over MCP. It is excluded from the VSIX by
+`mcp/` is a standalone Node package (`quota-deck-mcp`) that bundles `src/core`,
+`src/providers`, and the vscode-free presentation/localization modules it reuses
+(`dashboard/viewModel`, `display`, `labels`, `quotaTone`, `localization`) to expose the same
+snapshots over MCP. It is excluded from the VSIX by
 `.vscodeignore`, keeps its own lockfile, tests and esbuild config, and is not covered by the root
 `typecheck`/`test` commands — run `npm --prefix mcp …` for it. It reads credentials from
 environment variables only, never from Secret Storage, and its bundle must stay free of `vscode`

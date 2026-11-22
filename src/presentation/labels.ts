@@ -19,21 +19,6 @@ export function rangeLabel(range: RangeId, t: Translator): string {
   }
 }
 
-export function capabilityLabel(capability: string, t: Translator): string {
-  switch (capability) {
-    case 'qwen.accountBalance':
-      return t('capability.qwen.accountBalance');
-    case 'qwen.modelQuota':
-      return t('capability.qwen.modelQuota');
-    case 'qwen.consumption':
-      return t('capability.qwen.consumption');
-    case 'qwen.accessKeyValidation':
-      return t('capability.qwen.accessKeyValidation');
-    default:
-      return capability;
-  }
-}
-
 export function pricingPeriodLabel(pricing: PricingState, t: Translator): string {
   return pricing === 'peak'
     ? t('hours.peak')

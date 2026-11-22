@@ -254,6 +254,3 @@ export function isWebviewMessage(value: unknown): value is WebviewMessage {
   return false;
 }
 
-export function hostMessage(message: HostMessage): HostMessage {
-  return message;
-}

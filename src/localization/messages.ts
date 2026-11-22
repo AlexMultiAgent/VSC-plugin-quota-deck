@@ -51,9 +51,6 @@ export const MESSAGES = {
   'capability.qwen.accountBalance': '账户余额',
   'capability.qwen.tokenPlan': 'Token Plan 额度',
   'capability.qwen.tokenPlanSubscription': 'Token Plan 订阅',
-  'capability.qwen.modelQuota': '模型额度',
-  'capability.qwen.consumption': '消费明细',
-  'capability.qwen.accessKeyValidation': '密钥校验',
 
 
   'dashboard.title': 'QuotaDeck CN — 用量与洞察',

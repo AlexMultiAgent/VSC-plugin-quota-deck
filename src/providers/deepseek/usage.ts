@@ -1,5 +1,12 @@
 import { asRecord, requireNumber, ShapeError } from '../shape';
 
+/**
+ * Gated scaffolding for the deferred DeepSeek usage/cost capabilities
+ * (design §4.5). Production exposes only `deepseek.balance`; nothing in
+ * `src/` imports this parser yet. Keep it aligned with `docs/contracts/`
+ * before wiring it into a provider.
+ */
+
 export interface UsagePoint {
   readonly date: string;
   readonly requests: number;
