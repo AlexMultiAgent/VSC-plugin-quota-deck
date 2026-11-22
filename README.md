@@ -2,7 +2,7 @@
 
 **在 VS Code 状态栏查看 MiniMax、DeepSeek、Qwen 的余额与 Token Plan 额度窗口。**
 
-不用在三个厂商控制台之间来回切换。QuotaDeck CN 把已配置账户的实时摘要放在编辑器里；悬停查看完整信息，需要明细时再打开可选仪表盘。
+不用在三个厂商控制台之间来回切换。QuotaDeck CN 把已配置账户的实时摘要放在编辑器里；悬停某个服务商片段查看该服务商的详情，需要明细时再打开可选仪表盘。
 
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck) · [问题反馈](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/issues) · [⭐ Star](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck) · [MIT](LICENSE) · 无遥测
 
@@ -56,7 +56,7 @@ Qwen 通过一次千问AI平台设备码登录同时查询账户余额和个人 
 
 ### English quick start
 
-QuotaDeck CN keeps MiniMax, DeepSeek, and Qwen account data in your VS Code status bar. Open the QuotaDeck Activity Bar view or status bar item, choose a provider, and enter its credential. Configured providers refresh automatically; hover for the full summary or open the optional dashboard for account details. Credentials stay in VS Code Secret Storage. Qwen signs in to Qianwen AI once to report the account balance and the personal Token Plan quota; model-level quota remains in the console.
+QuotaDeck CN keeps MiniMax, DeepSeek, and Qwen account data in your VS Code status bar. Open the QuotaDeck Activity Bar view or status bar item, choose a provider, and enter its credential. Configured providers refresh automatically; hover a provider segment for that provider's details or open the optional dashboard for a cross-provider summary. Credentials stay in VS Code Secret Storage. Qwen signs in to Qianwen AI once to report the account balance and the personal Token Plan quota; model-level quota remains in the console.
 
 ## Features
 
@@ -68,7 +68,7 @@ QuotaDeck CN keeps MiniMax, DeepSeek, and Qwen account data in your VS Code stat
 - Qwen 同时显示账户余额与千问AI平台 Token Plan 窗口；两者共用登录令牌，查询失败时独立降级。悬浮详情只保留账户余额和 Token Plan 摘要，现金/信控/额度上限等明细在仪表盘和 Activity Bar 中查看。
 - MiniMax 展示套餐、声音槽位、续费价格与账户余额（可用/现金/代金券/信用/欠费）；控制台积分仅支持 Cookie 会话，API key 无法读取，插件改为提示前往控制台查看；无限额度窗口在四个界面统一显示为“无限”，不会显示为 0% 或“—”；每周额度会应用平台的放大系数。
 - 历史用量区间只作用于 MiniMax Token 用量，并与实时额度窗口分开显示；没有实际消费记录时不展示范围筛选。
-- 悬停提示展示完整摘要，并标注账户实时数据来源；不会重复展示 API Key / AccessKey 等凭据类型。
+- 悬停某个服务商片段时，提示展示该服务商的完整摘要，并标注账户实时数据来源；不会重复展示 API Key / AccessKey 等凭据类型。
 - 左侧 Activity Bar 提供额度概览：展开查看各服务商明细，点击服务商打开完整仪表盘；标题栏可刷新、打开仪表盘或进入插件设置。
 - 可选仪表盘：最低实时额度、额度重置、当前账户明细、MiniMax 套餐与可用历史用量，并提供刷新和配置入口。
 - MiniMax 国内版与国际版账号独立配置。

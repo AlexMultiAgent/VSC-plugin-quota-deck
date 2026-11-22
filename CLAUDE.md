@@ -36,7 +36,10 @@ Pushing a `v*` tag runs `.github/workflows/publish.yml`, which re-runs typecheck
 (`npx @vscode/vsce@4 publish --oidc`, no PAT) and attaches the same VSIX to a GitHub Release named
 after the tag. The publisher's Trusted Publishing policy must name this repository and workflow.
 Publishing by hand is `npx vsce publish --packagePath quota-deck-<version>.vsix` with a Marketplace
-PAT (`VSCE_PAT`).
+PAT (`VSCE_PAT`). A successful "Publish to the Visual Studio Marketplace" step does not mean the
+version is visible: the public listing lags the publish by several minutes while the gallery
+validates the VSIX. Verify with `npx --yes @vscode/vsce@4.1.1 show alexmultiagent.quota-deck` (or the
+gallery `extensionquery` API) before announcing the release.
 
 ## Architecture
 
@@ -65,7 +68,7 @@ src/
                  management device flow and stored token, qwen/login.ts runs it
   presentation/  statusBar, tooltip, overview/ (Activity Bar tree), onboarding, commands, credentials,
                  qwenLogin, switcher, help, health, labels, display, quotaTone, quickPickFallback,
-                 dashboard/
+                 timeZonePicker, dashboard/
   localization/  messages.ts (key registry) + en-us.ts / zh-cn.ts bundles + index.ts (resolver)
   test/          __mocks__/vscode.ts, fixtures/, helpers/
 ```
@@ -107,9 +110,13 @@ takes its icon and colour from the tighter of the two. The reset countdown lives
 the dashboard and the tree, not in the status bar.
 
 VS Code supports one colour and one background per status bar item, so `StatusBarPresenter` creates
-one item per visible provider segment (`renderStatusBarSegments` supplies each segment's tone) and
-puts the same tooltip and click command on all of them. Do not merge the segments back into a single
-item: a critical MiniMax window would then repaint DeepSeek and Qwen red as well.
+one item per visible provider segment (`renderStatusBarSegments` supplies each segment's tone). Each
+item gets that provider's own tooltip from `refreshTooltip()` (`renderTooltip` with `[id]`); the
+cross-provider summary lives in the Activity Bar overview and the dashboard. Do not merge the
+segments back into a single item: a critical MiniMax window would then repaint DeepSeek and Qwen red
+as well. Per-provider tooltips also keep hover identities distinct — VS Code keys a hover by the
+tooltip's `value`, so identical tooltips would make only one segment hoverable while that hover is
+open.
 
 Snapshots are fetched per **range** (`RangeId` in `src/core/time.ts`:
 `today | yesterday | last7 | last30 | thisMonth | lastMonth`). The range flows through
@@ -234,10 +241,11 @@ These are product and security rules, not implementation details — do not trad
 - **A version bump is required only when the change ships.** `scripts/release-gate.mjs` checks that
   the `package.json` version, the `package-lock.json` version and the newest `## X.Y.Z` heading in
   `CHANGELOG.md` agree, and that `v<version>` either does not exist yet or still points at HEAD.
-  When the tag is behind HEAD, the gate compares the two commits and fails only when a changed file
-  ships in the VSIX (`src/`, `media/`, the manifest, `README.md`, `CHANGELOG.md`, `LICENSE`).
+  When the tag is behind HEAD, the gate compares the two commits and fails when a changed file
+  ships in the VSIX: `src/`, `media/`, `package.json`, `package-lock.json`, `package.nls*.json`,
+  `README.md`, `CHANGELOG.md`, `LICENSE`, `esbuild.mjs`, `.vscodeignore`.
   A docs-only commit — `CLAUDE.md`, `docs/**`, `scripts/**`, `.github/**` — packages under the
-  current version.
+  current version. A `package.nls*.json` edit is a shipped change, not docs-only.
 - **The settings manifest is pinned by a test.** `scripts/settings.test.ts` asserts the exact set of
   `contributes.configuration.properties`, that every one is `scope: 'window'` with a
   `%config.<key>.description%` `markdownDescription`, and that `statusBar.mode` carries two
