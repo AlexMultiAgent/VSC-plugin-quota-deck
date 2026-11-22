@@ -63,6 +63,50 @@ function balances(snapshot: ProviderSnapshot | undefined): BalanceEntry[] {
   return capabilityValue<DeepSeekBalance>(snapshot, 'deepseek.balance')?.entries ?? [];
 }
 
+/**
+ * The capabilities this tooltip actually renders. A failure or stale marker
+ * for any of them is shown even when another capability still produced rows:
+ * a live balance must not hide a failed Token Plan, and vice versa.
+ */
+const TIP_CAPABILITIES: Record<ProviderId, readonly string[]> = {
+  'minimax-cn': ['minimax.plan', 'minimax.subscription', 'minimax.accountBalance'],
+  'minimax-global': ['minimax.plan', 'minimax.subscription', 'minimax.accountBalance'],
+  deepseek: ['deepseek.balance'],
+  qwen: ['qwen.accountBalance', 'qwen.tokenPlan', 'qwen.tokenPlanSubscription'],
+};
+
+const CAPABILITY_TITLE: Record<string, MessageKey> = {
+  'minimax.plan': 'capability.minimax.plan',
+  'minimax.subscription': 'capability.minimax.subscription',
+  'minimax.accountBalance': 'capability.minimax.accountBalance',
+  'deepseek.balance': 'capability.deepseek.balance',
+  'qwen.accountBalance': 'capability.qwen.accountBalance',
+  'qwen.tokenPlan': 'capability.qwen.tokenPlan',
+  'qwen.tokenPlanSubscription': 'capability.qwen.tokenPlanSubscription',
+};
+
+function capabilityTitle(capability: string, t: Translator): string {
+  const key = CAPABILITY_TITLE[capability];
+  return key === undefined ? capability : t(key);
+}
+
+function stateRows(id: ProviderId, snapshot: ProviderSnapshot, t: Translator): string {
+  const tracked = TIP_CAPABILITIES[id];
+  let rows = '';
+  for (const capability of tracked) {
+    const state = snapshot.capabilities[capability];
+    if (state?.kind !== 'failed') continue;
+    rows +=
+      `<tr><td>${escapeHtml(capabilityTitle(capability, t))}</td>` +
+      `<td colspan="3" class="t-failed">` +
+      `${escapeHtml(t(state.error.message))}</td></tr>`;
+  }
+  if (tracked.some((capability) => snapshot.capabilities[capability]?.kind === 'stale')) {
+    rows += `<tr><td colspan="4" class="t-muted">${escapeHtml(t('state.stale'))}</td></tr>`;
+  }
+  return rows;
+}
+
 function bar(percent: number): string {
   const width = Math.min(100, Math.max(0, percent));
   const filled = Math.round((width / 100) * 16);
@@ -183,16 +227,6 @@ function qwenTokenPlanRows(
       `${escapeHtml(t('dashboard.qwen.notSubscribed'))}</td></tr>`;
   }
 
-  const failed = [
-    snapshot.capabilities['qwen.tokenPlan'],
-    snapshot.capabilities['qwen.tokenPlanSubscription'],
-  ].find((state) => state?.kind === 'failed');
-  if (failed?.kind === 'failed') {
-    rows +=
-      `<tr><td colspan="4" class="t-failed">` +
-      `${escapeHtml(t(failed.error.message))}</td></tr>`;
-  }
-
   return rows;
 }
 
@@ -217,7 +251,7 @@ function providerRows(
         `<td class="t-muted">${escapeHtml(qwenBalance.currency)}</td><td></td></tr>`;
     }
     rows += qwenTokenPlanRows(snapshot, t, timeZone, now);
-    if (rows.length > 0) return rows;
+    if (rows.length > 0) return rows + stateRows(id, snapshot, t);
   }
 
   const miniMaxBalance = capabilityValue<MiniMaxAccountBalance>(
@@ -299,9 +333,9 @@ function providerRows(
     rows.push(
       `<tr><td colspan="4" class="t-muted">${escapeHtml(t('dashboard.minimax.creditsConsoleOnly'))}</td></tr>`,
     );
-    if (rows.length > 0) return rows.join('');
+    if (rows.length > 0) return rows.join('') + stateRows(id, snapshot, t);
   }
-  if (miniMaxBalanceRow.length > 0) return miniMaxBalanceRow;
+  if (miniMaxBalanceRow.length > 0) return miniMaxBalanceRow + stateRows(id, snapshot, t);
 
   const balance = balances(snapshot);
   if (balance.length > 0) {
@@ -313,7 +347,7 @@ function providerRows(
           `<td class="t-muted">${escapeHtml(t('tooltip.balance'))}</td><td></td></tr>`,
       )
       .join('');
-    return rows;
+    return rows + stateRows(id, snapshot, t);
   }
 
   const failed = Object.values(snapshot.capabilities).find((state) => state.kind === 'failed');
@@ -323,6 +357,10 @@ function providerRows(
   const unsupported = Object.values(snapshot.capabilities).find((state) => state.kind === 'unsupported');
   if (unsupported !== undefined && unsupported.kind === 'unsupported') {
     return `<tr><td colspan="4" class="t-muted">${escapeHtml(t('state.unsupported'))}</td></tr>`;
+  }
+  const stale = Object.values(snapshot.capabilities).find((state) => state.kind === 'stale');
+  if (stale !== undefined) {
+    return `<tr><td colspan="4" class="t-muted">${escapeHtml(t('state.stale'))}</td></tr>`;
   }
   return `<tr><td colspan="4" class="t-muted">${escapeHtml(t('state.unconfigured'))}</td></tr>`;
 }

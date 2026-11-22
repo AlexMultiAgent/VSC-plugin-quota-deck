@@ -102,12 +102,16 @@ the list hides it everywhere. It is not an ordering-only preference.
 moved to the front of the status bar, while the tooltip, the tree and the dashboard keep
 `providerOrder`. It also picks which MiniMax region occupies the single MiniMax slot, but only
 among the regions `providerOrder` still lists — a region removed from the order is never
-reintroduced merely because it has a credential. `visibleProviderIds()` in
-`src/presentation/statusBar.ts` owns both rules.
+reintroduced merely because it has a credential. In `focused` mode the status bar shows the
+primary only when `providerOrder` still lists it, and the `Switch Provider` picker offers only
+the providers in that order. `visibleProviderIds()` in `src/presentation/statusBar.ts` owns the
+display rules.
 
 The MiniMax status-bar segment labels both windows — `5小时` / `周` in zh, `5h` / `Week` in en — and
 takes its icon and colour from the tighter of the two. The reset countdown lives in the tooltip,
-the dashboard and the tree, not in the status bar.
+the dashboard and the tree, not in the status bar. A segment whose primary quota capability failed
+without a usable percentage uses the `warning` tone and an error icon; it must never read as
+healthy green.
 
 VS Code supports one colour and one background per status bar item, so `StatusBarPresenter` creates
 one item per visible provider segment (`renderStatusBarSegments` supplies each segment's tone). Each
@@ -125,6 +129,14 @@ Snapshots are fetched per **range** (`RangeId` in `src/core/time.ts`:
 `quotaDeck.snapshot.<providerId>.<range>`, so every range has its own cache entry. Only MiniMax
 consumes the range; DeepSeek and Qwen ignore it. Choosing a range in the dashboard calls
 `selectRange()` in `src/extension.ts`, which re-runs the whole `refreshAll()`.
+
+`Coordinator.refreshAll()` runs at most one range at a time. A request for another range while a
+run is active is queued; only the latest requested range runs, and callers waiting on a superseded
+range adopt the latest run's result. After each provider fetch the coordinator converts a
+per-capability `failed` state into `stale` using the cached snapshot for the same range, so the
+last good value survives the failure and is written back to the cache as stale. `refreshAll()` in
+`src/extension.ts` also keeps a generation counter: an older result that arrives after a newer
+refresh, or after a range switch, must not paint.
 
 `src/core/cache.ts` persists the **parsed** snapshot in `globalState`, not the raw provider payload.
 Changing how a provider parses a field therefore changes the meaning of every snapshot already on

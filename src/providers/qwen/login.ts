@@ -39,15 +39,16 @@ function defaultSleep(milliseconds: number, signal: AbortSignal): Promise<void> 
       reject(new QwenDeviceLoginError('cancelled'));
       return;
     }
-    const timer = setTimeout(resolve, milliseconds);
-    signal.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(timer);
-        reject(new QwenDeviceLoginError('cancelled'));
-      },
-      { once: true },
-    );
+    let timer: ReturnType<typeof setTimeout>;
+    const onAbort = (): void => {
+      clearTimeout(timer);
+      reject(new QwenDeviceLoginError('cancelled'));
+    };
+    timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, milliseconds);
+    signal.addEventListener('abort', onAbort, { once: true });
   });
 }
 

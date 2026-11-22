@@ -137,6 +137,134 @@ describe('Coordinator', () => {
     expect(order).toEqual(['start', 'end']);
   });
 
+  it('turns a per-capability failure into stale and keeps it in the cache', async () => {
+    let attempt = 0;
+    const flaky: QuotaProvider = {
+      ...provider('deepseek', makeSnapshot('deepseek', {})),
+      getCapabilities: () => ({
+        capabilities: [
+          { id: 'deepseek.balance', titleKey: 'capability.deepseek.balance', credential: 'api-key', required: true },
+        ],
+      }),
+      fetchSnapshot: async () => {
+        attempt += 1;
+        return attempt === 1
+          ? makeSnapshot('deepseek', {
+              'deepseek.balance': { kind: 'ok', fetchedAt: 'first', data: { total: 12 } },
+            })
+          : makeSnapshot('deepseek', {
+              'deepseek.balance': {
+                kind: 'failed',
+                error: { kind: 'network', message: 'error.network' },
+              },
+            });
+      },
+    };
+    const cache = new SnapshotCache(new Map<string, unknown>());
+    const coordinator = new Coordinator({ providers: [flaky], cache });
+
+    await coordinator.refreshAll();
+    const second = await coordinator.refreshAll();
+
+    expect(second['deepseek']?.capabilities['deepseek.balance']).toEqual({
+      kind: 'stale',
+      fetchedAt: 'first',
+      data: { total: 12 },
+      reason: 'error.network',
+    });
+    const cached = await cache.load('deepseek', 'last7');
+    expect(cached?.capabilities['deepseek.balance']?.kind).toBe('stale');
+  });
+
+  it('does not turn a never-successful capability into stale', async () => {
+    const failing: QuotaProvider = {
+      ...provider('deepseek', makeSnapshot('deepseek', {})),
+      getCapabilities: () => ({
+        capabilities: [
+          { id: 'deepseek.balance', titleKey: 'capability.deepseek.balance', credential: 'api-key', required: true },
+        ],
+      }),
+      fetchSnapshot: async () =>
+        makeSnapshot('deepseek', {
+          'deepseek.balance': {
+            kind: 'failed',
+            error: { kind: 'network', message: 'error.network' },
+          },
+        }),
+    };
+    const cache = new SnapshotCache(new Map<string, unknown>());
+    const coordinator = new Coordinator({ providers: [failing], cache });
+
+    await coordinator.refreshAll();
+    const second = await coordinator.refreshAll();
+
+    expect(second['deepseek']?.capabilities['deepseek.balance']?.kind).toBe('failed');
+  });
+
+  it('serialises different ranges and runs only the latest pending one', async () => {
+    const started: string[] = [];
+    const releases: Array<() => void> = [];
+    const slow: QuotaProvider = {
+      ...provider('deepseek', makeSnapshot('deepseek', {})),
+      fetchSnapshot: async (_signal, range) => {
+        started.push(range ?? 'last7');
+        await new Promise<void>((resolve) => releases.push(resolve));
+        return makeSnapshot('deepseek', {
+          'deepseek.balance': { kind: 'ok', fetchedAt: 'x', data: { range } },
+        });
+      },
+    };
+    const coordinator = new Coordinator({ providers: [slow] });
+
+    const first = coordinator.refreshAll('last7');
+    await Promise.resolve();
+    const today = coordinator.refreshAll('today');
+    const month = coordinator.refreshAll('thisMonth');
+    await Promise.resolve();
+
+    expect(started).toEqual(['last7']);
+    releases[0]!();
+    await first;
+    expect(started).toEqual(['last7', 'thisMonth']);
+
+    releases[1]!();
+    await month;
+    await today;
+    const last = coordinator.getLast().deepseek?.capabilities['deepseek.balance'];
+    expect(last?.kind === 'ok' ? last.data : undefined).toEqual({ range: 'thisMonth' });
+  });
+
+  it('drops a pending range when the active range is requested again', async () => {
+    const started: string[] = [];
+    const releases: Array<() => void> = [];
+    const slow: QuotaProvider = {
+      ...provider('deepseek', makeSnapshot('deepseek', {})),
+      fetchSnapshot: async (_signal, range) => {
+        started.push(range ?? 'last7');
+        await new Promise<void>((resolve) => releases.push(resolve));
+        return makeSnapshot('deepseek', {
+          'deepseek.balance': { kind: 'ok', fetchedAt: 'x', data: { range } },
+        });
+      },
+    };
+    const coordinator = new Coordinator({ providers: [slow] });
+
+    const first = coordinator.refreshAll('last7');
+    await Promise.resolve();
+    const today = coordinator.refreshAll('today');
+    const again = coordinator.refreshAll('last7');
+    await Promise.resolve();
+    expect(started).toEqual(['last7']);
+
+    releases[0]!();
+    await first;
+    await today;
+    await again;
+    expect(started).toEqual(['last7']);
+    const last = coordinator.getLast().deepseek?.capabilities['deepseek.balance'];
+    expect(last?.kind === 'ok' ? last.data : undefined).toEqual({ range: 'last7' });
+  });
+
   it('uses an updated time zone for later refreshes', async () => {
     const seen: Array<string | undefined> = [];
     const p: QuotaProvider = {

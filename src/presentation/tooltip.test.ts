@@ -996,6 +996,90 @@ describe('renderTooltip', () => {
     expect(html).toContain('Expires');
   });
 
+  it('shows a failed MiniMax plan even when the balance still renders', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.accountBalance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            availableAmount: 1,
+            cashBalance: 1,
+            voucherBalance: 0,
+            creditBalance: 0,
+            owedAmount: 0,
+            currency: 'CNY',
+          },
+        },
+        'minimax.plan': {
+          kind: 'failed',
+          error: { kind: 'network', message: 'error.network' },
+        },
+      }),
+    };
+
+    const html = renderTooltip(snapshots, ['minimax-cn'], t);
+
+    expect(html).toContain('¥1.00');
+    expect(html).toContain('Token Plan quota');
+    expect(html).toContain(t('error.network'));
+  });
+
+  it('shows a failed Qwen balance even when the Token Plan still renders', () => {
+    const snapshots = {
+      qwen: makeSnapshot('qwen', {
+        'qwen.accountBalance': {
+          kind: 'failed',
+          error: { kind: 'auth', message: 'error.qwen.loginExpired' },
+        },
+        'qwen.tokenPlan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: { windows: [{ cycle: 'monthly', usedRatio: 0.5, resetAt: null }] },
+        },
+      }),
+    };
+
+    const html = renderTooltip(snapshots, ['qwen'], t);
+
+    expect(html).toContain('50%');
+    expect(html).toContain(t('error.qwen.loginExpired'));
+  });
+
+  it('marks a stale capability in the tooltip', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.accountBalance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            availableAmount: 1,
+            cashBalance: 1,
+            voucherBalance: 0,
+            creditBalance: 0,
+            owedAmount: 0,
+            currency: 'CNY',
+          },
+        },
+        'minimax.plan': {
+          kind: 'stale',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 80, resetAt: null, unlimited: false },
+            ],
+          },
+          reason: 'error.network',
+        },
+      }),
+    };
+
+    const html = renderTooltip(snapshots, ['minimax-cn'], t);
+
+    expect(html).toContain('80%');
+    expect(html).toContain(t('state.stale'));
+  });
+
   it('shows the unsubscribed and failed states instead of a zero window', () => {
     const unsubscribed = {
       qwen: makeSnapshot('qwen', {

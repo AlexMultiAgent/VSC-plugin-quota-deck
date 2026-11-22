@@ -68,6 +68,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   let range: RangeId = 'last7';
   let lastRefreshIso: string | undefined;
+  /**
+   * Incremented for every refresh attempt. Only the newest attempt may paint:
+   * an older coordinator result can arrive after a range switch and would
+   * render the previous range's history under the new labels.
+   */
+  let refreshGeneration = 0;
   const dashboard = new DashboardPanel(context.extensionUri, dashboardLocalization(language, t), (next) => {
     void selectRange(next);
   }, () => {
@@ -139,7 +145,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   async function refreshAll(): Promise<void> {
+    const generation = ++refreshGeneration;
     const snapshots = await coordinator.refreshAll(range);
+    if (generation !== refreshGeneration) return;
     const pricing = pricingState(Date.now());
     lastRefreshIso = new Date().toISOString();
     statusBar.update(
@@ -222,7 +230,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         }
       },
       switchProvider: async () => {
-        const items = buildSwitcherItems(configuredProviders(), t, settings.primaryProvider);
+        const items = buildSwitcherItems(
+          configuredProviders(),
+          t,
+          settings.primaryProvider,
+          settings.providerOrder,
+        );
         const picked = await vscode.window.showQuickPick(items, { title: t('switcher.title') });
         if (picked === undefined || typeof picked !== 'object' || !('id' in picked)) return;
         await vscode.workspace

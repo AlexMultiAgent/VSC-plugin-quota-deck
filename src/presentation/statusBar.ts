@@ -142,11 +142,19 @@ function segmentTone(
   snapshot: ProviderSnapshot | undefined,
   warningThresholdPercent: number,
 ): QuotaTone {
-  if (id === 'deepseek') return 'positive';
+  if (id === 'deepseek') {
+    return snapshot?.capabilities['deepseek.balance']?.kind === 'failed' ? 'warning' : 'positive';
+  }
   const window = id === 'qwen' ? tightestQwenWindow(snapshot) : tightestWindow(snapshot);
-  return window === undefined || window.remainingPercent === null
-    ? 'positive'
-    : quotaTone(window.remainingPercent, warningThresholdPercent);
+  if (window !== undefined && window.remainingPercent !== null) {
+    return quotaTone(window.remainingPercent, warningThresholdPercent);
+  }
+  // A failed quota with no percentage is not "healthy": colouring the segment
+  // green would contradict the error icon and text next to it.
+  const primary = id === 'qwen'
+    ? snapshot?.capabilities['qwen.tokenPlan']
+    : snapshot?.capabilities['minimax.plan'];
+  return primary?.kind === 'failed' ? 'warning' : 'positive';
 }
 
 export function visibleProviderIds(
@@ -158,7 +166,8 @@ export function visibleProviderIds(
   const available = (id: ProviderId): boolean =>
     configured === undefined || configured[id] === true;
   if (mode === 'focused') {
-    return available(primary) ? [primary] : [];
+    // `providerOrder` decides which providers may appear at all, in every mode.
+    return order.includes(primary) && available(primary) ? [primary] : [];
   }
   const minimaxPrimary: ProviderId =
     primary === 'minimax-global' ? 'minimax-global' : 'minimax-cn';
@@ -244,6 +253,8 @@ export function renderStatusBarSegments(
     if (id === 'qwen') {
       const balanceState = snapshot.capabilities['qwen.accountBalance'];
       const balanceLive = balanceState?.kind === 'ok' || balanceState?.kind === 'stale';
+      const planState = snapshot.capabilities['qwen.tokenPlan'];
+      const planFailed = planState?.kind === 'failed' ? planState : undefined;
       const window = tightestQwenWindow(snapshot);
       if (balanceLive || window !== undefined) {
         const parts: string[] = [];
@@ -251,15 +262,20 @@ export function renderStatusBarSegments(
         if (window !== undefined) {
           parts.push(`${t('statusBar.qwen.plan')} ${Math.round(window.remainingPercent)}%`);
         }
+        // A live balance must not hide a failed Token Plan: the two use the
+        // same credential but degrade independently.
+        if (planFailed !== undefined) parts.push(t(planFailed.error.message));
         const stale =
           balanceState?.kind === 'stale' ||
           snapshot.capabilities['qwen.tokenPlan']?.kind === 'stale'
             ? ` ${t('state.stale')}`
             : '';
         const icon =
-          window === undefined
-            ? STATUS_ICON.neutral
-            : STATUS_ICON[quotaTone(window.remainingPercent, warningThresholdPercent)];
+          planFailed !== undefined
+            ? STATUS_ICON.critical
+            : window === undefined
+              ? STATUS_ICON.neutral
+              : STATUS_ICON[quotaTone(window.remainingPercent, warningThresholdPercent)];
         return { id, text: `${label} ${icon} ${parts.join(' · ')}${stale}`, tone };
       }
       const state = unavailableState(snapshot, t);

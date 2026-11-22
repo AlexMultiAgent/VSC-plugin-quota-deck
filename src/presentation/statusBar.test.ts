@@ -46,6 +46,19 @@ describe('renderStatusBarText', () => {
     expect(text).not.toContain('MM');
   });
 
+  it('hides a primary provider that providerOrder removed in focused mode', () => {
+    const text = renderStatusBarText(
+      {},
+      ['minimax-cn', 'deepseek'],
+      t,
+      'focused',
+      'qwen',
+      20,
+      { qwen: true },
+    );
+    expect(text).toBe('$(pulse) Not configured');
+  });
+
   it('marks an unconfigured provider as not configured', () => {
     const text = renderStatusBarText({}, ['qwen'], t);
     expect(text).toContain('Not configured');
@@ -81,6 +94,28 @@ describe('renderStatusBarText', () => {
     };
     const text = renderStatusBarText(snapshots, ['deepseek'], t);
     expect(text).toContain(t('error.timeout'));
+  });
+
+  it('shows a failed Token Plan beside a live Qwen balance', () => {
+    const snapshots = {
+      qwen: makeSnapshot('qwen', {
+        'qwen.accountBalance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: { availableAmount: 10, currency: 'CNY' },
+        },
+        'qwen.tokenPlan': {
+          kind: 'failed',
+          error: { kind: 'network', message: 'error.network' },
+        },
+      }),
+    };
+
+    const text = renderStatusBarText(snapshots, ['qwen'], t);
+
+    expect(text).toContain('¥10.00');
+    expect(text).toContain('$(error)');
+    expect(text).toContain(t('error.network'));
   });
 
   it('shows the DeepSeek pricing period beside the balance', () => {
@@ -578,6 +613,25 @@ describe('StatusBarPresenter', () => {
     presenter.dispose();
   });
 
+  it('does not colour a failed quota segment green', () => {
+    const presenter = new StatusBarPresenter(t);
+    presenter.update(
+      {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.plan': { kind: 'failed', error: { kind: 'network', message: 'error.network' } },
+        }),
+      },
+      ['minimax-cn'],
+      'all',
+      'minimax-cn',
+      20,
+      { 'minimax-cn': true },
+    );
+    expect(state.statusBarItems[0]!.backgroundColor).toBeUndefined();
+    expect((state.statusBarItems[0]!.color as { id: string }).id).toBe('charts.orange');
+    presenter.dispose();
+  });
+
   it('colors the item by the tightest window now that both are displayed', () => {
     const presenter = new StatusBarPresenter(t);
     presenter.update(
@@ -914,7 +968,7 @@ describe('StatusBarPresenter', () => {
     );
   });
 
-  it('keeps the Qwen balance when the Token Plan capability failed', () => {
+  it('keeps the Qwen balance and reports a failed Token Plan', () => {
     const snapshots = {
       qwen: makeSnapshot('qwen', {
         'qwen.accountBalance': {
@@ -936,7 +990,7 @@ describe('StatusBarPresenter', () => {
     };
 
     expect(renderStatusBarText(snapshots, ['qwen'], t)).toBe(
-      '$(pulse) QW $(dashboard) ¥-12.34',
+      `$(pulse) QW $(error) ¥-12.34 · ${t('error.qwen.loginExpired')}`,
     );
   });
 

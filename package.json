@@ -2,7 +2,7 @@
   "name": "quota-deck",
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
-  "version": "0.3.16",
+  "version": "0.3.17",
   "publisher": "alexmultiagent",
   "license": "MIT",
   "repository": {

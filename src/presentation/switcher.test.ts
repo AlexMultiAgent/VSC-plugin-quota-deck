@@ -29,4 +29,10 @@ describe('buildSwitcherItems', () => {
   it('treats absent entries as not configured', () => {
     expect(buildSwitcherItems({}, t).every((item) => item.configured === false)).toBe(true);
   });
+
+  it('limits choices to the visible provider order', () => {
+    expect(
+      buildSwitcherItems({}, t, 'deepseek', ['minimax-cn', 'deepseek']).map((item) => item.id),
+    ).toEqual(['minimax-cn', 'deepseek']);
+  });
 });

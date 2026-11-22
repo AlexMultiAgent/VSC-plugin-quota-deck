@@ -15,8 +15,9 @@ export function buildSwitcherItems(
   configured: Partial<Record<ProviderId, boolean>>,
   t: Translator,
   primary: ProviderId = 'minimax-cn',
+  order: readonly ProviderId[] = PROVIDER_IDS,
 ): SwitcherItem[] {
-  return PROVIDER_IDS.map((id) => ({
+  return order.map((id) => ({
     id,
     label: providerDisplayName(id),
     detail: configured[id] === true ? t('switcher.configured') : t('switcher.notConfigured'),

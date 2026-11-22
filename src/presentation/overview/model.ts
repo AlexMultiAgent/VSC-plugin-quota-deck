@@ -715,9 +715,30 @@ function qwenItem(options: OverviewOptions): OverviewItem {
       ? ''
       : `${options.t('dashboard.qwen.tokenPlanSection')} ` +
         `${Math.round(tightest.remainingPercent)}%`;
+  // The Qwen node aggregates three capabilities. A failed or stale one must
+  // win over the quota tone of another: showing "healthy" while an expanded
+  // child is "failed" (or silently dropping a stale marker) misstates the
+  // provider. Priority: failed > stale > quota tone > the balance's own state.
+  const qwenCapabilities = [
+    snapshot?.capabilities['qwen.accountBalance'],
+    snapshot?.capabilities['qwen.tokenPlan'],
+    snapshot?.capabilities['qwen.tokenPlanSubscription'],
+  ];
+  const failedState = qwenCapabilities.find((candidate) => candidate?.kind === 'failed');
+  const staleState = qwenCapabilities.find((candidate) => candidate?.kind === 'stale');
+
   let state = status.state;
   let stateLabel = status.label;
-  if (tightest !== undefined && status.state !== 'failed') {
+  let detail = status.detail;
+  if (failedState?.kind === 'failed') {
+    state = 'failed';
+    stateLabel = options.t('state.failed');
+    detail = options.t(failedState.error.message);
+  } else if (staleState !== undefined) {
+    state = 'stale';
+    stateLabel = options.t('state.stale');
+    detail = undefined;
+  } else if (tightest !== undefined) {
     const percent = Math.round(tightest.remainingPercent);
     const quota = quotaRow(
       tokenPlanWindowLabel(tightest.cycle, options.t),
@@ -729,8 +750,10 @@ function qwenItem(options: OverviewOptions): OverviewItem {
     stateLabel = quota.stateLabel;
   }
   const description =
-    [balanceText, planText].filter((part) => part.length > 0).join(' · ') ||
-    stateDescription(status);
+    state === 'failed' || state === 'stale'
+      ? stateLabel
+      : [balanceText, planText].filter((part) => part.length > 0).join(' · ') ||
+        stateDescription(status);
 
   return providerItem(
     'qwen',
@@ -740,7 +763,7 @@ function qwenItem(options: OverviewOptions): OverviewItem {
     description,
     children,
     options,
-    status.detail,
+    detail,
   );
 }
 

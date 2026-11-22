@@ -62,7 +62,6 @@ zeros or present it as live account usage.
 | `qwen.usageTrend` | Candidate; not implemented |
 | `qwen.quotaCli` | Reference only; not implemented |
 
-
 ## Account balance (management login)
 
 `POST https://cli.qianwenai.com/data/v2/api.json` with
@@ -89,7 +88,8 @@ The flat envelope is `{ code: "200", data: { …fields } }`. The extension reads
 | `Currency` | Currency label |
 
 The live capture also returns `AvailableCreditAmount`, `QuotaConsumedAmount`,
-`UnclearedAmount`, `UnpaidAmount`, `FundAccountStatus`, and `FundAccountId`; none are surfaced.
+`UnclearedAmount`, `UnpaidAmount`, `FundAccountStatus`, and `FundAccountId`. The dashboard
+surfaces the first five; `FundAccountId` is not surfaced.
 The fund-account response has **no** `MybankCreditAmount`, so the 网商信控额度 row is retired. The
 former AccessKey `QueryAccountBalance` response used `AvailableCashAmount` / `QuotaLimit`; those
 names are not used by this endpoint.

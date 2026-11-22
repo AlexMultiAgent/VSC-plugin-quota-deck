@@ -519,3 +519,73 @@ describe('buildOverviewItems', () => {
     );
     expect(planGroup?.children.some((child) => child.id.includes('tokenPlan:'))).toBe(false);
   });
+
+it('marks the Qwen node failed when a Token Plan fails but the balance is live', () => {
+  const items = buildOverviewItems({
+    snapshots: {
+      qwen: makeSnapshot('qwen', {
+        'qwen.accountBalance': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            availableAmount: 1,
+            availableCashAmount: 1,
+            creditAmount: 0,
+            quotaLimit: null,
+            currency: 'CNY',
+          },
+        },
+        'qwen.tokenPlan': {
+          kind: 'failed',
+          error: { kind: 'network', message: 'error.network' },
+        },
+      }),
+    },
+    configured: { qwen: true },
+    order: ['qwen'],
+    t,
+    pricing: 'offPeak',
+    timeZone: 'Asia/Shanghai',
+    warningThresholdPercent: 20,
+  });
+
+  expect(items[0]?.state).toBe('failed');
+  expect(items[0]?.stateLabel).toBe('Failed');
+  expect(items[0]?.description).toBe('Failed');
+});
+
+it('keeps a stale Qwen balance explicit when Token Plan windows are present', () => {
+  const items = buildOverviewItems({
+    snapshots: {
+      qwen: makeSnapshot('qwen', {
+        'qwen.accountBalance': {
+          kind: 'stale',
+          fetchedAt: 'x',
+          data: {
+            availableAmount: 1,
+            availableCashAmount: 1,
+            creditAmount: 0,
+            quotaLimit: null,
+            currency: 'CNY',
+          },
+          reason: 'error.network',
+        },
+        'qwen.tokenPlan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: { windows: [{ cycle: 'monthly', usedRatio: 0.5, resetAt: null }] },
+        },
+      }),
+    },
+    configured: { qwen: true },
+    order: ['qwen'],
+    t,
+    pricing: 'offPeak',
+    timeZone: 'Asia/Shanghai',
+    warningThresholdPercent: 20,
+  });
+
+  expect(items[0]?.state).toBe('stale');
+  expect(items[0]?.stateLabel).toBe('Stale');
+  expect(items[0]?.description).toBe('Stale');
+});

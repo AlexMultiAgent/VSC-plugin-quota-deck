@@ -54,6 +54,7 @@ try {
 
 const FORBIDDEN = [
   /^src\//,
+  /^mcp\//,
   /^docs\//,
   /^scripts\//,
   /^\.remember\//,
