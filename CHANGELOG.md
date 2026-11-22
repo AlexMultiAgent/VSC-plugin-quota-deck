@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.18 — 2026-11-22
+
+- 维护版本：DeepSeek 忙时/闲时日历扩展至 `2027-12-31`，纳入 2027 年元旦、春节、清明、劳动节、端午、中秋和国庆假期；超出覆盖范围时仍显示“时段未知”。
+- 新增每月自动检查：定价日历剩余不足 60 天时创建/更新维护 issue；Dependabot 每周检查根包、MCP 子包和 GitHub Actions 依赖。
+- 清理：移除无调用方的 `capabilityLabel` / `hostMessage` 与对应文案；补充 MCP 子包复用 presentation/localization 的说明，并为受门禁的 DeepSeek usage/aggregate 解析器标注用途。
+
 ## 0.3.17 — 2026-11-22
 
 - 修复：单个能力获取失败时不再丢弃上一次的好值。MiniMax Token Plan、Qwen Token Plan 等能力失败后降级为“数据已过期”并保留原值与缓存，而不是让数值直接消失；缓存写入失败也不会再把一次成功的刷新判为失败。
