@@ -16,6 +16,7 @@ import type {
   QwenTokenPlanSubscription,
 } from '../../providers/qwen/shape';
 import {
+  formatDuration,
   formatExpiryRemaining,
   formatMoney,
   providerDisplayName,
@@ -314,19 +315,6 @@ function zonedDateTime(timestamp: number, timeZone: string): string {
   return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
 }
 
-function durationLabel(milliseconds: number, t: Translator): string {
-  const totalMinutes = Math.floor(Math.max(0, milliseconds) / 60_000);
-  const days = Math.floor(totalMinutes / (24 * 60));
-  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
-  const minutes = totalMinutes % 60;
-  const parts: string[] = [];
-  if (days > 0) parts.push(`${days}${t('dashboard.duration.day')}`);
-  if (hours > 0) parts.push(`${hours}${t('dashboard.duration.hour')}`);
-  if (minutes > 0) parts.push(`${minutes}${t('dashboard.duration.minute')}`);
-  if (parts.length === 0) parts.push(`0${t('dashboard.duration.minute')}`);
-  return parts.join('').trim();
-}
-
 function resetLabel(
   resetAt: number,
   timeZone: string,
@@ -335,7 +323,7 @@ function resetLabel(
 ): string {
   return (
     `${t('tooltip.resetAt')} ${zonedDateTime(resetAt, timeZone)}` +
-    ` · ${t('dashboard.resetRemaining')} ${durationLabel(resetAt - now, t)}`
+    ` · ${t('dashboard.resetRemaining')} ${formatDuration(resetAt - now, t)}`
   );
 }
 
