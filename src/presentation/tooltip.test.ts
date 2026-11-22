@@ -289,7 +289,8 @@ describe('renderTooltip', () => {
     expect(visibleText).toContain('21%');
   });
 
-  it('shows the video reset time after its quota track', () => {
+  it('shows the countdown until the video quota resets', () => {
+    const now = Date.parse('2026-11-18T20:30:00.000Z');
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -309,12 +310,21 @@ describe('renderTooltip', () => {
       }),
     };
 
-    const html = renderTooltip(snapshots, ['minimax-cn'], zh, undefined, 'Asia/Shanghai');
+    const html = renderTooltip(
+      snapshots,
+      ['minimax-cn'],
+      zh,
+      undefined,
+      'Asia/Shanghai',
+      undefined,
+      now,
+    );
 
-    expect(html).toContain('title="下次重置 2026-11-19 08:00">↻ 11-19 08:00</td>');
+    expect(html).toContain('>3小时30分钟后重置</td>');
   });
 
-  it('localizes MiniMax regions, windows, reset times, and the configured time zone', () => {
+  it('localizes MiniMax regions, windows, reset countdowns, and the configured time zone', () => {
+    const now = Date.parse('2026-11-16T03:30:00.000Z');
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -344,21 +354,24 @@ describe('renderTooltip', () => {
       snapshots,
       ['minimax-cn'],
       zh,
-      '2026-11-16T04:00:00.000Z',
+      '2026-11-16T02:00:00.000Z',
       'Asia/Shanghai',
+      undefined,
+      now,
     );
 
     expect(html).toContain('国内版');
     expect(html).toContain('5 小时');
     expect(html).toContain('每周');
-    expect(html).toContain('title="下次重置 2026-11-16 12:00">↻ 11-16 12:00</td>');
-    expect(html).toContain('title="下次重置 2026-11-16 16:00">↻ 11-16 16:00</td>');
-    expect(html).not.toContain('重置于');
+    expect(html).toContain('>30分钟后重置</td>');
+    expect(html).toContain('>4小时30分钟后重置</td>');
+    expect(html).not.toContain('↻');
+    expect(html).not.toContain('11-16 12:00');
+    expect(html).not.toContain('11-16 16:00');
     expect(html).toContain('Asia/Shanghai');
     expect(html).not.toContain('Domestic');
     expect(html).not.toContain('5-hour');
     expect(html).not.toContain('Weekly');
-    expect(html).not.toContain('Resets');
   });
 
   it('emphasizes provider names instead of MiniMax quota labels and values', () => {
@@ -415,7 +428,8 @@ describe('renderTooltip', () => {
     expect(html).not.toContain('<strong style="display:inline-block;vertical-align:middle;');
   });
 
-  it('labels the reset time in English', () => {
+  it('labels the reset countdown in English', () => {
+    const now = Date.parse('2026-11-16T03:30:00.000Z');
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
         'minimax.plan': {
@@ -433,9 +447,87 @@ describe('renderTooltip', () => {
       }),
     };
 
-    const html = renderTooltip(snapshots, ['minimax-cn'], t, undefined, 'Asia/Shanghai');
+    const html = renderTooltip(
+      snapshots,
+      ['minimax-cn'],
+      t,
+      undefined,
+      'Asia/Shanghai',
+      undefined,
+      now,
+    );
 
-    expect(html).toContain('title="Next reset 2026-11-16 12:00">↻ 11-16 12:00</td>');
+    expect(html).toContain('>Resets in 30m</td>');
+    expect(html).not.toContain('↻');
+  });
+
+  it('left-aligns the reset cell so the countdowns line up', () => {
+    const now = Date.parse('2026-11-16T03:30:00.000Z');
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              {
+                window: 'fiveHour',
+                remainingPercent: 35,
+                resetAt: Date.parse('2026-11-16T04:00:00.000Z'),
+                unlimited: false,
+              },
+            ],
+          },
+        },
+      }),
+    };
+
+    const html = renderTooltip(
+      snapshots,
+      ['minimax-cn'],
+      zh,
+      undefined,
+      'Asia/Shanghai',
+      undefined,
+      now,
+    );
+
+    expect(html).toContain('<td class="t-muted" colspan="2" align="left"');
+    expect(html).not.toContain('text-align:right');
+  });
+
+  it('never leaks the duration placeholder into the tooltip', () => {
+    const now = Date.parse('2026-11-16T03:30:00.000Z');
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              {
+                window: 'fiveHour',
+                remainingPercent: 35,
+                resetAt: Date.parse('2026-11-16T04:00:00.000Z'),
+                unlimited: false,
+              },
+            ],
+          },
+        },
+      }),
+    };
+
+    const html = renderTooltip(
+      snapshots,
+      ['minimax-cn'],
+      zh,
+      undefined,
+      'Asia/Shanghai',
+      undefined,
+      now,
+    );
+
+    expect(html).not.toContain('{duration}');
   });
 
   it('escapes provider-controlled strings', () => {
@@ -817,7 +909,7 @@ describe('renderTooltip', () => {
     const html = renderTooltip({}, ['qwen'], zh, '2026-11-18T10:43:00.000Z', 'Asia/Shanghai');
 
     expect(html).toContain(
-      '<span class="t-muted">⇄ 2026-11-18 18:43 · Asia/Shanghai</span>' +
+      '<span class="t-muted">⟳ 2026-11-18 18:43 · Asia/Shanghai</span>' +
         '<br><span class="t-muted">点击在仪表盘中查看更多分析</span>',
     );
   });
@@ -985,12 +1077,20 @@ describe('renderTooltip', () => {
       }),
     };
 
-    const html = renderTooltip(snapshots, ['qwen'], t);
+    const html = renderTooltip(
+      snapshots,
+      ['qwen'],
+      t,
+      undefined,
+      'Asia/Shanghai',
+      undefined,
+      Date.parse('2026-11-23T00:00:00.000Z'),
+    );
 
     expect(html).toContain('<tr><td colspan="4">Token Plan</td></tr>');
     expect(html).toContain('Monthly');
     expect(html).toContain('38%');
-    expect(html).toContain('Next reset 2026-12-01 08:00');
+    expect(html).toContain('>Resets in 8d</td>');
     expect(html).toContain('>Plan<');
     expect(html).toContain('pro');
     expect(html).toContain('Expires');

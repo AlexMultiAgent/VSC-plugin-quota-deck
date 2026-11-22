@@ -16,6 +16,7 @@ import type {
 } from '../providers/qwen/shape';
 import { pricingState, type PricingState } from '../providers/deepseek/pricing';
 import {
+  formatDuration,
   formatExpiryRemaining,
   formatMoney,
   formatRemainingDays,
@@ -161,16 +162,18 @@ function zonedTime(iso: string, timeZone: string): string {
 
 function resetCell(
   resetAt: number | null | undefined,
-  timeZone: string,
+  now: number,
   t: Translator,
 ): string {
   if (resetAt == null) return '<td colspan="2"></td>';
-  const resetFull = zonedTime(new Date(resetAt).toISOString(), timeZone);
+  const label = t('tooltip.resetsIn').replace(
+    '{duration}',
+    formatDuration(resetAt - now, t),
+  );
   return (
-    '<td class="t-muted" colspan="2" ' +
-    'style="text-align:right;white-space:nowrap;"' +
-    ` title="${escapeHtml(`${t('tooltip.resetAt')} ${resetFull}`)}">` +
-    `↻ ${escapeHtml(resetFull.slice(5))}</td>`
+    '<td class="t-muted" colspan="2" align="left" ' +
+    'style="white-space:nowrap;">' +
+    `${escapeHtml(label)}</td>`
   );
 }
 
@@ -199,7 +202,7 @@ function qwenTokenPlanRows(
       rows +=
         `<tr><td>${escapeHtml(label)}</td>` +
         `<td>${bar(remaining)}${quotaValue(`${Math.round(remaining)}%`)}</td>` +
-        `${resetCell(window.resetAt, timeZone, t)}</tr>`;
+        `${resetCell(window.resetAt, now, t)}</tr>`;
     }
   }
 
@@ -279,7 +282,7 @@ function providerRows(
         rows.push(
           `<tr><td>${escapeHtml(label)}</td>` +
           `<td>${escapeHtml(t('tooltip.unlimited'))}</td>` +
-          `${resetCell(window.resetAt, timeZone, t)}</tr>`,
+          `${resetCell(window.resetAt, now, t)}</tr>`,
         );
         continue;
       }
@@ -288,7 +291,7 @@ function providerRows(
       rows.push(
         `<tr><td>${escapeHtml(label)}</td>` +
         `<td>${bar(window.remainingPercent)}${quotaValue(`${remaining}%`)}</td>` +
-        `${resetCell(window.resetAt, timeZone, t)}</tr>`,
+        `${resetCell(window.resetAt, now, t)}</tr>`,
       );
     }
     for (const model of plan.models ?? []) {
@@ -310,7 +313,7 @@ function providerRows(
       rows.push(
         `<tr><td>${escapeHtml(label)}</td>` +
         `<td>${bar(percent)}${quotaValue(`${model.remaining}/${model.total}`)}</td>` +
-        `${resetCell(model.resetAt, timeZone, t)}</tr>`,
+        `${resetCell(model.resetAt, now, t)}</tr>`,
       );
     }
     const subscription = capabilityValue<MiniMaxSubscription>(snapshot, 'minimax.subscription');
