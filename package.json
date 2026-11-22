@@ -314,7 +314,7 @@
     "package": "npm run build && npm run check:locales && npm run check:i18n && npm run guard:fixtures && node scripts/release-gate.mjs && vsce package --no-dependencies && npm run guard:package"
   },
   "devDependencies": {
-    "@types/node": "^20.16.0",
+    "@types/node": "^26.6.6",
     "@types/vscode": "^1.95.0",
     "@vscode/vsce": "^3.2.0",
     "esbuild": "^0.24.0",
