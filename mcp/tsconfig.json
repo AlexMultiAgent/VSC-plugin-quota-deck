@@ -5,9 +5,8 @@
     "moduleResolution": "Bundler",
     "lib": ["ES2022"],
     "types": ["node"],
-    "baseUrl": ".",
     "paths": {
-      "vscode": ["node_modules/@types/vscode/index.d.ts"]
+      "vscode": ["./node_modules/@types/vscode/index.d.ts"]
     },
     "strict": true,
     "noUncheckedIndexedAccess": true,
