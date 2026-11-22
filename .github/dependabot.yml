@@ -13,6 +13,15 @@ updates:
       # newer Node would compile calls to APIs that do not exist at runtime.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # TypeScript 7 only exposes `version` from its main entry; the compiler API
+      # now lives under `typescript/unstable/*`. scripts/check-ui-localization.mjs
+      # still parses sources through the TypeScript 5 API.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # Vitest 5 requires Node ^22.12 and @types/node ^22, above this package's
+      # Node 20 runtime floor.
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "chore(deps)"
     groups:
@@ -29,8 +38,10 @@ updates:
       timezone: Asia/Shanghai
     open-pull-requests-limit: 5
     ignore:
-      # Same Node-20 runtime floor as the root package.
+      # Same Node-20 runtime and type floor as the root package.
       - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vitest"
         update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "chore(deps)"
