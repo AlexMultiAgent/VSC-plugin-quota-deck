@@ -6,6 +6,9 @@
 
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck) · [问题反馈](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/issues) · [⭐ Star](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck) · [MIT](LICENSE) · 无遥测
 
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck)
+[![GitHub Releases](https://img.shields.io/github/v/release/AlexMultiAgent/VSC-plugin-quota-deck?logo=github)](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/releases)
+
 ## 预览
 
 以下截图使用演示数据。
@@ -61,7 +64,7 @@ QuotaDeck CN keeps MiniMax, DeepSeek, and Qwen account data in your VS Code stat
 - 状态栏只显示已配置的服务商，避免未配置项占据空间。
 - 状态栏默认每 5 分钟自动刷新；可在仪表盘“立即刷新”或命令面板手动刷新。
 - 单击状态栏打开仪表盘时会立即重新获取数据，并同步刷新状态栏、悬浮详情和仪表盘。
-- 额度按剩余比例使用绿色、橙色、红色三阶段文字，仅剩余 5% 及以下使用红色警示背景。
+- 额度按剩余比例使用绿色、橙色、红色三阶段；每个服务商是独立的状态栏片段，红色警示背景只覆盖额度告急的那个服务商，不会把整条状态栏染红。
 - Qwen 同时显示账户余额与千问AI平台 Token Plan 窗口；两者共用登录令牌，查询失败时独立降级。悬浮详情只保留账户余额和 Token Plan 摘要，现金/信控/额度上限等明细在仪表盘和 Activity Bar 中查看。
 - MiniMax 展示套餐、声音槽位、续费价格与账户余额（可用/现金/代金券/信用/欠费）；控制台积分仅支持 Cookie 会话，API key 无法读取，插件改为提示前往控制台查看；无限额度窗口在四个界面统一显示为“无限”，不会显示为 0% 或“—”；每周额度会应用平台的放大系数。
 - 历史用量区间只作用于 MiniMax Token 用量，并与实时额度窗口分开显示；没有实际消费记录时不展示范围筛选。
@@ -117,6 +120,7 @@ Qwen / 百炼余额与 Token Plan 获取方式：
 警告阈值可在 VS Code 设置中搜索 `QuotaDeck warning threshold`，或直接设置
 `quotaDeck.statusBar.warningThresholdPercent`。默认值为 `20`，支持 `11` 到 `99`；
 剩余额度严格低于该值时显示橙色警告，低于或等于 `5%` 时显示红色严重警告，其余保持绿色。
+颜色只作用于对应服务商自己的状态栏片段，不会把旁边的服务商一起染色。
 该阈值作用于插件展示的每一个百分比：MiniMax 的 5 小时与每周窗口，以及 Qwen Token Plan 的
 月度/每周窗口；DeepSeek 余额与 Qwen 账户余额是金额而非百分比，因此不适用。
 

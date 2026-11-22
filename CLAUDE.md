@@ -106,6 +106,11 @@ The MiniMax status-bar segment labels both windows — `5小时` / `周` in zh, 
 takes its icon and colour from the tighter of the two. The reset countdown lives in the tooltip,
 the dashboard and the tree, not in the status bar.
 
+VS Code supports one colour and one background per status bar item, so `StatusBarPresenter` creates
+one item per visible provider segment (`renderStatusBarSegments` supplies each segment's tone) and
+puts the same tooltip and click command on all of them. Do not merge the segments back into a single
+item: a critical MiniMax window would then repaint DeepSeek and Qwen red as well.
+
 Snapshots are fetched per **range** (`RangeId` in `src/core/time.ts`:
 `today | yesterday | last7 | last30 | thisMonth | lastMonth`). The range flows through
 `coordinator.refreshAll(range)`, `provider.fetchSnapshot(signal, range, timeZone)` and
