@@ -707,6 +707,168 @@ describe('StatusBarPresenter', () => {
     expect(state.statusBarItems[0]!.backgroundColor).toBeUndefined();
     presenter.dispose();
   });
+
+  it('paints only the provider whose own quota is critical', () => {
+    const presenter = new StatusBarPresenter(t);
+    presenter.update(
+      {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.plan': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: {
+              windows: [
+                { window: 'fiveHour', remainingPercent: 100, resetAt: null, unlimited: false },
+                { window: 'weekly', remainingPercent: 0, resetAt: null, unlimited: false },
+              ],
+            },
+          },
+        }),
+        deepseek: makeSnapshot('deepseek', {
+          'deepseek.balance': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: { entries: [{ currency: 'CNY', total: 49.26 }] },
+          },
+        }),
+        qwen: makeSnapshot('qwen', {
+          'qwen.accountBalance': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: {
+              availableAmount: 0,
+              creditAmount: 0,
+              availableCashAmount: 0,
+              quotaLimit: null,
+              currency: 'CNY',
+            },
+          },
+          'qwen.tokenPlan': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: { windows: [{ cycle: 'monthly', usedRatio: 0.65, resetAt: null }] },
+          },
+        }),
+      },
+      ['minimax-cn', 'deepseek', 'qwen'],
+      'all',
+      'minimax-cn',
+      20,
+      { 'minimax-cn': true, deepseek: true, qwen: true },
+    );
+
+    const minimax = state.statusBarItems[0]!;
+    const deepseek = state.statusBarItems[1]!;
+    const qwen = state.statusBarItems[2]!;
+    expect(minimax.text).toContain('MM');
+    expect((minimax.backgroundColor as { id: string }).id)
+      .toBe('statusBarItem.errorBackground');
+    expect(minimax.color).toBe('#ffffff');
+    expect(deepseek.text).toContain('DS');
+    expect(deepseek.backgroundColor).toBeUndefined();
+    expect((deepseek.color as { id: string }).id).toBe('charts.green');
+    expect(qwen.text).toContain('QW');
+    expect(qwen.backgroundColor).toBeUndefined();
+    expect((qwen.color as { id: string }).id).toBe('charts.green');
+    presenter.dispose();
+  });
+
+  it('paints only the provider whose quota is below the warning threshold', () => {
+    const presenter = new StatusBarPresenter(t);
+    presenter.update(
+      {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.plan': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: { windows: [{ window: 'fiveHour', remainingPercent: 19, resetAt: null, unlimited: false }] },
+          },
+        }),
+        deepseek: makeSnapshot('deepseek', {
+          'deepseek.balance': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: { entries: [{ currency: 'CNY', total: 49.26 }] },
+          },
+        }),
+      },
+      ['minimax-cn', 'deepseek'],
+      'all',
+      'minimax-cn',
+      20,
+      { 'minimax-cn': true, deepseek: true },
+    );
+
+    expect(state.statusBarItems[0]!.backgroundColor).toBeUndefined();
+    expect((state.statusBarItems[0]!.color as { id: string }).id).toBe('charts.orange');
+    expect(state.statusBarItems[1]!.backgroundColor).toBeUndefined();
+    expect((state.statusBarItems[1]!.color as { id: string }).id).toBe('charts.green');
+    presenter.dispose();
+  });
+
+  it('puts the pulse on the first segment only and keeps the item order', () => {
+    const presenter = new StatusBarPresenter(t);
+    presenter.update(
+      {},
+      ['minimax-cn', 'deepseek', 'qwen'],
+      'all',
+      'minimax-cn',
+      20,
+      { 'minimax-cn': true, deepseek: true, qwen: true },
+    );
+
+    expect(state.statusBarItems[0]!.text.startsWith('$(pulse) MM')).toBe(true);
+    expect(state.statusBarItems[1]!.text.startsWith('$(pulse)')).toBe(false);
+    expect(state.statusBarItems[1]!.text).toContain('DS');
+    expect(state.statusBarItems[2]!.text).toContain('QW');
+    presenter.dispose();
+  });
+
+  it('carries the tooltip and command on every segment', () => {
+    const presenter = new StatusBarPresenter(t);
+    presenter.update(
+      {},
+      ['minimax-cn', 'deepseek', 'qwen'],
+      'all',
+      'minimax-cn',
+      20,
+      { 'minimax-cn': true, deepseek: true, qwen: true },
+    );
+    const markdown = new vscode.MarkdownString('<div>hello</div>');
+    presenter.setTooltip(markdown);
+    presenter.setCommand('quotaDeck.configureMiniMax');
+
+    for (const item of state.statusBarItems) {
+      expect((item.tooltip as { value: string }).value).toContain('hello');
+      expect(item.command).toBe('quotaDeck.configureMiniMax');
+    }
+    presenter.dispose();
+  });
+
+  it('hides its extra segments when fewer providers are visible', () => {
+    const presenter = new StatusBarPresenter(t);
+    presenter.update(
+      {},
+      ['minimax-cn', 'deepseek', 'qwen'],
+      'all',
+      'minimax-cn',
+      20,
+      { 'minimax-cn': true, deepseek: true, qwen: true },
+    );
+    presenter.update(
+      {},
+      ['minimax-cn', 'deepseek', 'qwen'],
+      'focused',
+      'deepseek',
+      20,
+      { 'minimax-cn': true, deepseek: true, qwen: true },
+    );
+
+    expect(state.statusBarItems[0]!.visible).toBe(true);
+    expect(state.statusBarItems[1]!.visible).toBe(false);
+    expect(state.statusBarItems[2]!.visible).toBe(false);
+    presenter.dispose();
+  });
 });
 
   it('adds the tightest Qwen Token Plan window to the balance segment', () => {

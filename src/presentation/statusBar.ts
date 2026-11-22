@@ -132,26 +132,21 @@ function unavailableState(
   return { icon: STATUS_ICON.muted, label: t('state.unconfigured') };
 }
 
-function visibleTone(
-  snapshots: Partial<Record<ProviderId, ProviderSnapshot>>,
-  visible: readonly ProviderId[],
+/**
+ * The tone of one provider's own segment. VS Code colours a whole status bar
+ * item at once, so the presenter renders each provider as its own item; this
+ * keeps a critical MiniMax window from painting DeepSeek and Qwen red too.
+ */
+function segmentTone(
+  id: ProviderId,
+  snapshot: ProviderSnapshot | undefined,
   warningThresholdPercent: number,
 ): QuotaTone {
-  const tones = visible.flatMap((id) => {
-    if (id === 'qwen') {
-      const window = tightestQwenWindow(snapshots[id]);
-      return window === undefined
-        ? []
-        : [quotaTone(window.remainingPercent, warningThresholdPercent)];
-    }
-    const window = tightestWindow(snapshots[id]);
-    return window === undefined || window.remainingPercent === null
-      ? []
-      : [quotaTone(window.remainingPercent, warningThresholdPercent)];
-  });
-  if (tones.includes('critical')) return 'critical';
-  if (tones.includes('warning')) return 'warning';
-  return 'positive';
+  if (id === 'deepseek') return 'positive';
+  const window = id === 'qwen' ? tightestQwenWindow(snapshot) : tightestWindow(snapshot);
+  return window === undefined || window.remainingPercent === null
+    ? 'positive'
+    : quotaTone(window.remainingPercent, warningThresholdPercent);
 }
 
 function visibleProviderIds(
@@ -200,7 +195,13 @@ function visibleProviderIds(
   return ordered.filter(available);
 }
 
-export function renderStatusBarText(
+export interface StatusBarSegment {
+  readonly id: ProviderId;
+  readonly text: string;
+  readonly tone: QuotaTone;
+}
+
+export function renderStatusBarSegments(
   snapshots: Partial<Record<ProviderId, ProviderSnapshot>>,
   order: ProviderId[],
   t: Translator,
@@ -209,28 +210,35 @@ export function renderStatusBarText(
   warningThresholdPercent = 20,
   configured?: Partial<Record<ProviderId, boolean>>,
   pricing: PricingState = pricingState(Date.now()),
-): string {
+): StatusBarSegment[] {
   const visible = visibleProviderIds(order, mode, primary, configured);
-  if (visible.length === 0) return `$(pulse) ${t('statusBar.noData')}`;
-
-  const segments = visible.map((id) => {
+  return visible.map((id): StatusBarSegment => {
     const label = t(SEGMENT_LABEL[id]);
     const snapshot = snapshots[id];
     if (snapshot === undefined) {
-      return `${label} ${STATUS_ICON.muted} ${t('state.unconfigured')}`;
+      return {
+        id,
+        text: `${label} ${STATUS_ICON.muted} ${t('state.unconfigured')}`,
+        tone: 'positive',
+      };
     }
+
+    const tone = segmentTone(id, snapshot, warningThresholdPercent);
 
     if (id === 'deepseek') {
       const balanceState = snapshot.capabilities['deepseek.balance'];
       if (balanceState?.kind === 'ok' || balanceState?.kind === 'stale') {
         const stale = balanceState.kind === 'stale' ? ` ${t('state.stale')}` : '';
-        return (
-          `${label} ${STATUS_ICON.neutral} ${formatBalance(deepSeekBalance(snapshot))}` +
-          ` · ${pricingPeriodLabel(pricing, t)}${stale}`
-        );
+        return {
+          id,
+          text:
+            `${label} ${STATUS_ICON.neutral} ${formatBalance(deepSeekBalance(snapshot))}` +
+            ` · ${pricingPeriodLabel(pricing, t)}${stale}`,
+          tone,
+        };
       }
       const state = unavailableState(snapshot, t);
-      return `${label} ${state.icon} ${state.label}`;
+      return { id, text: `${label} ${state.icon} ${state.label}`, tone };
     }
 
     if (id === 'qwen') {
@@ -252,16 +260,16 @@ export function renderStatusBarText(
           window === undefined
             ? STATUS_ICON.neutral
             : STATUS_ICON[quotaTone(window.remainingPercent, warningThresholdPercent)];
-        return `${label} ${icon} ${parts.join(' · ')}${stale}`;
+        return { id, text: `${label} ${icon} ${parts.join(' · ')}${stale}`, tone };
       }
       const state = unavailableState(snapshot, t);
-      return `${label} ${state.icon} ${state.label}`;
+      return { id, text: `${label} ${state.icon} ${state.label}`, tone };
     }
 
     const parts = miniMaxWindowParts(snapshot, t);
     if (parts.length === 0) {
       const state = unavailableState(snapshot, t);
-      return `${label} ${state.icon} ${state.label}`;
+      return { id, text: `${label} ${state.icon} ${state.label}`, tone };
     }
     const window = tightestWindow(snapshot);
     const icon =
@@ -269,26 +277,92 @@ export function renderStatusBarText(
         ? STATUS_ICON.positive
         : STATUS_ICON[quotaTone(window.remainingPercent, warningThresholdPercent)];
     const stale = isStale(snapshot, 'minimax.plan') ? ` ${t('state.stale')}` : '';
-    return `${label} ${icon} ${parts.join(' · ')}${stale}`;
+    return { id, text: `${label} ${icon} ${parts.join(' · ')}${stale}`, tone };
   });
+}
+
+export function renderStatusBarText(
+  snapshots: Partial<Record<ProviderId, ProviderSnapshot>>,
+  order: ProviderId[],
+  t: Translator,
+  mode: 'all' | 'focused' = 'all',
+  primary: ProviderId = 'minimax-cn',
+  warningThresholdPercent = 20,
+  configured?: Partial<Record<ProviderId, boolean>>,
+  pricing: PricingState = pricingState(Date.now()),
+): string {
+  const segments = renderStatusBarSegments(
+    snapshots,
+    order,
+    t,
+    mode,
+    primary,
+    warningThresholdPercent,
+    configured,
+    pricing,
+  );
+  if (segments.length === 0) return `$(pulse) ${t('statusBar.noData')}`;
 
   const kept = segments.slice(0, MAX_STATUS_BAR_SEGMENTS);
   const dropped = segments.length - kept.length;
-  return dropped === 0 ? `$(pulse) ${kept.join('  ')}` : `$(pulse) ${kept.join('  ')} +${dropped}`;
+  const text = kept.map((segment) => segment.text).join('  ');
+  return dropped === 0 ? `$(pulse) ${text}` : `$(pulse) ${text} +${dropped}`;
 }
 
+const STATUS_BAR_PRIORITY = 100;
+
+/**
+ * VS Code has one colour and one background per status bar item, so each
+ * provider segment gets its own item. A critical MiniMax window therefore
+ * paints only the MiniMax segment, not the whole status bar.
+ */
 export class StatusBarPresenter {
-  private readonly item: vscode.StatusBarItem;
+  private readonly items: vscode.StatusBarItem[] = [];
   private t: Translator;
+  private tooltip: vscode.MarkdownString | string | undefined;
+  private command = 'quotaDeck.openDashboard';
 
   constructor(t: Translator) {
     this.t = t;
-    this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    this.item.command = 'quotaDeck.openDashboard';
+    this.itemAt(0);
   }
 
   setTranslator(t: Translator): void {
     this.t = t;
+  }
+
+  private itemAt(index: number): vscode.StatusBarItem {
+    while (this.items.length <= index) {
+      const item = vscode.window.createStatusBarItem(
+        vscode.StatusBarAlignment.Right,
+        STATUS_BAR_PRIORITY - this.items.length,
+      );
+      item.command = this.command;
+      if (this.tooltip !== undefined) item.tooltip = this.tooltip;
+      this.items.push(item);
+    }
+    return this.items[index]!;
+  }
+
+  private apply(item: vscode.StatusBarItem, text: string, tone: QuotaTone): void {
+    item.text = text;
+    item.backgroundColor =
+      tone === 'critical'
+        ? new vscode.ThemeColor('statusBarItem.errorBackground')
+        : undefined;
+    item.color =
+      tone === 'critical'
+        ? '#ffffff'
+        : tone === 'warning'
+          ? new vscode.ThemeColor('charts.orange')
+          : new vscode.ThemeColor('charts.green');
+    item.tooltip = this.tooltip ?? this.t('statusBar.tooltip.header');
+    item.command = this.command;
+    item.show();
+  }
+
+  private hideFrom(index: number): void {
+    for (let i = index; i < this.items.length; i += 1) this.items[i]!.hide();
   }
 
   update(
@@ -300,7 +374,7 @@ export class StatusBarPresenter {
     configured?: Partial<Record<ProviderId, boolean>>,
     pricing: PricingState = pricingState(Date.now()),
   ): void {
-    this.item.text = renderStatusBarText(
+    const segments = renderStatusBarSegments(
       snapshots,
       order,
       this.t,
@@ -310,31 +384,35 @@ export class StatusBarPresenter {
       configured,
       pricing,
     );
-    const visible = visibleProviderIds(order, mode, primary, configured);
-    const tone = visibleTone(snapshots, visible, warningThresholdPercent);
-    this.item.backgroundColor =
-      tone === 'critical'
-        ? new vscode.ThemeColor('statusBarItem.errorBackground')
-        : undefined;
-    this.item.color =
-      tone === 'critical'
-        ? '#ffffff'
-        : tone === 'warning'
-          ? new vscode.ThemeColor('charts.orange')
-          : new vscode.ThemeColor('charts.green');
-    this.item.tooltip = this.t('statusBar.tooltip.header');
-    this.item.show();
+    if (segments.length === 0) {
+      this.apply(this.itemAt(0), `$(pulse) ${this.t('statusBar.noData')}`, 'positive');
+      this.hideFrom(1);
+      return;
+    }
+
+    const kept = segments.slice(0, MAX_STATUS_BAR_SEGMENTS);
+    const dropped = segments.length - kept.length;
+    kept.forEach((segment, index) => {
+      let text = segment.text;
+      if (index === 0) text = `$(pulse) ${text}`;
+      if (dropped > 0 && index === kept.length - 1) text = `${text} +${dropped}`;
+      this.apply(this.itemAt(index), text, segment.tone);
+    });
+    this.hideFrom(kept.length);
   }
 
   setTooltip(markdown: vscode.MarkdownString): void {
-    this.item.tooltip = markdown;
+    this.tooltip = markdown;
+    for (const item of this.items) item.tooltip = markdown;
   }
 
   setCommand(command: string): void {
-    this.item.command = command;
+    this.command = command;
+    for (const item of this.items) item.command = command;
   }
 
   dispose(): void {
-    this.item.dispose();
+    for (const item of this.items) item.dispose();
+    this.items.length = 0;
   }
 }
