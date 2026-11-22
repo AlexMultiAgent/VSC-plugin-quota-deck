@@ -15,6 +15,13 @@ describe('bundles', () => {
       for (const value of Object.values(bundle)) expect(value.length).toBeGreaterThan(0);
     }
   });
+
+  it('carries the countdown wording and the circle-arrow update glyph', () => {
+    expect(zhCn['tooltip.resetsIn']).toBe('{duration}后重置');
+    expect(enUs['tooltip.resetsIn']).toBe('Resets in {duration}');
+    expect(zhCn['tooltip.updated']).toBe('⟳');
+    expect(enUs['tooltip.updated']).toBe('⟳');
+  });
 });
 
 describe('resolveLanguage', () => {

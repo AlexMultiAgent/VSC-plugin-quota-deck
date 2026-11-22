@@ -122,7 +122,7 @@ export const MESSAGES = {
   'hours.unavailableDetail': '时段未知',
   'dashboard.qwen.unsupportedDetail': '账户余额与 Token Plan 额度已接入。模型级额度与消费明细请在千问AI平台/百炼控制台查看。',
 
-  'tooltip.updated': '⇄',
+  'tooltip.updated': '⟳',
   'tooltip.sourceBadge': '来源',
   'tooltip.region.domestic': '国内版',
   'tooltip.region.international': '国际版',
@@ -131,6 +131,7 @@ export const MESSAGES = {
   'tooltip.window.monthly': '每月',
   'tooltip.window.weekly': '每周',
   'tooltip.resetAt': '下次重置',
+  'tooltip.resetsIn': '{duration}后重置',
   'tooltip.expires': '到期',
   'tooltip.expired': '已过期',
   'tooltip.balance': '余额',
