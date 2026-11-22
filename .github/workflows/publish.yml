@@ -22,7 +22,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 22.14.0
           cache: npm
 
       - name: Check the tag matches the manifest version
@@ -48,8 +48,8 @@ jobs:
           path: quota-deck-*.vsix
 
       - name: Publish to the Visual Studio Marketplace
-        # The local devDependency (vsce 3.x) has no --oidc; pin the version that does.
-        # --skip-duplicate keeps a re-run idempotent: if the version is already
+        # Pin the publisher so a devDependency bump cannot silently change the
+        # release path. --skip-duplicate keeps a re-run idempotent: if the version is already
         # published, the desired end state is already reached.
         run: >-
           npx --yes @vscode/vsce@4.1.1 publish

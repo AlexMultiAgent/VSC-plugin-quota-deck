@@ -42,6 +42,28 @@ describe('findHardcodedChinese', () => {
       '正在加载',
     ]);
   });
+
+  it('ignores Chinese inside regular expression literals', () => {
+    const source = "const pattern = /[\"'中文]/g; const status = 'ready';";
+
+    expect(findHardcodedChinese(source, 'sample.ts')).toEqual([]);
+  });
+
+  it('finds Chinese after a template substitution with nested braces', () => {
+    const source = 'const label = `value ${ { key: 1 } } 中文`;';
+
+    expect(findHardcodedChinese(source, 'sample.ts').map((entry) => entry.text)).toEqual([
+      ' 中文',
+    ]);
+  });
+
+  it('does not treat division after an increment as a regular expression', () => {
+    const source = "let x = 1; x++; const y = x / 2; const status = '中文';";
+
+    expect(findHardcodedChinese(source, 'sample.ts').map((entry) => entry.text)).toEqual([
+      '中文',
+    ]);
+  });
 });
 
 describe('scanProductionSources', () => {

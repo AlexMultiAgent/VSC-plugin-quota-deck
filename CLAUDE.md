@@ -9,8 +9,8 @@ completion.
 
 ```bash
 npm run typecheck        # tsc --noEmit
-npm test                 # vitest run
-npm run test:watch       # vitest in watch mode
+npm test                 # vitest run via scripts/run-vitest.mjs
+npm run test:watch       # vitest in watch mode via scripts/run-vitest.mjs
 npm run build            # esbuild → dist/extension.js + dist/webview.js
 npm run watch            # rebuild both bundles on change
 npm run icon             # regenerate media/icon.png from scripts/make-icon.mjs
@@ -49,6 +49,10 @@ Two esbuild bundles, two targets:
 | --- | --- | --- |
 | `src/extension.ts` | `dist/extension.js` | node / cjs, `vscode` marked external |
 | `src/presentation/dashboard/webview/main.ts` | `dist/webview.js` | browser / iife |
+
+The extension bundle targets `node22`; the manifest requires VS Code `^1.101.0` (Electron 35 /
+Node 22.14) and the MCP package requires Node `>=22.14.0`. Raising the floor means updating
+`engines.vscode`, `@types/vscode`, `@types/node` and both esbuild targets together.
 
 The webview script is loaded via `webview.asWebviewUri()` — never a raw `file://` path — and
 `localResourceRoots` must keep `dist` in scope, or the script silently fails to load.
@@ -238,6 +242,17 @@ These are product and security rules, not implementation details — do not trad
 - **The `vscode` module is aliased in tests.** `vitest.config.ts` maps `vscode` →
   `src/test/__mocks__/vscode.ts`, a hand-written mock. If new code touches a VS Code API the mock
   does not implement, add it to the mock — do not import the real module.
+- **Vitest 5 must be launched through `scripts/run-vitest.mjs`.** Vitest resolves its runtime from
+  the process cwd, while the worker loads it through the canonical Windows path. When the cwd uses a
+  lowercase drive letter (`d:\...`, as Git Bash does), Node evaluates the runtime twice and every
+  `describe()` fails with `Cannot read properties of undefined (reading 'config')`. The wrapper
+  launches `node_modules/vitest/vitest.mjs` through `realpathSync.native`; both `npm test` and
+  `npm --prefix mcp test` use it. A direct `npx vitest` reproduces the crash on Windows.
+- **TypeScript 7 has no compiler API entry point.** Its main entry exports only `version`; the
+  compiler API is under `typescript/unstable/*`. `scripts/check-ui-localization.mjs` scans string and
+  template tokens with `createScanner` — note `SyntaxKind.EndOfFileToken` is now
+  `SyntaxKind.EndOfFile`. The root `tsconfig.json` needs `"types": ["node"]` because TypeScript 7 no
+  longer auto-includes Node globals. Do not reintroduce a `typescript` 5.x import in `scripts/`.
 - **Localization is a three-file edit, and no UI text may be hardcoded.** Add the key to
   `src/localization/messages.ts`, then to both `en-us.ts` and `zh-cn.ts`. `MessageBundle =
   Record<MessageKey, string>` makes a missing bundle key a compile error. `quotaDeck.language`
@@ -384,7 +399,8 @@ balance.
 
 Vitest, over `src/**/*.test.ts` and `scripts/**/*.test.ts`, with each test file colocated beside
 the source it covers. Tests never use real credentials and never require a live provider account
-— mock `fetch` and drive providers through fixtures.
+— mock `fetch` and drive providers through fixtures. Run them through `npm test` /
+`npm --prefix mcp test`; both go through `scripts/run-vitest.mjs` (see Gotchas).
 
 `tsconfig.json` is strict plus `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`; index
 access and optional-property assignment both need explicit handling.

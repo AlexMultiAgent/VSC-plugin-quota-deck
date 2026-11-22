@@ -7,6 +7,9 @@
       "ES2022",
       "DOM"
     ],
+    "types": [
+      "node"
+    ],
     "outDir": "out",
     "rootDir": ".",
     "strict": true,

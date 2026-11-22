@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0 — 2026-11-23
+
+- **破坏性变更**：最低支持的 VS Code 版本由 1.95 提升到 1.101（Electron 35 / Node 22.14），扩展 bundle 目标同步改为 `node22`；MCP server 要求 Node `>=22.14.0`。低于该版本的 VS Code 仍在 1.95 上使用旧版扩展，不会自动获得此版本。
+- 工具链升级：TypeScript 5.9 → 7.0（含 MCP 子包）、Vitest 2.1 → 5.1、esbuild 0.24 → 0.28、`@vscode/vsce` 3.9 → 4.1；GitHub Actions 升至 checkout / setup-node / upload-artifact v7。
+- i18n 守卫迁移到 TypeScript 7 的 `typescript/unstable/ast` 扫描器，替换已移除的旧编译器 API；扫描结果与旧实现在全部生产源码上一致，并补充正则字面量、模板嵌套与除法边界的测试。
+- 新增根包 PR CI：每次 PR 运行 typecheck、测试、构建与本地化 / fixture / 打包守卫；`@types/node` 大版本继续固定在 22，避免类型领先于运行时。
+- 修复 Windows 下 Vitest 5 因盘符大小写重复加载运行时、导致所有测试在 `describe()` 失败的问题；`npm test` 与 `npm --prefix mcp test` 改为通过 `scripts/run-vitest.mjs` 启动。
+- 打包守卫收紧：拒绝任意层级的 `node_modules`、Vitest / Vite 缓存、`tmp-*` 与 `output/` 文件进入 VSIX，防止开发临时文件被误打包。
+
 ## 0.3.18 — 2026-11-22
 
 - 维护版本：DeepSeek 忙时/闲时日历扩展至 `2027-12-31`，纳入 2027 年元旦、春节、清明、劳动节、端午、中秋和国庆假期；超出覆盖范围时仍显示“时段未知”。

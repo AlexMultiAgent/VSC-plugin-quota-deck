@@ -59,9 +59,15 @@ const FORBIDDEN = [
   /^scripts\//,
   /^\.remember\//,
   /^\.superpowers\//,
+  /^\.playwright-cli\//,
+  /(^|\/)node_modules\//,
+  /(^|\/)\.vitest-cache\//,
+  /(^|\/)\.vite\//,
+  /^tmp[-.]/,
+  /^vitest\.tmp/,
   /\.map$/,
-  /^node_modules\//,
   /^out\//,
+  /^output\//,
   /^(?:esbuild\.mjs|tsconfig\.json|vitest\.config\.ts|package-lock\.json)$/,
 ];
 for (const entry of shipped) {
