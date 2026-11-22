@@ -122,6 +122,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         renderTooltip(snapshots, [id], t, lastRefreshIso, settings.timeZone, pricing),
       );
       markdown.supportHtml = true;
+      markdown.supportThemeIcons = true;
       markdown.isTrusted = false;
       tooltips.set(id, markdown);
     }

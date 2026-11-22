@@ -127,7 +127,6 @@ export const enUs: MessageBundle = {
   'tooltip.window.monthly': 'Monthly',
   'tooltip.window.weekly': 'Weekly',
   'tooltip.resetAt': 'Next reset',
-  'tooltip.resetsIn': 'Resets in {duration}',
   'tooltip.expires': 'Expires',
   'tooltip.expired': 'Expired',
   'tooltip.balance': 'Balance',

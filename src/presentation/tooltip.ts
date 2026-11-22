@@ -16,7 +16,7 @@ import type {
 } from '../providers/qwen/shape';
 import { pricingState, type PricingState } from '../providers/deepseek/pricing';
 import {
-  formatDuration,
+  formatCompactDuration,
   formatExpiryRemaining,
   formatMoney,
   formatRemainingDays,
@@ -160,20 +160,20 @@ function zonedTime(iso: string, timeZone: string): string {
   return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
 }
 
-function resetCell(
-  resetAt: number | null | undefined,
-  now: number,
-  t: Translator,
-): string {
+/**
+ * The clock glyph is a theme icon: `supportThemeIcons` on the tooltip's
+ * MarkdownString makes VS Code rewrite it into a codicon before rendering.
+ * The countdown itself is deliberately not translated, so both languages read
+ * the same.
+ */
+const RESET_ICON = '$(clock)';
+
+function resetCell(resetAt: number | null | undefined, now: number): string {
   if (resetAt == null) return '<td colspan="2"></td>';
-  const label = t('tooltip.resetsIn').replace(
-    '{duration}',
-    formatDuration(resetAt - now, t),
-  );
   return (
     '<td class="t-muted" colspan="2" align="left" ' +
     'style="white-space:nowrap;">' +
-    `${escapeHtml(label)}</td>`
+    `${RESET_ICON} ${escapeHtml(formatCompactDuration(resetAt - now))}</td>`
   );
 }
 
@@ -202,7 +202,7 @@ function qwenTokenPlanRows(
       rows +=
         `<tr><td>${escapeHtml(label)}</td>` +
         `<td>${bar(remaining)}${quotaValue(`${Math.round(remaining)}%`)}</td>` +
-        `${resetCell(window.resetAt, now, t)}</tr>`;
+        `${resetCell(window.resetAt, now)}</tr>`;
     }
   }
 
@@ -282,7 +282,7 @@ function providerRows(
         rows.push(
           `<tr><td>${escapeHtml(label)}</td>` +
           `<td>${escapeHtml(t('tooltip.unlimited'))}</td>` +
-          `${resetCell(window.resetAt, now, t)}</tr>`,
+          `${resetCell(window.resetAt, now)}</tr>`,
         );
         continue;
       }
@@ -291,7 +291,7 @@ function providerRows(
       rows.push(
         `<tr><td>${escapeHtml(label)}</td>` +
         `<td>${bar(window.remainingPercent)}${quotaValue(`${remaining}%`)}</td>` +
-        `${resetCell(window.resetAt, now, t)}</tr>`,
+        `${resetCell(window.resetAt, now)}</tr>`,
       );
     }
     for (const model of plan.models ?? []) {
@@ -313,7 +313,7 @@ function providerRows(
       rows.push(
         `<tr><td>${escapeHtml(label)}</td>` +
         `<td>${bar(percent)}${quotaValue(`${model.remaining}/${model.total}`)}</td>` +
-        `${resetCell(model.resetAt, now, t)}</tr>`,
+        `${resetCell(model.resetAt, now)}</tr>`,
       );
     }
     const subscription = capabilityValue<MiniMaxSubscription>(snapshot, 'minimax.subscription');

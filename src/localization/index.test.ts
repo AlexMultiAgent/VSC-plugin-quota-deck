@@ -16,9 +16,7 @@ describe('bundles', () => {
     }
   });
 
-  it('carries the countdown wording and the circle-arrow update glyph', () => {
-    expect(zhCn['tooltip.resetsIn']).toBe('{duration}后重置');
-    expect(enUs['tooltip.resetsIn']).toBe('Resets in {duration}');
+  it('carries the circle-arrow update glyph', () => {
     expect(zhCn['tooltip.updated']).toBe('⟳');
     expect(enUs['tooltip.updated']).toBe('⟳');
   });

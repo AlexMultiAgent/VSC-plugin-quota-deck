@@ -131,7 +131,6 @@ export const MESSAGES = {
   'tooltip.window.monthly': '每月',
   'tooltip.window.weekly': '每周',
   'tooltip.resetAt': '下次重置',
-  'tooltip.resetsIn': '{duration}后重置',
   'tooltip.expires': '到期',
   'tooltip.expired': '已过期',
   'tooltip.balance': '余额',

@@ -43,6 +43,21 @@ export function formatRemainingDays(days: number, t: Translator): string {
   return `${t('tooltip.remaining')} ${days}${t('dashboard.duration.day').trim()}`;
 }
 
+/**
+ * Format a span of time compactly and identically in every locale, with at
+ * most two units: `6d22h`, `3h0m`, `45m`. Whole days drop the minutes; hours
+ * keep their minutes so a five-hour window's countdown does not change width.
+ */
+export function formatCompactDuration(milliseconds: number): string {
+  const totalMinutes = Math.floor(Math.max(0, milliseconds) / 60_000);
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days}d${hours}h`;
+  if (hours > 0) return `${hours}h${minutes}m`;
+  return `${minutes}m`;
+}
+
 /** Format a span of time as `4小时26分钟` / `4h 26m`. */
 export function formatDuration(milliseconds: number, t: Translator): string {
   const totalMinutes = Math.floor(Math.max(0, milliseconds) / 60_000);

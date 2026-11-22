@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { translatorFor } from '../localization';
 import {
+  formatCompactDuration,
   formatDateTime,
   formatDuration,
   formatExpiryRemaining,
@@ -100,6 +101,27 @@ describe('formatDateTime', () => {
     expect(
       formatDateTime(Date.parse('2026-11-20T10:00:00.000Z'), 'Asia/Shanghai'),
     ).toBe('2026-11-20 18:00');
+  });
+});
+
+describe('formatCompactDuration', () => {
+  it('keeps the minutes under a day, even at zero', () => {
+    expect(formatCompactDuration(180 * 60_000)).toBe('3h0m');
+    expect(formatCompactDuration(210 * 60_000)).toBe('3h30m');
+  });
+
+  it('renders days and hours for a span of a day or more', () => {
+    expect(formatCompactDuration((6 * 24 + 22) * 3_600_000)).toBe('6d22h');
+    expect(formatCompactDuration(24 * 3_600_000)).toBe('1d0h');
+    expect(formatCompactDuration((24 + 1) * 3_600_000 + 30 * 60_000)).toBe('1d1h');
+  });
+
+  it('drops the hour below the first hour', () => {
+    expect(formatCompactDuration(45 * 60_000)).toBe('45m');
+  });
+
+  it('clamps a span that has already passed to zero', () => {
+    expect(formatCompactDuration(-1)).toBe('0m');
   });
 });
 

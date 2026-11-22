@@ -320,7 +320,7 @@ describe('renderTooltip', () => {
       now,
     );
 
-    expect(html).toContain('>3小时30分钟后重置</td>');
+    expect(html).toContain('>$(clock) 3h30m</td>');
   });
 
   it('localizes MiniMax regions, windows, reset countdowns, and the configured time zone', () => {
@@ -363,8 +363,8 @@ describe('renderTooltip', () => {
     expect(html).toContain('国内版');
     expect(html).toContain('5 小时');
     expect(html).toContain('每周');
-    expect(html).toContain('>30分钟后重置</td>');
-    expect(html).toContain('>4小时30分钟后重置</td>');
+    expect(html).toContain('>$(clock) 30m</td>');
+    expect(html).toContain('>$(clock) 4h30m</td>');
     expect(html).not.toContain('↻');
     expect(html).not.toContain('11-16 12:00');
     expect(html).not.toContain('11-16 16:00');
@@ -428,7 +428,7 @@ describe('renderTooltip', () => {
     expect(html).not.toContain('<strong style="display:inline-block;vertical-align:middle;');
   });
 
-  it('labels the reset countdown in English', () => {
+  it('renders the same compact countdown in every locale', () => {
     const now = Date.parse('2026-11-16T03:30:00.000Z');
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {
@@ -447,18 +447,22 @@ describe('renderTooltip', () => {
       }),
     };
 
-    const html = renderTooltip(
-      snapshots,
-      ['minimax-cn'],
-      t,
-      undefined,
-      'Asia/Shanghai',
-      undefined,
-      now,
-    );
+    const render = (translator: typeof t): string =>
+      renderTooltip(
+        snapshots,
+        ['minimax-cn'],
+        translator,
+        undefined,
+        'Asia/Shanghai',
+        undefined,
+        now,
+      );
 
-    expect(html).toContain('>Resets in 30m</td>');
-    expect(html).not.toContain('↻');
+    expect(render(t)).toContain('>$(clock) 30m</td>');
+    expect(render(zh)).toContain('>$(clock) 30m</td>');
+    expect(render(t)).not.toContain('Resets in');
+    expect(render(zh)).not.toContain('后重置');
+    expect(render(t)).not.toContain('↻');
   });
 
   it('left-aligns the reset cell so the countdowns line up', () => {
@@ -494,40 +498,6 @@ describe('renderTooltip', () => {
 
     expect(html).toContain('<td class="t-muted" colspan="2" align="left"');
     expect(html).not.toContain('text-align:right');
-  });
-
-  it('never leaks the duration placeholder into the tooltip', () => {
-    const now = Date.parse('2026-11-16T03:30:00.000Z');
-    const snapshots = {
-      'minimax-cn': makeSnapshot('minimax-cn', {
-        'minimax.plan': {
-          kind: 'ok',
-          fetchedAt: 'x',
-          data: {
-            windows: [
-              {
-                window: 'fiveHour',
-                remainingPercent: 35,
-                resetAt: Date.parse('2026-11-16T04:00:00.000Z'),
-                unlimited: false,
-              },
-            ],
-          },
-        },
-      }),
-    };
-
-    const html = renderTooltip(
-      snapshots,
-      ['minimax-cn'],
-      zh,
-      undefined,
-      'Asia/Shanghai',
-      undefined,
-      now,
-    );
-
-    expect(html).not.toContain('{duration}');
   });
 
   it('escapes provider-controlled strings', () => {
@@ -1090,7 +1060,7 @@ describe('renderTooltip', () => {
     expect(html).toContain('<tr><td colspan="4">Token Plan</td></tr>');
     expect(html).toContain('Monthly');
     expect(html).toContain('38%');
-    expect(html).toContain('>Resets in 8d</td>');
+    expect(html).toContain('>$(clock) 8d0h</td>');
     expect(html).toContain('>Plan<');
     expect(html).toContain('pro');
     expect(html).toContain('Expires');
