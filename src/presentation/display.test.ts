@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { translatorFor } from '../localization';
 import {
   formatDateTime,
+  formatDuration,
   formatExpiryRemaining,
   formatMoney,
   formatRemainingDays,
@@ -99,5 +100,28 @@ describe('formatDateTime', () => {
     expect(
       formatDateTime(Date.parse('2026-11-20T10:00:00.000Z'), 'Asia/Shanghai'),
     ).toBe('2026-11-20 18:00');
+  });
+});
+
+describe('formatDuration', () => {
+  it('renders hours and minutes in Chinese', () => {
+    expect(formatDuration(210 * 60_000, zh)).toBe('3小时30分钟');
+  });
+
+  it('renders hours and minutes in English', () => {
+    expect(formatDuration(210 * 60_000, en)).toBe('3h 30m');
+  });
+
+  it('renders days and hours in Chinese', () => {
+    expect(formatDuration((6 * 24 + 23) * 3_600_000, zh)).toBe('6天23小时');
+  });
+
+  it('renders days and hours in English', () => {
+    expect(formatDuration((6 * 24 + 23) * 3_600_000, en)).toBe('6d 23h');
+  });
+
+  it('clamps a span that has already passed to zero', () => {
+    expect(formatDuration(-1, zh)).toBe('0分钟');
+    expect(formatDuration(-1, en)).toBe('0m');
   });
 });

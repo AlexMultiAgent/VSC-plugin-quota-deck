@@ -43,6 +43,20 @@ export function formatRemainingDays(days: number, t: Translator): string {
   return `${t('tooltip.remaining')} ${days}${t('dashboard.duration.day').trim()}`;
 }
 
+/** Format a span of time as `4小时26分钟` / `4h 26m`. */
+export function formatDuration(milliseconds: number, t: Translator): string {
+  const totalMinutes = Math.floor(Math.max(0, milliseconds) / 60_000);
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}${t('dashboard.duration.day')}`);
+  if (hours > 0) parts.push(`${hours}${t('dashboard.duration.hour')}`);
+  if (minutes > 0) parts.push(`${minutes}${t('dashboard.duration.minute')}`);
+  if (parts.length === 0) parts.push(`0${t('dashboard.duration.minute')}`);
+  return parts.join('').trim();
+}
+
 /**
  * Whole days left before `expiresAt`, rounded up so a partial day still
  * counts. An expiry in the past renders the localized "expired" label.
