@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as vscode from 'vscode';
 import { __reset, SecretStorage, state } from '../test/__mocks__/vscode';
 import { SecretStore } from '../core/secrets';
@@ -65,6 +65,7 @@ function httpFor(poll: JsonResult): HttpClient {
 
 describe('loginQwen', () => {
   beforeEach(() => __reset());
+  afterEach(() => vi.restoreAllMocks());
 
   it('opens the verification URL, polls, and stores the management token', async () => {
     const store = new SecretStore(SecretStorage);
@@ -80,6 +81,21 @@ describe('loginQwen', () => {
     });
     expect(state.output.join(' ')).not.toContain('access-token');
   });
+
+  it('returns as soon as the token is stored instead of waiting for the notification to close', async () => {
+    // VS Code resolves a message promise only when the notification is
+    // dismissed. A pending notification must not hold back the caller's
+    // reconnect and refresh, or the provider keeps the expired token.
+    const pending = new Promise<never>(() => undefined);
+    const show = vi.spyOn(vscode.window, 'showInformationMessage').mockReturnValue(pending);
+
+    const store = new SecretStore(SecretStorage);
+    const ok = await loginQwen(store, context(), t, httpFor(completeResponse()), AUTH);
+
+    expect(ok).toBe(true);
+    expect(show).toHaveBeenCalledWith('Signed in to Qianwen AI.');
+    expect(state.secrets.has('quotaDeck.qwen.managementToken')).toBe(true);
+  }, 1_000);
 
   it('reports an expired device flow without storing a token', async () => {
     const store = new SecretStore(SecretStorage);

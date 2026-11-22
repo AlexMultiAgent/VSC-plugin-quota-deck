@@ -59,7 +59,11 @@ export async function loginQwen(
         await store.delete('qwen', 'access-key-secret');
       },
     );
-    await vscode.window.showInformationMessage(t('credentials.qwen.loginSuccess'));
+    // Do not await either message. VS Code resolves the promise only when the
+    // notification is dismissed, and awaiting it would delay the caller's
+    // reconnect and refresh until the user closes the notification — leaving
+    // the provider on the old, expired token meanwhile.
+    void vscode.window.showInformationMessage(t('credentials.qwen.loginSuccess'));
     return true;
   } catch (error) {
     const message =
@@ -67,7 +71,7 @@ export async function loginQwen(
       (error.code === 'expired_token' || error.code === 'access_denied')
         ? t('credentials.qwen.loginExpired')
         : t('credentials.qwen.loginFailed');
-    await vscode.window.showErrorMessage(message);
+    void vscode.window.showErrorMessage(message);
     return false;
   }
 }
