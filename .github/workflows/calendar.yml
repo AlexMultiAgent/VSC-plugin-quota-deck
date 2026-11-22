@@ -1,0 +1,44 @@
+name: Pricing calendar
+
+on:
+  schedule:
+    # 01:00 UTC on the 1st, while there is still a month of lead time before
+    # the release gate's hard 30-day stop.
+    - cron: '0 1 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the DeepSeek pricing calendar
+        id: calendar
+        run: node scripts/check-calendar.mjs
+        continue-on-error: true
+
+      - name: Open or update the maintenance issue
+        if: steps.calendar.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          days=$(node -p "Math.floor((Date.parse(require('./src/providers/deepseek/pricing-calendar.json').coverageEnd)-Date.now())/86400000)")
+          end=$(node -p "require('./src/providers/deepseek/pricing-calendar.json').coverageEnd")
+          {
+            echo "The DeepSeek pricing calendar covers only **${days}** more days (coverageEnd: \`${end}\`)."
+            echo
+            echo "Extend \`coverageEnd\` and add the next year's official holidays in"
+            echo "\`src/providers/deepseek/pricing-calendar.json\`, update the README coverage note,"
+            echo "then run \`npm run package\`. The release gate fails when fewer than 30 days remain."
+          } > /tmp/calendar-body.md
+          existing=$(gh issue list --state open --search "DeepSeek pricing calendar in:title" --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file /tmp/calendar-body.md
+          else
+            gh issue create --title "DeepSeek pricing calendar expires in ${days} days" --body-file /tmp/calendar-body.md
+          fi
