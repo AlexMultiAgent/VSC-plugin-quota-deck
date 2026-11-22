@@ -44,7 +44,7 @@ describe('buildOverviewItems', () => {
     expect(items[0]?.id).toBe('provider:minimax-cn');
     expect(items[0]?.description).toBe('每周 22%');
     expect(items[0]?.stateLabel).toBe('正常');
-    expect(items[0]?.tooltip).toContain('⇄ 2026-11-18 18:43');
+    expect(items[0]?.tooltip).toContain('⟳ 2026-11-18 18:43');
     expect(items[0]?.action?.kind).toBe('openDashboard');
     expect(items[0]?.children.map((item) => item.label)).toEqual([
       '5 小时', '每周', '视频', '到期',
