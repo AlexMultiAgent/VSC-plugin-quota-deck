@@ -149,7 +149,7 @@ function segmentTone(
     : quotaTone(window.remainingPercent, warningThresholdPercent);
 }
 
-function visibleProviderIds(
+export function visibleProviderIds(
   order: ProviderId[],
   mode: 'all' | 'focused',
   primary: ProviderId,
@@ -319,7 +319,8 @@ const STATUS_BAR_PRIORITY = 100;
 export class StatusBarPresenter {
   private readonly items: vscode.StatusBarItem[] = [];
   private t: Translator;
-  private tooltip: vscode.MarkdownString | string | undefined;
+  private tooltips: ReadonlyMap<ProviderId, vscode.MarkdownString> = new Map();
+  private segmentIds: ProviderId[] = [];
   private command = 'quotaDeck.openDashboard';
 
   constructor(t: Translator) {
@@ -331,6 +332,15 @@ export class StatusBarPresenter {
     this.t = t;
   }
 
+  /** The tooltip of the provider currently occupying the item at `index`. */
+  private tooltipFor(index: number): vscode.MarkdownString | string {
+    const id = this.segmentIds[index];
+    return (
+      (id === undefined ? undefined : this.tooltips.get(id)) ??
+      this.t('statusBar.tooltip.header')
+    );
+  }
+
   private itemAt(index: number): vscode.StatusBarItem {
     while (this.items.length <= index) {
       const item = vscode.window.createStatusBarItem(
@@ -338,13 +348,17 @@ export class StatusBarPresenter {
         STATUS_BAR_PRIORITY - this.items.length,
       );
       item.command = this.command;
-      if (this.tooltip !== undefined) item.tooltip = this.tooltip;
       this.items.push(item);
     }
     return this.items[index]!;
   }
 
-  private apply(item: vscode.StatusBarItem, text: string, tone: QuotaTone): void {
+  private apply(
+    item: vscode.StatusBarItem,
+    text: string,
+    tone: QuotaTone,
+    index: number,
+  ): void {
     item.text = text;
     item.backgroundColor =
       tone === 'critical'
@@ -356,7 +370,7 @@ export class StatusBarPresenter {
         : tone === 'warning'
           ? new vscode.ThemeColor('charts.orange')
           : new vscode.ThemeColor('charts.green');
-    item.tooltip = this.tooltip ?? this.t('statusBar.tooltip.header');
+    item.tooltip = this.tooltipFor(index);
     item.command = this.command;
     item.show();
   }
@@ -385,25 +399,29 @@ export class StatusBarPresenter {
       pricing,
     );
     if (segments.length === 0) {
-      this.apply(this.itemAt(0), `$(pulse) ${this.t('statusBar.noData')}`, 'positive');
+      this.segmentIds = [];
+      this.apply(this.itemAt(0), `$(pulse) ${this.t('statusBar.noData')}`, 'positive', 0);
       this.hideFrom(1);
       return;
     }
 
     const kept = segments.slice(0, MAX_STATUS_BAR_SEGMENTS);
     const dropped = segments.length - kept.length;
+    this.segmentIds = kept.map((segment) => segment.id);
     kept.forEach((segment, index) => {
       let text = segment.text;
       if (index === 0) text = `$(pulse) ${text}`;
       if (dropped > 0 && index === kept.length - 1) text = `${text} +${dropped}`;
-      this.apply(this.itemAt(index), text, segment.tone);
+      this.apply(this.itemAt(index), text, segment.tone, index);
     });
     this.hideFrom(kept.length);
   }
 
-  setTooltip(markdown: vscode.MarkdownString): void {
-    this.tooltip = markdown;
-    for (const item of this.items) item.tooltip = markdown;
+  setTooltips(tooltips: ReadonlyMap<ProviderId, vscode.MarkdownString>): void {
+    this.tooltips = tooltips;
+    this.items.forEach((item, index) => {
+      item.tooltip = this.tooltipFor(index);
+    });
   }
 
   setCommand(command: string): void {

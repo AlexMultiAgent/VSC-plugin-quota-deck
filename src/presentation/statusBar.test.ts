@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as vscode from 'vscode';
 import { __reset, state } from '../test/__mocks__/vscode';
+import type { ProviderId } from '../core/types';
 import { translatorFor } from '../localization';
 import { makeSnapshot } from '../test/helpers/snapshot';
 import { formatBalance, renderStatusBarText, StatusBarPresenter } from './statusBar';
@@ -541,7 +542,7 @@ describe('StatusBarPresenter', () => {
     const presenter = new StatusBarPresenter(t);
     presenter.update({}, ['minimax-cn'], 'all', 'minimax-cn');
     const markdown = new vscode.MarkdownString('<div>hello</div>');
-    presenter.setTooltip(markdown);
+    presenter.setTooltips(new Map<ProviderId, vscode.MarkdownString>([['minimax-cn', markdown]]));
     const tooltip = state.statusBarItems[0]!.tooltip as { value: string };
     expect(tooltip.value).toContain('hello');
     presenter.dispose();
@@ -824,7 +825,7 @@ describe('StatusBarPresenter', () => {
     presenter.dispose();
   });
 
-  it('carries the tooltip and command on every segment', () => {
+  it('carries the provider tooltip and command on every segment', () => {
     const presenter = new StatusBarPresenter(t);
     presenter.update(
       {},
@@ -834,12 +835,22 @@ describe('StatusBarPresenter', () => {
       20,
       { 'minimax-cn': true, deepseek: true, qwen: true },
     );
-    const markdown = new vscode.MarkdownString('<div>hello</div>');
-    presenter.setTooltip(markdown);
+    presenter.setTooltips(
+      new Map<ProviderId, vscode.MarkdownString>([
+        ['minimax-cn', new vscode.MarkdownString('<div>mm card</div>')],
+        ['deepseek', new vscode.MarkdownString('<div>ds card</div>')],
+        ['qwen', new vscode.MarkdownString('<div>qw card</div>')],
+      ]),
+    );
     presenter.setCommand('quotaDeck.configureMiniMax');
 
+    const tooltips = state.statusBarItems.map(
+      (item) => (item.tooltip as { value: string }).value,
+    );
+    expect(tooltips[0]).toContain('mm card');
+    expect(tooltips[1]).toContain('ds card');
+    expect(tooltips[2]).toContain('qw card');
     for (const item of state.statusBarItems) {
-      expect((item.tooltip as { value: string }).value).toContain('hello');
       expect(item.command).toBe('quotaDeck.configureMiniMax');
     }
     presenter.dispose();

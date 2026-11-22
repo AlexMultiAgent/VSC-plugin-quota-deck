@@ -29,7 +29,7 @@ import { buildOverviewItems } from './presentation/overview/model';
 import { QuotaOverviewProvider } from './presentation/overview/provider';
 import { loginQwen } from './presentation/qwenLogin';
 import { buildFallbackItems } from './presentation/quickPickFallback';
-import { StatusBarPresenter } from './presentation/statusBar';
+import { StatusBarPresenter, visibleProviderIds } from './presentation/statusBar';
 import { buildSwitcherItems } from './presentation/switcher';
 import { buildTimeZoneItems } from './presentation/timeZonePicker';
 import { renderTooltip } from './presentation/tooltip';
@@ -104,19 +104,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   function refreshTooltip(pricing: PricingState = pricingState(Date.now())): void {
-    const markdown = new vscode.MarkdownString(
-      renderTooltip(
-        coordinator.getLast(),
-        settings.providerOrder,
-        t,
-        lastRefreshIso,
-        settings.timeZone,
-        pricing,
-      ),
-    );
-    markdown.supportHtml = true;
-    markdown.isTrusted = false;
-    statusBar.setTooltip(markdown);
+    const snapshots = coordinator.getLast();
+    const tooltips = new Map<ProviderId, vscode.MarkdownString>();
+    for (const id of visibleProviderIds(
+      settings.providerOrder,
+      settings.statusBarMode,
+      settings.primaryProvider,
+      configuredProviders(),
+    )) {
+      const markdown = new vscode.MarkdownString(
+        renderTooltip(snapshots, [id], t, lastRefreshIso, settings.timeZone, pricing),
+      );
+      markdown.supportHtml = true;
+      markdown.isTrusted = false;
+      tooltips.set(id, markdown);
+    }
+    statusBar.setTooltips(tooltips);
   }
 
   function updateOverview(
