@@ -242,6 +242,13 @@ These are product and security rules, not implementation details — do not trad
   handler, its confirmation dialog and its tests, but was absent from `contributes.commands` and
   invoked by no surface, so no user could reach it. A command the user should reach needs both a
   manifest entry and a call site.
+- **`showInformationMessage` / `showErrorMessage` resolve when the notification is dismissed, not
+  when it is shown.** The toast auto-hiding after a few seconds does not resolve them; only
+  `onDidClose` does, so awaiting one before state-changing work can stall that work until the user
+  clears the notification — possibly forever. `loginQwen` once awaited the success message before
+  `extension.ts` reconnected the provider and refreshed, so a successful Qianwen sign-in stored the
+  new token but left every surface on the old, expired one until the notification was dismissed.
+  Fire-and-forget these messages (`void vscode.window.showInformationMessage(...)`).
 - **The design spec gates the deferred capabilities.** `docs/superpowers/specs/2026-11-16-quota-deck-cn-design.md`
   §4.5 gates `minimax.points`, the DeepSeek usage capabilities, the dashboard charts and the Qwen
   model capabilities behind questions about the *provider*, not about effort. Each gate needs a
