@@ -1,5 +1,11 @@
 # QuotaDeck CN Tooltip Reset Countdown
 
+> **Revision (2026-11-23, v0.4.2):** the wording in §4, §5 and §9, and acceptance criterion 1, are
+> superseded. The reset cell now shows a `$(clock)` theme icon followed by a compact,
+> locale-independent duration (`3h0m`, `6d22h`) and `tooltip.resetsIn` is removed; both languages
+> read the same. The alignment (§6.1), countdown semantics (§7.5), freshness (§8) and scope (§3)
+> decisions still hold.
+
 ## 1. Context
 
 The status bar hover tooltip is the extension's most-read surface. Every MiniMax quota row and
