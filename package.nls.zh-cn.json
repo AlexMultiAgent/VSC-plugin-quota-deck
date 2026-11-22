@@ -31,6 +31,6 @@
   "config.primaryProvider.deepseek": "DeepSeek 账户余额。",
   "config.primaryProvider.qwen": "Qwen / 百炼的阿里云账户余额。",
   "config.providerOrder.description": "决定状态栏、悬浮详情、Activity Bar 概览和仪表盘显示哪些服务商以及显示顺序。未知项与重复项会被忽略；清空后回退为默认顺序。MiniMax 国内版与国际版在状态栏共用一个位置。",
-  "config.warningThresholdPercent.description": "剩余额度低于该百分比时显示橙色警告，5% 及以下始终显示红色严重警告，高于阈值则保持绿色。支持 11 到 99。适用于插件展示的每一个百分比：MiniMax 的 5 小时与每周窗口，以及 Qwen Token Plan 的月度/每周窗口。DeepSeek 余额与 Qwen 账户余额展示的是金额而非百分比，因此不适用此阈值。",
+  "config.warningThresholdPercent.description": "剩余额度低于该百分比时显示橙色警告，5% 及以下始终显示红色严重警告，高于阈值则保持绿色。颜色只作用于对应服务商自己的状态栏片段，不会把旁边的服务商一起染色。支持 11 到 99。适用于插件展示的每一个百分比：MiniMax 的 5 小时与每周窗口，以及 Qwen Token Plan 的月度/每周窗口。DeepSeek 余额与 Qwen 账户余额展示的是金额而非百分比，因此不适用此阈值。",
   "config.timeZone.description": "用于仪表盘与 Activity Bar 的日期时间、重置倒计时，以及 MiniMax 历史用量的日/月边界。`auto` 跟随操作系统时区；也可执行`QuotaDeck CN: 选择时区`命令，从可搜索的 IANA 时区列表中挑选（每项带 UTC 偏移与当地时刻），或在此直接填写时区名。它不会改变服务商返回的重置时刻，也不会改变 DeepSeek 固定的高峰时段规则。"
 }
