@@ -8,6 +8,7 @@
 
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=alexmultiagent.quota-deck)
 [![GitHub Releases](https://img.shields.io/github/v/release/AlexMultiAgent/VSC-plugin-quota-deck?logo=github)](https://github.com/AlexMultiAgent/VSC-plugin-quota-deck/releases)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/AlexMultiAgent/VSC-plugin-quota-deck/badge)](https://api.scorecard.dev/projects/github.com/AlexMultiAgent/VSC-plugin-quota-deck)
 
 ## 预览
 
