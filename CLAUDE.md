@@ -44,6 +44,12 @@ version is visible: the public listing lags the publish by several minutes while
 validates the VSIX. Verify with `npx --yes @vscode/vsce@4.1.1 show alexmultiagent.quota-deck` (or the
 gallery `extensionquery` API) before announcing the release.
 
+`git push` over HTTPS fails on this machine: `github.com:443` is blocked (`Failed to connect to
+github.com:443 after ~20s`), while `ssh.github.com:443` and `api.github.com` work. Push over SSH:
+`git push ssh://git@ssh.github.com:443/AlexMultiAgent/VSC-plugin-quota-deck.git main` and the same
+for `refs/tags/vX.Y.Z`. `gh` talks to `api.github.com`, so `gh run list --workflow=publish.yml` and
+`gh run watch <id> --exit-status` work and are how to confirm the publish job succeeded.
+
 ## Architecture
 
 Two esbuild bundles, two targets:
@@ -156,6 +162,13 @@ longer trusts — `withoutRetiredCapabilities()` for retired DeepSeek and MiniMa
 `withoutLegacyMiniMaxPlan()` for a plan cached under the old count rule — so a parsing change needs
 its own rule there, or a stale number reaches the UI before the first refresh replaces it.
 
+A flag derived from *other* fields needs no cache rule at all: derive it when the snapshot is
+**read**, not only when it is parsed, so a snapshot cached before the flag existed still reads
+correctly when the cache is painted at startup. `withAvailability()` in
+`src/providers/minimax/shape.ts` is the pattern. Snapshot data is also partial at runtime —
+hand-built test data and old caches omit fields the type declares — so a reader must tolerate a
+missing field instead of trusting the type.
+
 `src/providers/shape.ts` holds the vendor-neutral parsing primitives. Use `requireNumber` when the
 provider must have supplied a number (a missing one is contract drift and throws) and
 `numberOrNull` when the provider may legitimately omit it. Never substitute `0` for a missing
@@ -171,6 +184,11 @@ the status bar, the dashboard and the Activity Bar tree — the `warning` line f
 stage: the old 50 % yellow `caution` band was neither configurable nor described by the setting,
 so a window at 45 % read as a warning nobody could tune away. The threshold applies to every
 percentage the extension shows, including the Qwen Token Plan windows.
+
+An empty window is labelled rather than shown as a bare 0 % (`已用尽` / `Exhausted`), and a window
+that another exhausted window holds back keeps its own number and gains a marker
+(`受每周额度限制` / `Blocked by weekly quota`). The decision lives in one shared helper,
+`quotaStateText()` in `src/presentation/display.ts`, not in each surface.
 
 `src/core/capability.ts` reads capability data in a typed way. Presentation code imports the
 provider's exported types and reads through `capabilityValue`, never a hand-written `as` cast.
