@@ -7,20 +7,25 @@ on:
     tags:
       - 'v[0-9]*'
 
+# The workflow-level block stays read-only. The publish job is the only job,
+# and it needs the two write permissions, so they are declared on the job --
+# a workflow-level `write` grants that scope to every job in the file.
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Create the GitHub Release and upload the VSIX to it.
+      id-token: write  # Mint the OIDC token for Marketplace Trusted Publishing.
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           # release-gate resolves the `v<version>` tag with git, so fetch tags.
           fetch-depth: 0
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: 22.14.0
           cache: npm
@@ -42,7 +47,7 @@ jobs:
       - name: Build and verify the VSIX
         run: npm run package
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: quota-deck-${{ github.ref_name }}
           path: quota-deck-*.vsix
