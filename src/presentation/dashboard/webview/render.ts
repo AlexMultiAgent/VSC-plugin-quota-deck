@@ -62,6 +62,9 @@ export function renderDashboard(
 ): void {
   container.replaceChildren();
   const actions = element('div', 'action-row');
+  if (model.lastUpdated !== null) {
+    actions.appendChild(element('span', 'action-updated', model.lastUpdated));
+  }
   const refresh = element('button', 'action-button', model.labels.refreshNow);
   refresh.type = 'button';
   refresh.addEventListener('click', () => options.onRefresh());

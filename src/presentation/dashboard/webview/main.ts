@@ -13,8 +13,29 @@ const vscode = acquireVsCodeApi();
 const app = document.getElementById('app');
 let current: DashboardModel | undefined;
 let retryTimer: ReturnType<typeof setTimeout> | undefined;
+let loadingTimer: ReturnType<typeof setTimeout> | undefined;
 type StatusKind = 'loading' | 'reloading' | 'failed';
 let statusKind: StatusKind | undefined = 'loading';
+
+/** Keep a dead host from leaving the dashboard dimmed forever. */
+const LOADING_TIMEOUT_MS = 30_000;
+
+function beginLoading(): void {
+  document.body.dataset.loading = 'true';
+  if (loadingTimer !== undefined) clearTimeout(loadingTimer);
+  loadingTimer = setTimeout(() => {
+    loadingTimer = undefined;
+    document.body.dataset.loading = 'false';
+  }, LOADING_TIMEOUT_MS);
+}
+
+function endLoading(): void {
+  if (loadingTimer !== undefined) {
+    clearTimeout(loadingTimer);
+    loadingTimer = undefined;
+  }
+  document.body.dataset.loading = 'false';
+}
 
 const fallbackLocalization: DashboardLocalization = {
   language: 'en-US',
@@ -94,17 +115,18 @@ function scheduleInitialRetry(): void {
 function draw(): void {
   if (!app || !current) return;
   if (retryTimer !== undefined) clearTimeout(retryTimer);
-  document.body.dataset.loading = 'false';
+  endLoading();
   statusKind = undefined;
   renderDashboard(app, current, {
     onRangeChange: (range) => {
-      document.body.dataset.loading = 'true';
+      beginLoading();
       vscode.postMessage({ kind: 'setRange', range });
     },
     onConfigure: () => {
       vscode.postMessage({ kind: 'configure' });
     },
     onRefresh: () => {
+      beginLoading();
       vscode.postMessage({ kind: 'refresh' });
     },
   });

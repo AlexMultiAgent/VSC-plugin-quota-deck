@@ -35,10 +35,14 @@ export class Scheduler {
     if (this.refresh !== undefined) this.start(this.refresh);
   }
 
-  async refreshNow(): Promise<void> {
+  /**
+   * Run a manual refresh. `force` skips the burst debounce for an explicit
+   * dashboard click, where a silently dropped press looks like a broken button.
+   */
+  async refreshNow(force = false): Promise<void> {
     if (this.manualInFlight !== undefined) return this.manualInFlight;
     const debounce = this.options.manualDebounceMs ?? 2_000;
-    if (Date.now() - this.lastManualAt < debounce) return;
+    if (!force && Date.now() - this.lastManualAt < debounce) return;
     this.lastManualAt = Date.now();
     this.manualInFlight = this.run().finally(() => {
       this.manualInFlight = undefined;

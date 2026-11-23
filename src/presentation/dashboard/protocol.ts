@@ -126,6 +126,7 @@ function isDashboardModel(value: unknown): value is DashboardModel {
       'rangeLabel',
       'ranges',
       'labels',
+      'lastUpdated',
     ])
   ) {
     return false;
@@ -205,6 +206,7 @@ function isDashboardModel(value: unknown): value is DashboardModel {
     isRangeId(value.range) &&
     typeof value.rangeLabel === 'string' &&
     isRangeOptions(value.ranges) &&
+    isStringOrNull(value.lastUpdated) &&
     isLabels(value.labels)
   );
 }

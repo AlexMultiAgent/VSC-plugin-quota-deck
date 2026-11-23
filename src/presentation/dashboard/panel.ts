@@ -5,7 +5,7 @@ import type { RangeId } from '../../core/time';
 import type { DashboardModel } from './viewModel';
 import type { DashboardLocalization } from './locale';
 
-const VIEW_TYPE = 'quotaDeck.dashboard';
+export const DASHBOARD_VIEW_TYPE = 'quotaDeck.dashboard';
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => {
@@ -41,8 +41,8 @@ export class DashboardPanel {
       this.panel.reveal();
       return;
     }
-    this.panel = vscode.window.createWebviewPanel(
-      VIEW_TYPE,
+    const panel = vscode.window.createWebviewPanel(
+      DASHBOARD_VIEW_TYPE,
       this.localization.title,
       vscode.ViewColumn.Active,
       {
@@ -54,8 +54,31 @@ export class DashboardPanel {
         ],
       },
     );
+    this.attach(panel);
+    panel.webview.html = this.html();
+  }
 
-    this.panel.webview.onDidReceiveMessage((message: unknown) => {
+  /**
+   * Reattach a panel VS Code restored after a window reload. Without this the
+   * restored tab keeps its old DOM but has no host listener, so its buttons and
+   * refresh messages go nowhere while the rest of the extension stays current.
+   */
+  restore(panel: vscode.WebviewPanel): void {
+    panel.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [
+        vscode.Uri.joinPath(this.extensionUri, 'media'),
+        vscode.Uri.joinPath(this.extensionUri, 'dist'),
+      ],
+    };
+    this.attach(panel);
+    panel.title = this.localization.title;
+    panel.webview.html = this.html();
+  }
+
+  private attach(panel: vscode.WebviewPanel): void {
+    this.panel = panel;
+    panel.webview.onDidReceiveMessage((message: unknown) => {
       if (!isWebviewMessage(message)) return;
       if (message.kind === 'ready') {
         void this.bootstrap();
@@ -74,11 +97,9 @@ export class DashboardPanel {
         this.onRefresh();
       }
     });
-    this.panel.onDidDispose(() => {
-      this.panel = undefined;
+    panel.onDidDispose(() => {
+      if (this.panel === panel) this.panel = undefined;
     });
-
-    this.panel.webview.html = this.html();
   }
 
   update(model: DashboardModel): void {
@@ -157,6 +178,8 @@ body[data-loading="true"] #app { opacity: 0.55; transition: opacity 120ms ease-o
 .hero-source { color: var(--vscode-foreground); font-size: 13px; font-weight: 600; margin-top: 4px; }
 .hero-section { border: 1px solid var(--vscode-panel-border); border-radius: 8px; margin-bottom: 16px; padding: 16px 18px; }
 .action-row { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 12px; }
+.action-updated { align-self: center; color: var(--vscode-descriptionForeground); font-size: 12px; margin-right: auto; }
+body[data-loading="true"] .action-button { opacity: 0.6; pointer-events: none; }
 .action-button { background: var(--vscode-button-background); border: 1px solid var(--vscode-button-border, transparent); border-radius: 4px; color: var(--vscode-button-foreground); cursor: pointer; font: inherit; padding: 5px 12px; }
 .action-button:hover { background: var(--vscode-button-hoverBackground); }
 .action-button:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: 2px; }

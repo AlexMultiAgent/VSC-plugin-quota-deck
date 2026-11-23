@@ -20,6 +20,7 @@ function emptyModel(): DashboardModel {
       historyUsage: 'Historical usage',
       liveQuotaNote: 'The range affects only MiniMax Token history.',
     },
+    lastUpdated: null,
   };
 }
 
@@ -59,6 +60,23 @@ describe('host messages', () => {
       hero: { label: 'Lowest remaining quota', value: '20%', sourceLabel: 'MiniMax CN · Weekly' },
     };
     expect(isHostMessage({ kind: 'state', model, range: 'last7' })).toBe(true);
+  });
+
+  it('accepts a last-updated label and rejects a non-string one', () => {
+    expect(
+      isHostMessage({
+        kind: 'state',
+        model: { ...emptyModel(), lastUpdated: 'Updated 2026-11-23 08:12' },
+        range: 'last7',
+      }),
+    ).toBe(true);
+    expect(
+      isHostMessage({
+        kind: 'state',
+        model: { ...emptyModel(), lastUpdated: 42 },
+        range: 'last7',
+      }),
+    ).toBe(false);
   });
 
   it('rejects an unknown kind', () => {

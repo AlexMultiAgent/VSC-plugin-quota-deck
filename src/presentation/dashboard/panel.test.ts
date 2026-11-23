@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { __reset, state, Uri } from '../../test/__mocks__/vscode';
+import { __reset, state, Uri, ViewColumn, window as mockWindow } from '../../test/__mocks__/vscode';
 import { translatorFor } from '../../localization';
 import { buildDashboardModel } from './viewModel';
 import { DashboardPanel } from './panel';
@@ -152,5 +152,22 @@ describe('DashboardPanel', () => {
     state.webviewPanels[0]!.dispose();
     panel.show();
     expect(state.webviewPanels).toHaveLength(2);
+  });
+
+  it('reattaches a restored panel so its messages reach the host again', async () => {
+    const panel = new DashboardPanel(Uri.file('/ext'), englishLocalization, () => undefined);
+    const restored = mockWindow.createWebviewPanel(
+      'quotaDeck.dashboard',
+      'QuotaDeck CN',
+      ViewColumn.Active,
+      {},
+    );
+    panel.restore(restored as never);
+
+    expect(restored.title).toBe('QuotaDeck CN');
+    expect(restored.webview.html).toContain('id="app"');
+    restored.webview.receiveMessage({ kind: 'ready' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(restored.webview.postedMessages.length).toBeGreaterThan(0);
   });
 });

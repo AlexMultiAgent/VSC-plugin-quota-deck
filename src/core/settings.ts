@@ -18,7 +18,7 @@ export interface Settings {
 
 const DEFAULT_ORDER: ProviderId[] = ['minimax-cn', 'minimax-global', 'deepseek', 'qwen'];
 const DEFAULT_WARNING_THRESHOLD_PERCENT = 20;
-const DEFAULT_REFRESH_INTERVAL_MINUTES = 5;
+const DEFAULT_REFRESH_INTERVAL_MINUTES = 3;
 const DEFAULT_TIME_ZONE = AUTO_TIME_ZONE;
 
 function clamp(value: number, min: number, max: number, fallback: number): number {

@@ -69,6 +69,16 @@ describe('Scheduler', () => {
     scheduler.stop();
   });
 
+  it('lets a forced refresh past the manual debounce', async () => {
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    const scheduler = new Scheduler({ refreshIntervalMinutes: 5, pauseWhenUnfocused: false });
+    scheduler.start(refresh);
+    await scheduler.refreshNow();
+    await scheduler.refreshNow(true);
+    expect(refresh).toHaveBeenCalledTimes(2);
+    scheduler.stop();
+  });
+
   it('pauses automatic refresh until the backoff expires', async () => {
     const refresh = vi.fn().mockResolvedValue(undefined);
     const scheduler = new Scheduler({ refreshIntervalMinutes: 5, pauseWhenUnfocused: false });

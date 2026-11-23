@@ -51,6 +51,55 @@ describe('buildDashboardModel', () => {
     expect(model.labels.configureProviders).toBe('Configure providers');
   });
 
+  it('reports the newest provider fetch time', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['deepseek', 'qwen'],
+        snapshots: {
+          deepseek: makeSnapshot(
+            'deepseek',
+            {
+              'deepseek.balance': {
+                kind: 'ok',
+                fetchedAt: '2026-11-23T00:30:00.000Z',
+                data: { available: true, entries: [] },
+              },
+            },
+            '2026-11-23T00:30:00.000Z',
+          ),
+          qwen: makeSnapshot(
+            'qwen',
+            {
+              'qwen.accountBalance': {
+                kind: 'ok',
+                fetchedAt: '2026-11-23T00:45:00.000Z',
+                data: {
+                  availableAmount: 10,
+                  availableCashAmount: 10,
+                  creditAmount: 0,
+                  availableCreditAmount: null,
+                  quotaLimit: null,
+                  quotaConsumedAmount: null,
+                  unclearedAmount: null,
+                  unpaidAmount: null,
+                  fundAccountStatus: 'VALID',
+                  currency: 'CNY',
+                },
+              },
+            },
+            '2026-11-23T00:45:00.000Z',
+          ),
+        },
+      }),
+    );
+
+    expect(model.lastUpdated).toBe('Updated 2026-11-23 08:45');
+  });
+
+  it('has no last-updated label without a fetched snapshot', () => {
+    expect(buildDashboardModel(options()).lastUpdated).toBeNull();
+  });
+
   it('keeps configured providers in order and omits empty cards', () => {
     const model = buildDashboardModel(
       options({

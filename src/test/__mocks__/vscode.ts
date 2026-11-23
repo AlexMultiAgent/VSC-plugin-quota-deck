@@ -186,6 +186,10 @@ export const state = {
   registeredCommands: new Map<string, (...args: never[]) => unknown>(),
   statusBarItems: [] as StatusBarItem[],
   webviewPanels: [] as WebviewPanel[],
+  webviewPanelSerializers: new Map<
+    string,
+    { deserializeWebviewPanel(panel: WebviewPanel, state: unknown): Promise<void> }
+  >(),
   hoverProviders: [] as Array<{ provideHover(): unknown }>,
   treeViews: [] as Array<TreeView<unknown> & {
     treeDataProvider: TreeDataProvider<unknown>;
@@ -208,6 +212,7 @@ export function __reset(): void {
   state.registeredCommands.clear();
   state.statusBarItems = [];
   state.webviewPanels = [];
+  state.webviewPanelSerializers.clear();
   state.hoverProviders = [];
   state.treeViews = [];
   state.output = [];
@@ -374,6 +379,17 @@ export const window = {
     };
     state.outputChannels.push(channel);
     return channel;
+  },
+  registerWebviewPanelSerializer(
+    viewType: string,
+    serializer: { deserializeWebviewPanel(panel: WebviewPanel, state: unknown): Promise<void> },
+  ): Disposable {
+    state.webviewPanelSerializers.set(viewType, serializer);
+    return {
+      dispose: () => {
+        state.webviewPanelSerializers.delete(viewType);
+      },
+    };
   },
   createWebviewPanel(_viewType: string, _title: string, _column: number, _options: unknown): WebviewPanel {
     const listeners: Array<(message: unknown) => void> = [];

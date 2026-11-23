@@ -111,6 +111,8 @@ export interface DashboardModel {
   readonly rangeLabel: string;
   readonly ranges: RangeOption[];
   readonly labels: DashboardLabels;
+  /** When the newest provider snapshot was fetched, so a refresh is visible even when values are unchanged. */
+  readonly lastUpdated: string | null;
 }
 
 export interface DashboardOptions {
@@ -691,6 +693,13 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       });
     }
   }
+  const latestFetchedAt = providers
+    .flatMap((provider) => (provider.fetchedAt === null ? [] : [Date.parse(provider.fetchedAt)]))
+    .filter((timestamp) => Number.isFinite(timestamp))
+    .reduce<number | null>(
+      (latest, timestamp) => (latest === null || timestamp > latest ? timestamp : latest),
+      null,
+    );
   return {
     hero: lowestQuota === null
       ? null
@@ -715,5 +724,8 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
       historyUsage: t('dashboard.historyUsage'),
       liveQuotaNote: t('dashboard.liveQuotaNote'),
     },
+    lastUpdated: latestFetchedAt === null
+      ? null
+      : `${t('dashboard.updatedAt')} ${zonedDateTime(latestFetchedAt, timeZone)}`,
   };
 }

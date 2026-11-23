@@ -21,8 +21,9 @@ import {
 } from './presentation/credentials';
 import { buildHealthReport, writeHealthReport } from './presentation/health';
 import { showHelp } from './presentation/help';
-import { DashboardPanel } from './presentation/dashboard/panel';
+import { DashboardPanel, DASHBOARD_VIEW_TYPE } from './presentation/dashboard/panel';
 import { dashboardLocalization } from './presentation/dashboard/locale';
+import { isRangeId } from './presentation/dashboard/protocol';
 import { buildDashboardModel, type DashboardModel } from './presentation/dashboard/viewModel';
 import { runOnboarding } from './presentation/onboarding';
 import { buildOverviewItems } from './presentation/overview/model';
@@ -79,8 +80,30 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }, () => {
     void configureProviders();
   }, () => {
-    void scheduler.refreshNow();
+    void scheduler.refreshNow(true);
   });
+
+  context.subscriptions.push(
+    vscode.window.registerWebviewPanelSerializer(DASHBOARD_VIEW_TYPE, {
+      /**
+       * VS Code restores the tab after a window reload but not the host-side
+       * panel. Reattach it and paint the current snapshot; otherwise the
+       * restored DOM keeps displaying the pre-reload values forever.
+       */
+      async deserializeWebviewPanel(panel: vscode.WebviewPanel, state: unknown): Promise<void> {
+        const savedRange =
+          typeof state === 'object' && state !== null && 'range' in state
+            ? (state as { range?: unknown }).range
+            : undefined;
+        if (isRangeId(savedRange)) range = savedRange;
+        dashboard.restore(panel);
+        const pricing = pricingState(Date.now());
+        dashboard.update(currentModel(undefined, pricing));
+        refreshTooltip(pricing);
+        await refreshAll();
+      },
+    }),
+  );
 
   function configuredProviders(): Partial<Record<ProviderId, boolean>> {
     const result: Partial<Record<ProviderId, boolean>> = {};

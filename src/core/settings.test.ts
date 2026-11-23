@@ -10,7 +10,7 @@ describe('readSettings', () => {
   it('returns defaults when nothing is configured', () => {
     const settings = readSettings();
     expect(settings.language).toBe('auto');
-    expect(settings.refreshIntervalMinutes).toBe(5);
+    expect(settings.refreshIntervalMinutes).toBe(3);
     expect(settings.pauseWhenUnfocused).toBe(true);
     expect(settings.statusBarMode).toBe('all');
     expect(settings.primaryProvider).toBe('minimax-cn');
