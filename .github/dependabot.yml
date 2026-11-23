@@ -13,6 +13,14 @@ updates:
       # newer Node would compile calls to APIs that do not exist at runtime.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # minimatch is patched by the npm "overrides" block in package.json, which
+      # pins it to ^11.0.1 (resolved: 11.0.9) instead of the ^10.2.6 that
+      # @vscode/vsce asks for. Dependabot's npm updater cannot see that nested
+      # override, so every security-update run it attempts errors out with
+      # "the available update path would downgrade @vscode/vsce from 4.1.1 to
+      # 3.9.1" and leaves a red run on the repo. Ignoring the dependency stops
+      # those runs; `npm audit` in CI still covers minimatch.
+      - dependency-name: "minimatch"
     commit-message:
       prefix: "chore(deps)"
     groups:
