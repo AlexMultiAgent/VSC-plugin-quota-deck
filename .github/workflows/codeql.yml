@@ -4,9 +4,11 @@
 # Advanced Security license required.
 #
 # Two TypeScript roots live in this repository: the VS Code extension under
-# src/ and the MCP server under mcp/. CodeQL is pointed at both explicitly
-# rather than at the repository root, so a source tree that moves does not
-# silently turn into "scanned nothing".
+# src/ and the MCP server under mcp/. Each one gets its own scan, pointed at
+# that root through the configuration file in .github/codeql/ -- the `paths`
+# input of the init step does not exist in codeql-action v4 and is rejected
+# with "Unexpected input(s) 'paths'", which is why the scope lives in the
+# config file instead.
 #
 # The scheduled run exists so that newly published CodeQL queries are applied
 # to code that has not changed since the last push.
@@ -48,9 +50,11 @@ jobs:
       matrix:
         include:
           - language: javascript-typescript
-            paths: src
+            scope: src
+            config: ./.github/codeql/codeql-config.yml
           - language: javascript-typescript
-            paths: mcp/src
+            scope: mcp/src
+            config: ./.github/codeql/codeql-mcp-config.yml
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
@@ -58,10 +62,10 @@ jobs:
         uses: github/codeql-action/init@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea  # v4.39.4
         with:
           languages: ${{ matrix.language }}
-          paths: ${{ matrix.paths }}
+          config-file: ${{ matrix.config }}
           queries: security-and-quality
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea  # v4.39.4
         with:
-          category: "/language:${{ matrix.language }}:${{ matrix.paths }}"
+          category: "/language:${{ matrix.language }}:${{ matrix.scope }}"

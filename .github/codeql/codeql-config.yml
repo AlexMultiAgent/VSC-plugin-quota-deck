@@ -1,0 +1,19 @@
+# CodeQL configuration for the extension sources.
+#
+# `paths` is what the workflow comment used to claim it was doing. The
+# previous `paths` input on the `init` step was rejected by codeql-action v4
+# ("Unexpected input(s) 'paths'"), so the whole repository was scanned
+# instead -- including the dev-only tooling under `scripts/`, which is not
+# part of the product and never runs in CI.
+#
+# The test files are excluded for the same reason: they are not shipped, and
+# a finding in a test is noise rather than a vulnerability. The credential
+# safety of the fixtures and of the packaged files is covered by the
+# `guard:fixtures` and `guard:package` checks instead.
+name: "QuotaDeck extension CodeQL config"
+
+paths:
+  - src
+
+paths-ignore:
+  - "**/*.test.ts"

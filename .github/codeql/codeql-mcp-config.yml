@@ -1,0 +1,11 @@
+# CodeQL configuration for the MCP server sources.
+#
+# `mcp/src` reuses the shared modules under `src/`, which the extension job
+# scans; this job covers the MCP package's own code.
+name: "QuotaDeck MCP CodeQL config"
+
+paths:
+  - mcp/src
+
+paths-ignore:
+  - "**/*.test.ts"

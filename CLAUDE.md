@@ -329,6 +329,16 @@ These are product and security rules, not implementation details — do not trad
   and nothing is published — no badge and no alerts. A job-level `permissions:` block *replaces*
   the workflow-level one rather than extending it, so every job that reads the repository has to
   repeat `contents: read` itself.
+- **The `paths` input of the CodeQL `init` step does not exist.** codeql-action v4 logs
+  `Unexpected input(s) 'paths'` and ignores the value, so the scope has to live in a configuration
+  file (`.github/codeql/`) that is passed through `config-file:`. The `category` of the SARIF upload
+  must stay stable across the change: GitHub keys an alert by its category, so a renamed category
+  orphans the alerts it already tracks instead of closing them.
+- **The dashboard webview only trusts same-origin messages.** The extension host's message reaches
+  the webview carrying the webview's own origin — `vscode-webview://<id>` on the desktop,
+  `https://<id>.vscode-cdn.net` in vscode.dev — because the frame that relays it shares that
+  origin. The check lives in `webview/hostMessages.ts` rather than in `main.ts` so that it can be
+  tested without a DOM.
 - **The settings manifest is pinned by a test.** `scripts/settings.test.ts` asserts the exact set of
   `contributes.configuration.properties`, that every one is `scope: 'window'` with a
   `%config.<key>.description%` `markdownDescription`, and that `statusBar.mode` carries two
