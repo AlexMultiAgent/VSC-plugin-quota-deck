@@ -121,8 +121,6 @@ const STATUS_ICON = {
   muted: '$(circle-slash)',
 } as const;
 
-type StatusTone = keyof typeof STATUS_ICON;
-
 function unavailableState(
   snapshot: ProviderSnapshot,
   t: Translator,

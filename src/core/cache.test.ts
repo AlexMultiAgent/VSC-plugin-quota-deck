@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { __reset } from '../test/__mocks__/vscode';
 import { SnapshotCache } from './cache';
-import type { RangeId } from './time';
 import type { ProviderSnapshot } from './types';
 
 const snapshot: ProviderSnapshot = {

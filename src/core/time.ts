@@ -15,7 +15,6 @@ export interface DateRange {
 }
 
 const DAY = 86_400_000;
-const HOUR = 3_600_000;
 
 const offsetFormatters = new Map<string, Intl.DateTimeFormat>();
 

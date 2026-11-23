@@ -6,7 +6,7 @@ import type {
   QuotaProvider,
 } from '../core/types';
 import { translatorFor } from '../localization';
-import { __reset, state, window } from '../test/__mocks__/vscode';
+import { __reset, window } from '../test/__mocks__/vscode';
 import { makeSnapshot } from '../test/helpers/snapshot';
 import { buildHealthReport, writeHealthReport } from './health';
 

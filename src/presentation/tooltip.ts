@@ -44,13 +44,6 @@ const REGION: Record<ProviderId, MessageKey | ''> = {
   qwen: '',
 };
 
-interface WindowView {
-  readonly window: string;
-  readonly remainingPercent: number | null;
-  readonly resetAt: number | null;
-  readonly unlimited: boolean;
-}
-
 interface BalanceEntry {
   readonly currency: string;
   readonly total: number;
