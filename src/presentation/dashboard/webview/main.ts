@@ -1,7 +1,7 @@
-import { isHostMessage } from '../protocol';
 import type { DashboardModel } from '../viewModel';
 import type { DashboardLocalization } from '../locale';
 import { renderDashboard } from './render';
+import { createHostMessageHandler } from './hostMessages';
 
 declare const acquireVsCodeApi: () => {
   postMessage(message: unknown): void;
@@ -132,16 +132,15 @@ function draw(): void {
   });
 }
 
-window.addEventListener('message', (event: MessageEvent<unknown>) => {
-  if (!isHostMessage(event.data)) return;
-  if (event.data.kind === 'locale') {
-    applyLocalization(event.data.localization);
+window.addEventListener('message', createHostMessageHandler(window.location.origin, (message) => {
+  if (message.kind === 'locale') {
+    applyLocalization(message.localization);
     return;
   }
-  current = event.data.model;
-  vscode.setState({ range: event.data.range });
+  current = message.model;
+  vscode.setState({ range: message.range });
   draw();
-});
+}));
 
 window.addEventListener('load', () => {
   requestState();
