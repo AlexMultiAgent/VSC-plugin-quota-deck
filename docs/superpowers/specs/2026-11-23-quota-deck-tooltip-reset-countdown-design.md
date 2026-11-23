@@ -181,7 +181,7 @@ covers all of them at once.
 ## 8. Freshness
 
 The tooltip HTML is generated when the snapshot is painted, not when the mouse hovers, so the
-countdown is as fresh as the last refresh — the default `quotaDeck.refreshIntervalMinutes` is 5 and
+countdown is as fresh as the last refresh — the default `quotaDeck.refreshIntervalMinutes` is 3 and
 the setting allows 1–60. The dashboard's existing `剩余 3小时20分钟` has the same property. A status
 bar item offers no re-render-on-hover hook, so the countdown cannot be refreshed between polls.
 

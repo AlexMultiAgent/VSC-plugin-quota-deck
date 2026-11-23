@@ -96,7 +96,11 @@ Each surface renders that snapshot through its own derived view model:
 `presentation/overview/model.ts` (`buildOverviewItems`) and
 `presentation/dashboard/viewModel.ts` (`buildDashboardModel`) turn the snapshot into display
 records, and `dashboard/webview/render.ts` turns the dashboard model into DOM. A derived value
-belongs in the view model, not in the surface.
+belongs in the view model, not in the surface. The dashboard model carries `lastUpdated` (the
+newest provider fetch time, formatted in `quotaDeck.timeZone`) and the webview renders it in the
+action row. The dashboard's refresh action calls `scheduler.refreshNow(true)` to bypass the 2 s
+manual debounce: an explicit click must always produce a new state, or a visible loading state
+that clears when that state arrives.
 
 `quotaDeck.statusBar.providerOrder` decides **which** providers appear and in what order — the
 four painted surfaces and the connection-check report filter by it, so removing a provider from
@@ -194,6 +198,11 @@ The dashboard webview owns no translated strings: `presentation/dashboard/locale
 the `locale` host message, and the webview falls back to those attributes — and finally to
 English — until the message arrives. A new webview string needs four edits: the message key, both
 bundles, the `DashboardLocalization` payload, and the protocol validator.
+
+The dashboard panel registers a `WebviewPanelSerializer` (`onWebviewPanel:quotaDeck.dashboard`)
+and `DashboardPanel.restore()` reattaches the restored tab, repaints it from the current snapshot,
+and refreshes. Without it a window reload leaves the restored DOM showing pre-reload values with
+no host listener, while the status bar and other surfaces keep updating.
 
 ## Invariants
 
