@@ -14,6 +14,7 @@ out/**
 scripts/**
 docs/**
 CLAUDE.md
+CLAUDE.local.md
 .vscode-test/**
 esbuild.mjs
 tsconfig.json
