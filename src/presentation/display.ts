@@ -102,3 +102,22 @@ export function pickTightestWindow<T extends QuotaWindowView>(
     (window.remainingPercent ?? 0) < (tightest.remainingPercent ?? 0) ? window : tightest,
   );
 }
+
+/**
+ * The marker for a quota window that cannot be spent, or an empty string when
+ * the window is spendable.
+ *
+ * An empty window is labelled as exhausted, and a window that another
+ * exhausted window holds back keeps its own number and gains a marker. The
+ * decision lives here so every surface says the same thing; each one wraps
+ * the returned text in its own markup.
+ */
+export function quotaStateText(
+  blocked: boolean,
+  remainingPercent: number,
+  t: Translator,
+): string {
+  if (blocked) return t('quota.blockedByWeekly');
+  if (remainingPercent <= 0) return t('quota.exhausted');
+  return '';
+}

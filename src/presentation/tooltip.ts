@@ -22,6 +22,7 @@ import {
   formatMoney,
   formatRemainingDays,
   providerDisplayName,
+  quotaStateText,
 } from './display';
 
 const ESCAPES: Record<string, string> = {
@@ -156,13 +157,8 @@ function quotaValue(value: string): string {
  * is spent or merely blocked.
  */
 function quotaStateSuffix(blocked: boolean, remainingPercent: number, t: Translator): string {
-  if (blocked) {
-    return `<span class="t-muted"> ${escapeHtml(t('quota.blockedByWeekly'))}</span>`;
-  }
-  if (remainingPercent <= 0) {
-    return `<span class="t-muted"> ${escapeHtml(t('quota.exhausted'))}</span>`;
-  }
-  return '';
+  const marker = quotaStateText(blocked, remainingPercent, t);
+  return marker === '' ? '' : `<span class="t-muted"> ${escapeHtml(marker)}</span>`;
 }
 
 function zonedTime(iso: string, timeZone: string): string {

@@ -9,6 +9,7 @@ import {
   formatRemainingDays,
   pickTightestWindow,
   providerDisplayName,
+  quotaStateText,
   selectPrimaryCurrency,
 } from './display';
 
@@ -145,5 +146,21 @@ describe('formatDuration', () => {
   it('clamps a span that has already passed to zero', () => {
     expect(formatDuration(-1, zh)).toBe('0分钟');
     expect(formatDuration(-1, en)).toBe('0m');
+  });
+});
+
+describe('quotaStateText', () => {
+  it('marks a window another exhausted window holds back', () => {
+    expect(quotaStateText(true, 80, zh)).toBe('受每周额度限制');
+    expect(quotaStateText(true, 80, en)).toBe('Blocked by weekly quota');
+  });
+
+  it('marks an empty window as exhausted', () => {
+    expect(quotaStateText(false, 0, zh)).toBe('已用尽');
+    expect(quotaStateText(false, 0, en)).toBe('Exhausted');
+  });
+
+  it('says nothing about a spendable window', () => {
+    expect(quotaStateText(false, 42, zh)).toBe('');
   });
 });

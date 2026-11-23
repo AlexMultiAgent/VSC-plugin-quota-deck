@@ -21,6 +21,7 @@ import {
   formatExpiryRemaining,
   formatMoney,
   providerDisplayName,
+  quotaStateText,
   selectPrimaryCurrency,
 } from '../display';
 import { pricingPeriodLabel, rangeLabel } from '../labels';
@@ -162,9 +163,8 @@ function windows(snapshot: ProviderSnapshot | undefined): WindowView[] {
  * the empty weekly window is what holds it back.
  */
 function meterStateLabel(blocked: boolean, remainingPercent: number, t: Translator): string {
-  if (blocked) return ` ${t('quota.blockedByWeekly')}`;
-  if (remainingPercent <= 0) return ` ${t('quota.exhausted')}`;
-  return '';
+  const marker = quotaStateText(blocked, remainingPercent, t);
+  return marker === '' ? '' : ` ${marker}`;
 }
 
 function mediaMeters(

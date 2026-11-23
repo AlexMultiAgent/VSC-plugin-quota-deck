@@ -23,6 +23,7 @@ import {
   formatRemainingDays,
   pickTightestWindow,
   providerDisplayName,
+  quotaStateText,
   selectPrimaryCurrency,
 } from '../display';
 import { pricingPeriodLabel } from '../labels';
@@ -108,9 +109,8 @@ function modelLabel(model: string, t: Translator): string {
  * note that the empty weekly window is what holds it back.
  */
 function quotaStateLabel(blocked: boolean, remainingPercent: number, t: Translator): string {
-  if (blocked) return ` · ${t('quota.blockedByWeekly')}`;
-  if (remainingPercent <= 0) return ` · ${t('quota.exhausted')}`;
-  return '';
+  const marker = quotaStateText(blocked, remainingPercent, t);
+  return marker === '' ? '' : ` · ${marker}`;
 }
 
 function quotaRow(label: string, percent: number, threshold: number, t: Translator): {
