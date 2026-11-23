@@ -11,6 +11,7 @@ import type {
   MiniMaxSubscription,
   MiniMaxWindow,
 } from '../../providers/minimax/shape';
+import { withAvailability } from '../../providers/minimax/shape';
 import type {
   QwenAccountBalance,
   QwenTokenPlan,
@@ -99,6 +100,17 @@ function windowLabel(window: MiniMaxWindow['window'], t: Translator): string {
 
 function modelLabel(model: string, t: Translator): string {
   return model === 'video' ? t('tooltip.model.video') : model;
+}
+
+/**
+ * The marker that says a window's number cannot be spent yet. A blocked
+ * window keeps its own percentage — that is real account data — and gains a
+ * note that the empty weekly window is what holds it back.
+ */
+function quotaStateLabel(blocked: boolean, remainingPercent: number, t: Translator): string {
+  if (blocked) return ` · ${t('quota.blockedByWeekly')}`;
+  if (remainingPercent <= 0) return ` · ${t('quota.exhausted')}`;
+  return '';
 }
 
 function quotaRow(label: string, percent: number, threshold: number, t: Translator): {
@@ -222,7 +234,8 @@ function miniMaxChildren(
 ): OverviewItem[] {
   const children: OverviewItem[] = [];
   const now = options.now ?? Date.now();
-  const plan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
+  const parsedPlan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
+  const plan = parsedPlan === undefined ? undefined : withAvailability(parsedPlan);
   const balance = capabilityValue<MiniMaxAccountBalance>(
     snapshot,
     'minimax.accountBalance',
@@ -307,18 +320,15 @@ function miniMaxChildren(
     const percent = Math.round(window.remainingPercent);
     const used = Math.max(0, 100 - percent);
     const quota = quotaRow(label, percent, options.warningThresholdPercent, options.t);
+    const detail =
+      `${options.t('tooltip.remaining')} ${percent}% · ` +
+      `${options.t('tooltip.used')} ${used}%` +
+      quotaStateLabel(window.blocked, window.remainingPercent, options.t);
     children.push({
       id: `provider:${id}:window:${window.window}`,
       label,
-      description:
-        `${options.t('tooltip.remaining')} ${percent}% · ` +
-        `${options.t('tooltip.used')} ${used}%`,
-      tooltip: detailTooltip(
-        label,
-        `${options.t('tooltip.remaining')} ${percent}% · ` +
-          `${options.t('tooltip.used')} ${used}%`,
-        reset,
-      ),
+      description: detail,
+      tooltip: detailTooltip(label, detail, reset),
       state: quota.state,
       stateLabel: quota.stateLabel,
       action: null,
@@ -344,21 +354,72 @@ function miniMaxChildren(
     );
     const label = modelLabel(model.model, options.t);
     const quota = quotaRow(label, percent, options.warningThresholdPercent, options.t);
+    const reset =
+      model.resetAt === null
+        ? undefined
+        : `${options.t('tooltip.resetAt')} ${instantLabel(model.resetAt, options.timeZone) ?? ''}`;
+    const detail =
+      `${options.t('tooltip.remaining')} ${model.remaining}/${model.total} ` +
+      `${options.t('tooltip.times')} · ` +
+      `${options.t('tooltip.used')} ${model.used} ${options.t('tooltip.times')}` +
+      quotaStateLabel(model.blocked, percent, options.t);
     children.push({
       id: `provider:${id}:model:${model.model}`,
       label,
-      description:
-        `${options.t('tooltip.remaining')} ${model.remaining}/${model.total} ` +
-        `${options.t('tooltip.times')} · ` +
-        `${options.t('tooltip.used')} ${model.used} ${options.t('tooltip.times')}`,
-      tooltip: detailTooltip(
-        label,
-        `${options.t('tooltip.remaining')} ${model.remaining}/${model.total} ` +
-          `${options.t('tooltip.times')} · ` +
-          `${options.t('tooltip.used')} ${model.used} ${options.t('tooltip.times')}`,
-      ),
+      description: detail,
+      tooltip: detailTooltip(label, detail, reset),
       state: quota.state,
       stateLabel: quota.stateLabel,
+      action: null,
+      children: [],
+    });
+    // The media allowance has its own weekly pool, and it is the pool that
+    // decides whether the model can be used at all.
+    if (
+      model.weeklyTotal == null ||
+      model.weeklyTotal <= 0 ||
+      model.weeklyRemaining == null ||
+      model.weeklyUsed == null
+    ) {
+      continue;
+    }
+    const weeklyPercent = Math.round(
+      Math.max(
+        0,
+        Math.min(
+          100,
+          model.weeklyRemainingPercent ??
+            (model.weeklyRemaining / model.weeklyTotal) * 100,
+        ),
+      ),
+    );
+    const weeklyLabel = `${label} · ${options.t('tooltip.window.weekly')}`;
+    const weeklyQuota = quotaRow(
+      weeklyLabel,
+      weeklyPercent,
+      options.warningThresholdPercent,
+      options.t,
+    );
+    const weeklyReset =
+      model.weeklyResetAt === null
+        ? undefined
+        : `${options.t('tooltip.resetAt')} ${instantLabel(model.weeklyResetAt, options.timeZone) ?? ''}`;
+    const weeklyDetail =
+      `${options.t('tooltip.remaining')} ${model.weeklyRemaining}/${model.weeklyTotal} ` +
+      `${options.t('tooltip.times')} · ` +
+      `${options.t('tooltip.used')} ${model.weeklyUsed} ${options.t('tooltip.times')}` +
+      quotaStateLabel(
+        model.weeklyRemainingPercent !== null && model.weeklyRemainingPercent <= 0,
+        weeklyPercent,
+        options.t,
+      );
+    children.push({
+      id: `provider:${id}:model:${model.model}:weekly`,
+      label: weeklyLabel,
+      description: weeklyDetail,
+      tooltip: detailTooltip(weeklyLabel, weeklyDetail, weeklyReset),
+      state: weeklyQuota.state,
+      stateLabel: weeklyQuota.stateLabel,
       action: null,
       children: [],
     });

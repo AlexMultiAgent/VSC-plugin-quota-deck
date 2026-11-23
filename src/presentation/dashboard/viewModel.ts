@@ -10,6 +10,7 @@ import type {
   MiniMaxSubscription,
   MiniMaxTokenUsage,
 } from '../../providers/minimax/shape';
+import { withAvailability } from '../../providers/minimax/shape';
 import type {
   QwenAccountBalance,
   QwenTokenPlan,
@@ -151,7 +152,19 @@ const ACCENT: Record<ProviderId, ProviderAccent> = {
 type WindowView = MiniMaxPlan['windows'][number];
 
 function windows(snapshot: ProviderSnapshot | undefined): WindowView[] {
-  return capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan')?.windows ?? [];
+  const plan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
+  return plan === undefined ? [] : withAvailability(plan).windows;
+}
+
+/**
+ * The marker that says a meter's number cannot be spent yet. A blocked meter
+ * keeps its own percentage — that is real account data — and gains a note that
+ * the empty weekly window is what holds it back.
+ */
+function meterStateLabel(blocked: boolean, remainingPercent: number, t: Translator): string {
+  if (blocked) return ` ${t('quota.blockedByWeekly')}`;
+  if (remainingPercent <= 0) return ` ${t('quota.exhausted')}`;
+  return '';
 }
 
 function mediaMeters(
@@ -161,7 +174,9 @@ function mediaMeters(
   now: number,
   t: Translator,
 ): QuotaMeter[] {
-  return (capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan')?.models ?? []).flatMap((model) => {
+  const plan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
+  if (plan === undefined) return [];
+  return withAvailability(plan).models.flatMap((model) => {
     if (model.model === 'general' || model.model.includes('MiniMax-M')) return [];
     const meters: QuotaMeter[] = [];
     const modelName =
@@ -175,12 +190,14 @@ function mediaMeters(
         key: `model:${model.model}:current`,
         label: `${modelName} · ${t('dashboard.minimax.currentWindow')}`,
         percent,
-        valueLabel: `${model.remaining}/${model.total} · ${Math.round(percent)}%`,
+        valueLabel:
+          `${model.remaining}/${model.total} · ${Math.round(percent)}%` +
+          meterStateLabel(model.blocked, percent, t),
         resetLabel:
           model.resetAt == null
             ? null
             : resetLabel(model.resetAt, timeZone, now, t),
-        tone: quotaTone(percent, warningThresholdPercent),
+        tone: model.blocked ? 'muted' : quotaTone(percent, warningThresholdPercent),
       });
     }
     if (
@@ -196,12 +213,15 @@ function mediaMeters(
             (model.weeklyRemaining / model.weeklyTotal) * 100,
         ),
       );
+      const weeklyExhausted =
+        model.weeklyRemainingPercent !== null && model.weeklyRemainingPercent <= 0;
       meters.push({
         key: `model:${model.model}:weekly`,
         label: `${modelName} · ${t('tooltip.window.weekly')}`,
         percent,
         valueLabel:
-          `${model.weeklyRemaining}/${model.weeklyTotal} · ${Math.round(percent)}%`,
+          `${model.weeklyRemaining}/${model.weeklyTotal} · ${Math.round(percent)}%` +
+          meterStateLabel(weeklyExhausted, percent, t),
         resetLabel:
           model.weeklyResetAt == null
             ? null
@@ -601,7 +621,9 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
         ? 'positive'
         : percent === null
           ? 'muted'
-          : quotaTone(percent, warningThresholdPercent);
+          : window.blocked
+            ? 'muted'
+            : quotaTone(percent, warningThresholdPercent);
       return {
         key: String(window.window),
         label: window.window === 'weekly'
@@ -612,7 +634,8 @@ export function buildDashboardModel(options: DashboardOptions): DashboardModel {
           ? t('tooltip.unlimited')
           : percent === null
             ? null
-            : `${Math.round(percent)}%`,
+            : `${Math.round(percent)}%` +
+              meterStateLabel(window.blocked, percent, t),
         resetLabel:
           window.resetAt === null
             ? null

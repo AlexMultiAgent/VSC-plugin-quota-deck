@@ -26,6 +26,8 @@ export const MESSAGES = {
   'state.failed': '获取失败',
   'state.partial': '部分可用',
   'state.ok': '正常',
+  'quota.exhausted': '已用尽',
+  'quota.blockedByWeekly': '受每周额度限制',
   'health.title': 'QuotaDeck CN — 连接状态',
   'health.checking': '正在检查连接…',
   'health.checkedAt': '检查时间',

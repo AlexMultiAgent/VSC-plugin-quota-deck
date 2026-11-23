@@ -26,6 +26,8 @@ export const enUs: MessageBundle = {
   'state.failed': 'Failed',
   'state.partial': 'Partially available',
   'state.ok': 'Healthy',
+  'quota.exhausted': 'Exhausted',
+  'quota.blockedByWeekly': 'Blocked by weekly quota',
   'health.title': 'QuotaDeck CN — Connection status',
   'health.checking': 'Checking connections…',
   'health.checkedAt': 'Checked at',

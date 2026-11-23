@@ -8,6 +8,7 @@ import type {
   MiniMaxPlan,
   MiniMaxSubscription,
 } from '../providers/minimax/shape';
+import { withAvailability } from '../providers/minimax/shape';
 import type { DeepSeekBalance } from '../providers/deepseek/shape';
 import type {
   QwenAccountBalance,
@@ -146,6 +147,24 @@ function quotaValue(value: string): string {
   );
 }
 
+/**
+ * The marker that says a window's number cannot be spent yet.
+ *
+ * A blocked window keeps its own percentage — that is real account data — and
+ * gains a note that the empty weekly window is what holds it back. An empty
+ * window is labelled instead: 0 % on its own does not say whether the window
+ * is spent or merely blocked.
+ */
+function quotaStateSuffix(blocked: boolean, remainingPercent: number, t: Translator): string {
+  if (blocked) {
+    return `<span class="t-muted"> ${escapeHtml(t('quota.blockedByWeekly'))}</span>`;
+  }
+  if (remainingPercent <= 0) {
+    return `<span class="t-muted"> ${escapeHtml(t('quota.exhausted'))}</span>`;
+  }
+  return '';
+}
+
 function zonedTime(iso: string, timeZone: string): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone,
@@ -269,11 +288,12 @@ function providerRows(
         `<td class="t-muted">${escapeHtml(miniMaxBalance.currency)}</td><td></td></tr>`;
   const plan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
   if (plan !== undefined) {
+    const available = withAvailability(plan);
     const rows: string[] = [
       ...(miniMaxBalanceRow.length > 0 ? [miniMaxBalanceRow] : []),
       `<tr><td colspan="4">${escapeHtml(t('capability.minimax.plan'))}</td></tr>`,
     ];
-    for (const window of plan.windows) {
+    for (const window of available.windows) {
       const label =
         window.window === 'weekly'
           ? t('tooltip.window.weekly')
@@ -290,11 +310,12 @@ function providerRows(
       const remaining = Math.round(window.remainingPercent);
       rows.push(
         `<tr><td>${escapeHtml(label)}</td>` +
-        `<td>${bar(window.remainingPercent)}${quotaValue(`${remaining}%`)}</td>` +
+        `<td>${bar(window.remainingPercent)}${quotaValue(`${remaining}%`)}` +
+        `${quotaStateSuffix(window.blocked, window.remainingPercent, t)}</td>` +
         `${resetCell(window.resetAt, now)}</tr>`,
       );
     }
-    for (const model of plan.models ?? []) {
+    for (const model of available.models ?? []) {
       if (
         model.model === 'general' ||
         model.total == null ||
@@ -312,8 +333,35 @@ function providerRows(
       const label = model.model === 'video' ? t('tooltip.model.video') : model.model;
       rows.push(
         `<tr><td>${escapeHtml(label)}</td>` +
-        `<td>${bar(percent)}${quotaValue(`${model.remaining}/${model.total}`)}</td>` +
+        `<td>${bar(percent)}${quotaValue(`${model.remaining}/${model.total}`)}` +
+        `${quotaStateSuffix(model.blocked, percent, t)}</td>` +
         `${resetCell(model.resetAt, now)}</tr>`,
+      );
+      // The media allowance has its own weekly pool, and it is the pool that
+      // decides whether the model can be used at all.
+      if (
+        model.weeklyTotal == null ||
+        model.weeklyTotal <= 0 ||
+        model.weeklyRemaining == null
+      ) {
+        continue;
+      }
+      const weeklyPercent = Math.round(
+        Math.max(
+          0,
+          Math.min(
+            100,
+            model.weeklyRemainingPercent ??
+              (model.weeklyRemaining / model.weeklyTotal) * 100,
+          ),
+        ),
+      );
+      rows.push(
+        `<tr><td>${escapeHtml(`${label} · ${t('tooltip.window.weekly')}`)}</td>` +
+        `<td>${bar(weeklyPercent)}` +
+        `${quotaValue(`${model.weeklyRemaining}/${model.weeklyTotal}`)}` +
+        `${quotaStateSuffix(model.weeklyRemainingPercent !== null && model.weeklyRemainingPercent <= 0, weeklyPercent, t)}</td>` +
+        `${resetCell(model.weeklyResetAt, now)}</tr>`,
       );
     }
     const subscription = capabilityValue<MiniMaxSubscription>(snapshot, 'minimax.subscription');

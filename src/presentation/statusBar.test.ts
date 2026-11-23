@@ -300,8 +300,10 @@ describe('renderStatusBarText', () => {
       }),
     };
 
+    // The weekly window is what blocks the five-hour balance, so the segment
+    // shows the weekly number alone: a blocked window is not spendable.
     expect(renderStatusBarText(snapshots, ['minimax-cn'], zh)).toBe(
-      '$(pulse) MM $(error) 5小时 100% · 周 0%',
+      '$(pulse) MM $(error) 周 0%',
     );
   });
 

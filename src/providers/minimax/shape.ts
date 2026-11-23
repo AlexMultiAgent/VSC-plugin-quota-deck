@@ -7,6 +7,13 @@ export interface MiniMaxWindow {
   readonly remainingPercentSource: 'computed' | 'field' | null;
   readonly resetAt: number | null;
   readonly unlimited: boolean;
+  /**
+   * The weekly window has no quota left, so this window's balance cannot be
+   * used yet. MiniMax needs both windows to have remaining quota for text and
+   * voice models, and refreshing the 5-hour window does not restore the
+   * week's usage.
+   */
+  readonly blocked: boolean;
 }
 
 export interface MiniMaxModel {
@@ -21,6 +28,11 @@ export interface MiniMaxModel {
   readonly weeklyUsed: number | null;
   readonly weeklyRemainingPercent: number | null;
   readonly weeklyResetAt: number | null;
+  /**
+   * This model's own weekly pool is empty, so its current-window count cannot
+   * be used yet: image and video models are limited by the weekly window.
+   */
+  readonly blocked: boolean;
 }
 
 export interface MiniMaxPlan {
@@ -28,6 +40,8 @@ export interface MiniMaxPlan {
   readonly models: MiniMaxModel[];
   /** General weekly boost: 1500 means the displayed weekly percent is 1.5×. */
   readonly weeklyBoostPermille: number | null;
+  /** The weekly window has no quota left. */
+  readonly weeklyExhausted: boolean;
 }
 
 export interface MiniMaxSubscription {
@@ -151,7 +165,11 @@ export function readMiniMaxPlan(response: unknown): MiniMaxPlan {
   const weeklyUnlimited =
     !unavailablePlan && (weeklyStatus === 3 || general.weekly_unlimited === true);
 
-  const windows: MiniMaxWindow[] = [
+  // The weekly percentage the user can actually spend is the boosted one: a
+  // raw 0 % stays 0 %, and a boost of 0 leaves nothing either way.
+  const weeklyPercent = weeklyUnlimited ? null : boostedWeeklyPercent(weekly, general);
+
+  const windows: (Omit<MiniMaxWindow, 'blocked'>)[] = [
     {
       window: 'fiveHour',
       remainingPercent: fiveHourUnlimited ? null : interval.remainingPercent,
@@ -164,14 +182,14 @@ export function readMiniMaxPlan(response: unknown): MiniMaxPlan {
   if (weekly.total !== null || weekly.remainingPercent !== null || weeklyUnlimited) {
     windows.push({
       window: 'weekly',
-      remainingPercent: weeklyUnlimited ? null : boostedWeeklyPercent(weekly, general),
+      remainingPercent: weeklyPercent,
       remainingPercentSource: weeklyUnlimited ? null : weekly.remainingPercentSource,
       resetAt: asTimestamp(general.weekly_end_time),
       unlimited: weeklyUnlimited,
     });
   }
 
-  const models: MiniMaxModel[] = records.map((record) => {
+  const models: (Omit<MiniMaxModel, 'blocked'>)[] = records.map((record) => {
     const quota = readQuota(
       numberOrNull(record.current_interval_total_count),
       numberOrNull(record.current_interval_usage_count),
@@ -197,10 +215,53 @@ export function readMiniMaxPlan(response: unknown): MiniMaxPlan {
     };
   });
 
-  return {
+  return withAvailability({
     windows,
     models,
     weeklyBoostPermille: numberOrNull(general.weekly_boost_permille),
+  });
+}
+
+/**
+ * The plan before the availability flags are derived. The parts are optional
+ * because a cached snapshot written by an older build may not carry them.
+ */
+export interface MiniMaxPlanDraft {
+  readonly windows?: readonly (Omit<MiniMaxWindow, 'blocked'>)[];
+  readonly models?: readonly (Omit<MiniMaxModel, 'blocked'>)[];
+  readonly weeklyBoostPermille?: number | null;
+}
+
+/**
+ * Derive the availability flags from the plan's own percentages.
+ *
+ * The flags are derived, so a snapshot cached before this rule existed must
+ * not keep a stale answer: the cache is painted at startup, before the first
+ * refresh replaces it. Applying the rule at read time keeps an older cache
+ * honest without a cache rule that would drop the whole plan capability.
+ */
+export function withAvailability(plan: MiniMaxPlanDraft): MiniMaxPlan {
+  const windows = plan.windows ?? [];
+  const models = plan.models ?? [];
+  const weekly = windows.find((window) => window.window === 'weekly');
+  const weeklyExhausted =
+    weekly !== undefined &&
+    !weekly.unlimited &&
+    weekly.remainingPercent !== null &&
+    weekly.remainingPercent <= 0;
+  return {
+    weeklyBoostPermille: plan.weeklyBoostPermille ?? null,
+    weeklyExhausted,
+    windows: windows.map((window) => ({
+      ...window,
+      blocked:
+        window.window === 'weekly' ? false : weeklyExhausted && !window.unlimited,
+    })),
+    models: models.map((model) => ({
+      ...model,
+      blocked:
+        model.weeklyRemainingPercent !== null && model.weeklyRemainingPercent <= 0,
+    })),
   };
 }
 

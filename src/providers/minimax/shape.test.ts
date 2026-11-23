@@ -5,6 +5,8 @@ import {
   readMiniMaxPlan,
   readMiniMaxSubscription,
   readMiniMaxTokenUsage,
+  withAvailability,
+  type MiniMaxPlan,
 } from './shape';
 
 const capturedPlan = loadFixture('minimax-cn', 'minimax.plan', 'standard') as {
@@ -121,6 +123,116 @@ describe('readMiniMaxPlan', () => {
 
   it('does not invent a percentage for an unknown shape', () => {
     expect(() => readMiniMaxPlan({ unexpected: true })).toThrow(/unknown response shape/);
+  });
+});
+
+describe('weekly availability', () => {
+  const general = (fields: Record<string, unknown>) => ({
+    model_remains: [{ model_name: 'general', ...fields }],
+  });
+
+  it('blocks the five-hour window when the weekly window is exhausted', () => {
+    const plan = readMiniMaxPlan(
+      general({
+        current_interval_remaining_percent: 80,
+        current_weekly_remaining_percent: 0,
+      }),
+    );
+
+    expect(plan.weeklyExhausted).toBe(true);
+    expect(plan.windows.find((window) => window.window === 'fiveHour')?.blocked).toBe(true);
+    expect(plan.windows.find((window) => window.window === 'weekly')?.blocked).toBe(false);
+  });
+
+  it('keeps the five-hour window usable while the weekly window has quota', () => {
+    const plan = readMiniMaxPlan(
+      general({
+        current_interval_remaining_percent: 80,
+        current_weekly_remaining_percent: 40,
+      }),
+    );
+
+    expect(plan.weeklyExhausted).toBe(false);
+    expect(plan.windows.find((window) => window.window === 'fiveHour')?.blocked).toBe(false);
+  });
+
+  it('treats a weekly percentage the boost empties as exhausted', () => {
+    const plan = readMiniMaxPlan(
+      general({
+        current_interval_remaining_percent: 80,
+        current_weekly_remaining_percent: 50,
+        weekly_boost_permille: 0,
+      }),
+    );
+
+    expect(plan.weeklyExhausted).toBe(true);
+  });
+
+  it('does not call an unlimited weekly window exhausted', () => {
+    const plan = readMiniMaxPlan({
+      model_remains: [
+        {
+          model_name: 'general',
+          current_interval_total_count: 1,
+          current_interval_usage_count: 1,
+          current_interval_status: 3,
+          current_weekly_total_count: 1,
+          current_weekly_usage_count: 1,
+          current_weekly_status: 3,
+        },
+      ],
+    });
+
+    expect(plan.weeklyExhausted).toBe(false);
+    expect(plan.windows.every((window) => !window.blocked)).toBe(true);
+  });
+
+  it('blocks a media model whose own weekly pool is empty', () => {
+    const plan = readMiniMaxPlan({
+      model_remains: [
+        {
+          model_name: 'video',
+          current_interval_total_count: 3,
+          current_interval_usage_count: 3,
+          current_weekly_total_count: 21,
+          current_weekly_usage_count: 0,
+        },
+      ],
+    });
+
+    expect(plan.models[0]?.blocked).toBe(true);
+  });
+
+  it('keeps a media model usable while its own weekly pool has quota', () => {
+    const plan = readMiniMaxPlan({
+      model_remains: [
+        {
+          model_name: 'video',
+          current_interval_total_count: 3,
+          current_interval_usage_count: 3,
+          current_weekly_total_count: 21,
+          current_weekly_usage_count: 21,
+        },
+      ],
+    });
+
+    expect(plan.models[0]?.blocked).toBe(false);
+  });
+
+  it('derives the flags for a snapshot cached before the rule existed', () => {
+    const cached = {
+      windows: [
+        { window: 'fiveHour', remainingPercent: 80, resetAt: null, unlimited: false },
+        { window: 'weekly', remainingPercent: 0, resetAt: null, unlimited: false },
+      ],
+    } as unknown as MiniMaxPlan;
+
+    const plan = withAvailability(cached);
+
+    expect(plan.weeklyExhausted).toBe(true);
+    expect(plan.windows[0]?.blocked).toBe(true);
+    expect(plan.windows[1]?.blocked).toBe(false);
+    expect(plan.models).toEqual([]);
   });
 });
 

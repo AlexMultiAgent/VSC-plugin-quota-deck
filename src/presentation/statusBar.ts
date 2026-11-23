@@ -4,6 +4,7 @@ import type { ProviderId, ProviderSnapshot } from '../core/types';
 import type { MessageKey } from '../localization/messages';
 import { capabilityValue } from '../core/capability';
 import type { MiniMaxPlan } from '../providers/minimax/shape';
+import { withAvailability } from '../providers/minimax/shape';
 import type { DeepSeekBalance } from '../providers/deepseek/shape';
 import type { QwenAccountBalance, QwenTokenPlan } from '../providers/qwen/shape';
 import { pricingState, type PricingState } from '../providers/deepseek/pricing';
@@ -31,7 +32,8 @@ export function formatBalance(balance: BalanceView | undefined): string {
 type MiniMaxWindowView = MiniMaxPlan['windows'][number];
 
 function miniMaxWindows(snapshot: ProviderSnapshot | undefined): MiniMaxWindowView[] {
-  return capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan')?.windows ?? [];
+  const plan = capabilityValue<MiniMaxPlan>(snapshot, 'minimax.plan');
+  return plan === undefined ? [] : withAvailability(plan).windows;
 }
 
 function isStale(snapshot: ProviderSnapshot | undefined, capability: string): boolean {
@@ -57,6 +59,10 @@ function miniMaxWindowParts(
     const label = windowLabel(window.window, t);
     if (window.unlimited) return [`${label} ${t('tooltip.unlimited')}`];
     if (window.remainingPercent === null) return [];
+    // A window the empty weekly quota blocks is not spendable, so it has no
+    // place in a bar that answers "how much can I use right now". The weekly
+    // window carries the number that matters.
+    if (window.blocked) return [];
     return [`${label} ${Math.round(window.remainingPercent)}%`];
   });
 }

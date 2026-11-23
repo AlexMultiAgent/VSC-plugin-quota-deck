@@ -322,6 +322,35 @@ describe('buildDashboardModel', () => {
     ]);
   });
 
+  it('marks a blocked five-hour meter and an exhausted weekly meter', () => {
+    const model = buildDashboardModel(
+      options({
+        order: ['minimax-cn'],
+        snapshots: {
+          'minimax-cn': makeSnapshot('minimax-cn', {
+            'minimax.plan': {
+              kind: 'ok',
+              fetchedAt: 'x',
+              data: {
+                windows: [
+                  { window: 'fiveHour', remainingPercent: 80, resetAt: null, unlimited: false },
+                  { window: 'weekly', remainingPercent: 0, resetAt: null, unlimited: false },
+                ],
+              },
+            },
+          }),
+        },
+      }),
+    );
+
+    expect(
+      model.providers[0]!.meters.map((meter) => [meter.key, meter.tone, meter.valueLabel]),
+    ).toEqual([
+      ['fiveHour', 'muted', '80% Blocked by weekly quota'],
+      ['weekly', 'critical', '0% Exhausted'],
+    ]);
+  });
+
   it('shows MiniMax model usage for the current and weekly windows', () => {
     const model = buildDashboardModel(
       options({

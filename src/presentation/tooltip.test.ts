@@ -237,6 +237,68 @@ describe('renderTooltip', () => {
     expect(visibleText).not.toContain('视频████████████████0%');
   });
 
+  it('marks the five-hour balance as blocked when the weekly quota is spent', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 80, resetAt: null, unlimited: false },
+              { window: 'weekly', remainingPercent: 0, resetAt: null, unlimited: false },
+            ],
+            models: [
+              {
+                model: 'video',
+                remaining: 3,
+                remainingPercent: 100,
+                total: 3,
+                used: 0,
+                weeklyTotal: 21,
+                weeklyRemaining: 21,
+                weeklyUsed: 0,
+                weeklyRemainingPercent: 100,
+              },
+            ],
+          },
+        },
+      }),
+    };
+
+    const html = renderTooltip(snapshots, ['minimax-cn'], zh);
+    const visibleText = html.replace(/<[^>]+>/g, '');
+
+    // The number stays — it is real account data — and the marker says the
+    // empty weekly window is what holds it back.
+    expect(visibleText).toContain('80% 受每周额度限制');
+    expect(visibleText).toContain('0% 已用尽');
+    expect(visibleText).toContain('视频 · 每周');
+    expect(visibleText).toContain('21/21');
+  });
+
+  it('labels a blocked window in English too', () => {
+    const snapshots = {
+      'minimax-cn': makeSnapshot('minimax-cn', {
+        'minimax.plan': {
+          kind: 'ok',
+          fetchedAt: 'x',
+          data: {
+            windows: [
+              { window: 'fiveHour', remainingPercent: 80, resetAt: null, unlimited: false },
+              { window: 'weekly', remainingPercent: 0, resetAt: null, unlimited: false },
+            ],
+          },
+        },
+      }),
+    };
+
+    const visibleText = renderTooltip(snapshots, ['minimax-cn'], t).replace(/<[^>]+>/g, '');
+
+    expect(visibleText).toContain('80% Blocked by weekly quota');
+    expect(visibleText).toContain('0% Exhausted');
+  });
+
   it('shows zero remaining uses when a MiniMax media allowance is fully used', () => {
     const snapshots = {
       'minimax-cn': makeSnapshot('minimax-cn', {

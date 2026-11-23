@@ -155,6 +155,55 @@ describe('buildOverviewItems', () => {
     expect(video?.state).toBe('positive');
   });
 
+  it('marks a blocked window and adds the media weekly row', () => {
+    const items = buildOverviewItems({
+      snapshots: {
+        'minimax-cn': makeSnapshot('minimax-cn', {
+          'minimax.plan': {
+            kind: 'ok',
+            fetchedAt: 'x',
+            data: {
+              windows: [
+                { window: 'fiveHour', remainingPercent: 80, resetAt: null, unlimited: false },
+                { window: 'weekly', remainingPercent: 0, resetAt: null, unlimited: false },
+              ],
+              models: [
+                {
+                  model: 'video',
+                  remaining: 3,
+                  remainingPercent: 100,
+                  total: 3,
+                  used: 0,
+                  weeklyTotal: 21,
+                  weeklyRemaining: 21,
+                  weeklyUsed: 0,
+                  weeklyRemainingPercent: 100,
+                },
+              ],
+            },
+          },
+        }),
+      },
+      configured: { 'minimax-cn': true },
+      order: ['minimax-cn'],
+      t: zh,
+      pricing: 'offPeak',
+      timeZone: 'Asia/Shanghai',
+      warningThresholdPercent: 20,
+    });
+
+    const children = items[0]?.children ?? [];
+    expect(children.find((child) => child.label === '5 小时')?.description).toBe(
+      '剩余 80% · 已使用 20% · 受每周额度限制',
+    );
+    expect(children.find((child) => child.label === '每周')?.description).toBe(
+      '剩余 0% · 已使用 100% · 已用尽',
+    );
+    expect(children.find((child) => child.label === '视频 · 每周')?.description).toBe(
+      '剩余 21/21 次 · 已使用 0 次',
+    );
+  });
+
   it('preserves provider order and separate DeepSeek currency balances', () => {
     const items = buildOverviewItems({
       snapshots: {
