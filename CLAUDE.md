@@ -337,6 +337,15 @@ These are product and security rules, not implementation details — do not trad
 - **`minimax.points` is a retired capability.** The points endpoint needs a web-session Cookie, so it
   was dropped. `src/core/cache.ts` lists it in `RETIRED_MINIMAX_CAPABILITIES` and strips it from
   snapshots cached before the removal. Do not reintroduce it without a verified credential.
+- **An empty weekly window blocks the 5-hour window.** MiniMax's text and voice models need both
+  windows to have remaining quota, and refreshing the 5-hour window does not restore the week's
+  usage, so a weekly percentage of 0 means the 5-hour balance cannot be spent. The extension marks
+  the blocked window instead of hiding its number: the percentage stays, the row gains
+  `受每周额度限制` / `Blocked by weekly quota`, and the status bar shows only the window that
+  decides what can be used. The rule lives in `withAvailability()` in
+  `src/providers/minimax/shape.ts` and is derived at read time, so a snapshot cached before the
+  rule existed still reads correctly when the cache is painted at startup. The rule and its
+  source are in `docs/contracts/minimax.md`.
 - **The Qianwen management token is a device-flow token, not a Token Plan key.** The login command
   uses `t.qianwenai.com` with PKCE, queries the fund account at `cli.qianwenai.com/data/v2/api.json`
   with `BssOpenAPI-V3.GetFundAccountAvailableAmount`, exchanges the OAuth bearer for a console token

@@ -69,6 +69,32 @@ turns a full allowance into `0/3`. The count fields only mean anything when
 `current_interval_total_count` is greater than zero; a Token Plan key leaves
 them at 0 and only the percentage fields carry the quota.
 
+### Two windows, one weekly quota
+
+MiniMax's published usage rules for the plan
+([platform.minimax.cn/docs/m-plan/usage-rules](https://platform.minimax.cn/docs/m-plan/usage-rules))
+state two rules that decide what the extension may show:
+
+> 图片和视频模型仅受周窗口限制；文本、声音等模型需要两个窗口都有剩余额度才能使用。
+>
+> 两个窗口独立刷新，5 小时窗口刷新不会恢复本周已用的额度。
+
+So the weekly window is the master limit for text and voice models: once it is empty, the
+5-hour window's remaining balance cannot be spent, and refreshing the 5-hour window does not
+restore the week's usage. Image and video models are limited by their own weekly pool, which the
+endpoint reports per model (`current_weekly_total_count` / `current_weekly_remaining_percent`).
+
+The extension derives this from the percentages the endpoint already reports — see
+`withAvailability()` in `src/providers/minimax/shape.ts`:
+
+- a weekly percentage that is 0 **after** the `weekly_boost_permille` multiplier exhausts the
+  week and blocks the 5-hour window (a boost of 0 leaves nothing either way);
+- a media model whose own weekly pool is empty is blocked the same way;
+- an unlimited window is never exhausted.
+
+The flags are derived at read time rather than only at parse time, so a snapshot cached before
+this rule existed still reads correctly when the cache is painted at startup.
+
 ## `minimax.subscription`
 
 `GET /v1/api/openplatform/charge/combo/cycle_audio_resource_package?biz_line=2&cycle_type=1&resource_package_type=7`
