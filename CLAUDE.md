@@ -28,6 +28,11 @@ npm --prefix mcp test
 npm --prefix mcp run start    # run the MCP server over stdio
 
 node scripts/check-calendar.mjs  # DeepSeek pricing-calendar check (warns at 60 days left)
+
+# CI and release workflows live in `.github/workflows/`: `ci.yml` (typecheck, tests, build,
+# locale/i18n checks, fixture and package guards), `mcp.yml` (the MCP package, including a live
+# `--once` provider probe), `codeql.yml`, `scorecard.yml`, `calendar.yml` (the pricing-calendar
+# warning) and `publish.yml` (tag → Marketplace).
 ```
 
 `guard:package` reads `dist/extension.js` and `dist/webview.js` and runs `npx vsce ls`, so it is
@@ -36,7 +41,7 @@ node scripts/check-calendar.mjs  # DeepSeek pricing-calendar check (warns at 60 
 `npm run package` writes `quota-deck-<version>.vsix` to the repo root; it does not publish.
 Pushing a `v*` tag runs `.github/workflows/publish.yml`, which re-runs typecheck, tests and
 `npm run package`, then publishes that VSIX through Marketplace Trusted Publishing
-(`npx @vscode/vsce@4 publish --oidc`, no PAT) and attaches the same VSIX to a GitHub Release named
+(`npx @vscode/vsce@4.1.1 publish --oidc`, no PAT) and attaches the same VSIX to a GitHub Release named
 after the tag. The publisher's Trusted Publishing policy must name this repository and workflow.
 Publishing by hand is `npx vsce publish --packagePath quota-deck-<version>.vsix` with a Marketplace
 PAT (`VSCE_PAT`). A successful "Publish to the Visual Studio Marketplace" step does not mean the
@@ -44,8 +49,9 @@ version is visible: the public listing lags the publish by several minutes while
 validates the VSIX. Verify with `npx --yes @vscode/vsce@4.1.1 show alexmultiagent.quota-deck` (or the
 gallery `extensionquery` API) before announcing the release.
 
-`git push` over HTTPS fails on this machine: `github.com:443` is blocked (`Failed to connect to
-github.com:443 after ~20s`), while `ssh.github.com:443` and `api.github.com` work. Push over SSH:
+`git` over HTTPS to `github.com:443` fails intermittently on this machine (`Failed to connect to
+github.com:443 after ~20s` — it has broken on fetch and on push alike), while `ssh.github.com:443`
+and `api.github.com` stay reachable. When it fails, push over SSH:
 `git push ssh://git@ssh.github.com:443/AlexMultiAgent/VSC-plugin-quota-deck.git main` and the same
 for `refs/tags/vX.Y.Z`. `gh` talks to `api.github.com`, so `gh run list --workflow=publish.yml` and
 `gh run watch <id> --exit-status` work and are how to confirm the publish job succeeded.
@@ -312,6 +318,19 @@ These are product and security rules, not implementation details — do not trad
   `README.md`, `CHANGELOG.md`, `LICENSE`, `esbuild.mjs`, `.vscodeignore`.
   A docs-only commit — `CLAUDE.md`, `docs/**`, `scripts/**`, `.github/**` — packages under the
   current version. A `package.nls*.json` edit is a shipped change, not docs-only.
+- **The `minimatch` override is load-bearing.** `@vscode/vsce@4.1.1` requires `minimatch@^10.2.6`,
+  which is vulnerable (GHSA-g3hv-75wg-m249). `package.json` overrides it to `^11.0.1` (resolved
+  11.0.9) for that subtree, and `.github/dependabot.yml` ignores `minimatch` so Dependabot does not
+  "fix" the advisory by downgrading `@vscode/vsce` to 3.9.1 — the only path it finds when it cannot
+  see the override. Dropping the override, or un-ignoring the dependency, reintroduces the
+  advisory; `npm audit` in CI still covers it.
+- **The bot workflows declare permissions per job, and Scorecard declares none at the workflow
+  level.** `permissions: {}` at the top of `scorecard.yml`, with `security-events: write` and
+  `id-token: write` on the job, is the layout Scorecard requires: a workflow-level write makes the
+  Scorecard API reject the upload ("global perm is set to write"), the workflow still goes green,
+  and nothing is published — no badge and no alerts. A job-level `permissions:` block *replaces*
+  the workflow-level one rather than extending it, so every job that reads the repository has to
+  repeat `contents: read` itself.
 - **The settings manifest is pinned by a test.** `scripts/settings.test.ts` asserts the exact set of
   `contributes.configuration.properties`, that every one is `scope: 'window'` with a
   `%config.<key>.description%` `markdownDescription`, and that `statusBar.mode` carries two
@@ -408,7 +427,9 @@ These are product and security rules, not implementation details — do not trad
 - **Use `hourCycle: 'h23'`, not `hour12: false`.** `hour12: false` can render midnight as hour
   `24`, and `zonedParts()` (`src/core/time.ts`) reads that `hour` field.
   `src/providers/deepseek/pricing.ts` deliberately mixes calendars: the **Shanghai date** decides
-  holiday and weekend, the **UTC minute-of-day** decides the peak window.
+  the holiday and the coverage window, the **UTC minute-of-day** decides the peak window, and the
+  weekend is decided by the **UTC** weekday (`getUTCDay()`) — not by the Shanghai date, which puts
+  Sunday 16:00 UTC on a Monday in Shanghai.
 - **Assemble dates with `formatToParts()`, not `format()`.** `.format()` output depends on the
   ICU data the runtime ships; `formatToParts()` gives named fields to compose from.
 - **`scripts/` is outside `tsconfig.json`'s `include`.** `npm run typecheck` only checks `src/**`,
