@@ -22,17 +22,27 @@ on:
     # Off-peak minute on purpose: many repos share the top-of-hour crons.
     - cron: "23 4 * * 1"
 
+# Workflow-level permissions stay read-only. `security-events: write` is
+# granted to the analyze job alone, because that is the only step that
+# uploads SARIF; a workflow-wide write would give every step -- and every
+# action it runs -- the ability to write code-scanning results.
 permissions:
   contents: read
   actions: read
   packages: read
-  security-events: write
 
 jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # A job-level block replaces the workflow-level one, so it restates the
+    # read permissions the job needs and adds the single write it requires.
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
@@ -42,16 +52,16 @@ jobs:
           - language: javascript-typescript
             paths: mcp/src
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea  # v4.39.4
         with:
           languages: ${{ matrix.language }}
           paths: ${{ matrix.paths }}
           queries: security-and-quality
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea  # v4.39.4
         with:
           category: "/language:${{ matrix.language }}:${{ matrix.paths }}"
