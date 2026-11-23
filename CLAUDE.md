@@ -49,12 +49,10 @@ version is visible: the public listing lags the publish by several minutes while
 validates the VSIX. Verify with `npx --yes @vscode/vsce@4.1.1 show alexmultiagent.quota-deck` (or the
 gallery `extensionquery` API) before announcing the release.
 
-`git` over HTTPS to `github.com:443` fails intermittently on this machine (`Failed to connect to
-github.com:443 after ~20s` — it has broken on fetch and on push alike), while `ssh.github.com:443`
-and `api.github.com` stay reachable. When it fails, push over SSH:
-`git push ssh://git@ssh.github.com:443/AlexMultiAgent/VSC-plugin-quota-deck.git main` and the same
-for `refs/tags/vX.Y.Z`. `gh` talks to `api.github.com`, so `gh run list --workflow=publish.yml` and
+`gh` talks to `api.github.com`, so `gh run list --workflow=publish.yml` and
 `gh run watch <id> --exit-status` work and are how to confirm the publish job succeeded.
+This machine's git transport is flaky over HTTPS; the workaround and the local
+paths live in `CLAUDE.local.md`, which is not checked in.
 
 ## Architecture
 
@@ -441,15 +439,13 @@ These are product and security rules, not implementation details — do not trad
   `signal.aborted` check must come before `addEventListener('abort', …)`, or the request hangs.
 - **An installed extension keeps running its old bundle until the window reloads.**
   `code --install-extension quota-deck-<version>.vsix` only stages the files; the running extension
-  host keeps the previous version until "Developer: Reload Window". Check
-  `%USERPROFILE%\.vscode\extensions\alexmultiagent.quota-deck-<version>\` to see which version is
-  actually installed — a stale install makes fresh code look like a no-op.
+  host keeps the previous version until "Developer: Reload Window". A stale install makes fresh
+  code look like a no-op — `CLAUDE.local.md` has the install path to check.
 - **To tell a stale surface from a stale fetch, read the extension's own cache.** The parsed
-  snapshots live in VS Code's global state, in
-  `%APPDATA%\Code\User\globalStorage\state.vscdb` (SQLite table `ItemTable`, row key
-  `alexmultiagent.quota-deck`), as JSON keyed `quotaDeck.snapshot.<providerId>.<range>`. If the
-  cached `fetchedAt` is current but a surface still shows old numbers, that surface did not paint;
-  if the cache is old too, the provider fetch itself is the problem.
+  snapshots live in VS Code's global state as JSON keyed
+  `quotaDeck.snapshot.<providerId>.<range>`. If the cached `fetchedAt` is current but a surface
+  still shows old numbers, that surface did not paint; if the cache is old too, the provider fetch
+  itself is the problem. `CLAUDE.local.md` has the cache location.
 
 ## Fixtures
 
