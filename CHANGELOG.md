@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.6 — 2026-11-23
+
+- 仪表盘的 webview 现在只接受来自自身 origin 的消息。扩展主机发来的消息带着与 webview 相同的 origin（桌面端 `vscode-webview://<id>`，vscode.dev 为 `https://<id>.vscode-cdn.net`），其它 origin 的消息在读取内容之前就被丢弃；原有的按字段白名单校验消息内容的检查保持不变。
+- 清理了五处没有任何引用的死代码（`src/core/time.ts` 的 `HOUR`、`src/presentation/statusBar.ts` 的 `StatusTone`、`src/presentation/tooltip.ts` 的 `WindowView`，以及两个测试文件里的多余导入），并在 `tsconfig.json` 打开 `noUnusedLocals`，让同类问题以后在编译期就被发现。
+- 修正 CodeQL 工作流：`init` 步骤的 `paths` 入参在 codeql-action v4 里已经不存在（运行日志里是 `Unexpected input(s) 'paths'`），此前整个仓库都被扫了一遍，注释里"只扫两个 TypeScript 根"的说法与实际不符。现在改用 `.github/codeql/` 下的配置文件按 `src` 与 `mcp/src` 两个根分别扫描，并排除测试文件与只在本机运行、不随扩展发布的 `scripts/` 工具。
+
 ## 0.4.5 — 2026-11-23
 
 - 维护版本：把「已用尽 / 受每周额度限制」标记的判断收敛到共享 helper `quotaStateText()`（`src/presentation/display.ts`），悬浮提示、Activity Bar 与仪表盘不再各自维护一份同样的规则；界面显示不变。
