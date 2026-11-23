@@ -25,6 +25,9 @@ npm --prefix mcp install
 npm --prefix mcp run build
 npm --prefix mcp run typecheck
 npm --prefix mcp test
+npm --prefix mcp run start    # run the MCP server over stdio
+
+node scripts/check-calendar.mjs  # DeepSeek pricing-calendar check (warns at 60 days left)
 ```
 
 `guard:package` reads `dist/extension.js` and `dist/webview.js` and runs `npx vsce ls`, so it is
@@ -178,7 +181,8 @@ environment variable. The extension, `scripts/capture-fixture.mjs` and
 script pointing at a URL the extension does not call. It is JSON rather than a `.ts` module because
 the capture scripts must read it without importing anything from `src/`. Qwen has no environment
 credential: its management token is obtained through the device flow and lives only in Secret
-Storage.
+Storage. `scripts/endpoints.test.ts` asserts that every endpoint id a provider source mentions
+exists in `endpoints.json`.
 
 `mcp/` is a standalone Node package (`quota-deck-mcp`) that bundles `src/core`,
 `src/providers`, and the vscode-free presentation/localization modules it reuses
@@ -187,11 +191,15 @@ snapshots over MCP. It is excluded from the VSIX by
 `.vscodeignore`, keeps its own lockfile, tests and esbuild config, and is not covered by the root
 `typecheck`/`test` commands — run `npm --prefix mcp …` for it. It reads credentials from
 environment variables only, never from Secret Storage, and its bundle must stay free of `vscode`
-imports.
+imports. CI greps `mcp/dist/index.js` for a `vscode` import and fails the build if one appears.
 
 `src/presentation/dashboard/protocol.ts` validates every host↔webview message against an
 exact-key schema — including the range selection the webview sends back. Extend that validator
-whenever a message shape changes.
+whenever a message shape changes. The module is compiled into **both** bundles: the extension
+validates what the webview sends (`isWebviewMessage`) and the webview validates what the host
+sends (`isHostMessage`). A new dashboard model field therefore touches four places — the model
+interface, the validator's key list and type check, the builder in `viewModel.ts`, and the
+renderer in `webview/render.ts`.
 
 The dashboard webview owns no translated strings: `presentation/dashboard/locale.ts` builds a
 `DashboardLocalization` payload, the panel injects it as `data-` attributes and also sends it as
@@ -274,8 +282,10 @@ These are product and security rules, not implementation details — do not trad
   by `scripts/locales.test.ts`.
 - **The DeepSeek pricing calendar expires.** `scripts/release-gate.mjs` fails the build when
   `coverageEnd` in `src/providers/deepseek/pricing-calendar.json` is under 30 days out. Extend
-  `coverageEnd` and `holidays` before it lapses. Peak windows are UTC Monday–Friday
-  `01:00–04:00` and `06:00–10:00`; weekends and Chinese public holidays are entirely off-peak.
+  `coverageEnd` and `holidays` before it lapses. `.github/workflows/calendar.yml` warns at 60 days
+  and opens or updates a maintenance issue; `node scripts/check-calendar.mjs` is the same check
+  locally. Peak windows are UTC Monday–Friday `01:00–04:00` and `06:00–10:00`; weekends and
+  Chinese public holidays are entirely off-peak.
 - **A version bump is required only when the change ships.** `scripts/release-gate.mjs` checks that
   the `package.json` version, the `package-lock.json` version and the newest `## X.Y.Z` heading in
   `CHANGELOG.md` agree, and that `v<version>` either does not exist yet or still points at HEAD.
@@ -292,7 +302,9 @@ These are product and security rules, not implementation details — do not trad
 - **A registered command is not a reachable command.** `quotaDeck.clearCredential` once had its
   handler, its confirmation dialog and its tests, but was absent from `contributes.commands` and
   invoked by no surface, so no user could reach it. A command the user should reach needs both a
-  manifest entry and a call site.
+  manifest entry and a call site. `scripts/commands.test.ts` now asserts that every
+  `registerCommand(...)` id is contributed with a `%command.*.title%` placeholder present in both
+  `package.nls*.json` bundles.
 - **`showInformationMessage` / `showErrorMessage` resolve when the notification is dismissed, not
   when it is shown.** The toast auto-hiding after a few seconds does not resolve them; only
   `onDidClose` does, so awaiting one before state-changing work can stall that work until the user
@@ -379,6 +391,17 @@ These are product and security rules, not implementation details — do not trad
   silently in tests — `readSettings()` must coerce and clamp every value itself.
 - **An already-aborted `AbortSignal` never fires its `abort` listener.** In `src/core/http.ts` the
   `signal.aborted` check must come before `addEventListener('abort', …)`, or the request hangs.
+- **An installed extension keeps running its old bundle until the window reloads.**
+  `code --install-extension quota-deck-<version>.vsix` only stages the files; the running extension
+  host keeps the previous version until "Developer: Reload Window". Check
+  `%USERPROFILE%\.vscode\extensions\alexmultiagent.quota-deck-<version>\` to see which version is
+  actually installed — a stale install makes fresh code look like a no-op.
+- **To tell a stale surface from a stale fetch, read the extension's own cache.** The parsed
+  snapshots live in VS Code's global state, in
+  `%APPDATA%\Code\User\globalStorage\state.vscdb` (SQLite table `ItemTable`, row key
+  `alexmultiagent.quota-deck`), as JSON keyed `quotaDeck.snapshot.<providerId>.<range>`. If the
+  cached `fetchedAt` is current but a surface still shows old numbers, that surface did not paint;
+  if the cache is old too, the provider fetch itself is the problem.
 
 ## Fixtures
 

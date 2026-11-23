@@ -563,7 +563,7 @@ verbatim in Secret Storage and read back only to sign or authenticate a request.
 | Setting | Values | Default |
 | --- | --- | --- |
 | `quotaDeck.language` | `auto`, `zh-CN`, `en-US` | `auto` |
-| `quotaDeck.refreshIntervalMinutes` | 1–60 | 5 |
+| `quotaDeck.refreshIntervalMinutes` | 1–60 | 3 |
 | `quotaDeck.pauseWhenUnfocused` | boolean | `true` |
 | `quotaDeck.statusBar.mode` | `all`, `focused` | `all` |
 | `quotaDeck.statusBar.primaryProvider` | `minimax-cn`, `minimax-global`, `deepseek`, `qwen` | `minimax-cn` |
